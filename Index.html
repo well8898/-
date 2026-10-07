@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f3f5f8; font-size: 15px; padding-bottom: 40px; }
+    .app { max-width: 1280px; margin: 0 auto; padding: 16px; }
+    .narrow { max-width: 640px; margin: 0 auto; }
+    .card { border: 0; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px; }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .form-label { font-size: 13px; color: #555; margin-bottom: 4px; }
+    .org-head { padding-bottom: 20px; border-bottom: 1px solid #eef0f3; }
+    .org-logo { display: block; max-width: 120px; max-height: 120px; margin: 0 auto 12px; object-fit: contain; }
+    .org-logo:not([src]), .org-logo[src=""] { display: none; }
+    .org-name { font-size: clamp(16px, 4.8vw, 20px); font-weight: 800; letter-spacing: -0.5px; word-break: keep-all; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .trip-item { cursor: pointer; border-radius: 12px !important; margin-bottom: 8px; border: 1px solid #e3e6ea !important; }
+    .trip-item:hover { background: #f8f9fb; }
+    .trip-item.locked { cursor: default; opacity: .6; }
+    .total-box { background: #0d6efd; color: #fff; border-radius: 14px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .total-box .amount { font-size: 24px; font-weight: 800; }
+
+    /* 가로 입력표 */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #dee2e6; border-radius: 10px; }
+    .claim-table { min-width: 1100px; margin: 0; font-size: 13px; }
+    .claim-table th { background: #fff8c5; text-align: center; vertical-align: middle; white-space: nowrap; font-weight: 600; padding: 6px 4px; }
+    .claim-table td { padding: 4px; vertical-align: middle; }
+    .claim-table .form-control, .claim-table .form-select { font-size: 13px; padding: 4px 6px; min-height: 32px; }
+    .claim-table .form-select { padding-right: 22px; background-position: right 4px center; }
+    .claim-table input[type=number] { text-align: right; }
+    .claim-table tfoot td { background: #f6f8fa; font-weight: 700; text-align: right; padding: 8px 6px; }
+    .claim-table .auto { background: #eef1f4; }
+    .claim-table input.auto::placeholder { color: #212529; opacity: 1; } /* 자동 계산 일비는 진하게 */
+    .claim-table .cell-note { font-size: 11px; color: #777; text-align: right; line-height: 1.2; margin-top: 2px; }
+    .claim-table .cell-note.warn { color: #dc3545; }
+    /* 출발지·도착지 색: 소속(첫날 출발·마지막 날 도착)=옅은 빨강, 나머지=옅은 파랑, 출발지=도착지인 날=회색 */
+    .claim-table .form-control.c-home { background: #fde4e4; }
+    .claim-table .form-control.c-trip { background: #e3edfd; }
+    .claim-table .form-control.c-same { background: #eceef1; }
+    .scroll-hint { font-size: 12px; color: #888; }
+
+    .map-card { border: 1px solid #e3e6ea; border-radius: 10px; padding: 10px; background: #fff; margin-bottom: 10px; }
+    .map-card .cap { font-size: 13px; margin-bottom: 6px; }
+    /* 제출 시 이 영역(.map-shot)을 그대로 캡처해서 PDF에 넣음 */
+    .map-shot { position: relative; width: 100%; max-width: 640px; height: 400px; border-radius: 6px; overflow: hidden; background: #e9ecef; }
+    .map-shot .kmap { width: 100%; height: 100%; }
+    .map-shot > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .map-info { position: absolute; top: 10px; left: 10px; z-index: 10; background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.25); padding: 8px 12px; font-size: 12px; line-height: 1.45; max-width: 85%; }
+    .map-info .km { font-size: 18px; font-weight: 800; color: #1d4ed8; }
+    .pin { padding: 3px 8px; border-radius: 12px; color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.3); white-space: nowrap; }
+    .pin-s { background: #16a34a; } .pin-e { background: #dc2626; } .pin-w { background: #f59e0b; }
+
+    #sigPad { width: 100%; max-width: 520px; height: 180px; border: 2px dashed #ccd2d9; border-radius: 10px; background: #fff; touch-action: none; display: block; }
+    /* 운임 조회 창 */
+    .fare-modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .fare-modal.d-none { display: none !important; }
+    .fare-box { width: 100%; max-width: 560px; max-height: 90vh; overflow: auto; margin: 0; }
+    .fare-results { max-height: 45vh; overflow: auto; }
+    .fare-item { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; font-size: 14px; }
+    .fare-item .fare { font-weight: 700; color: #1d4ed8; }
+    .claim-table .fare-btn { padding: 2px 6px; font-size: 12px; }
+    .near-chips { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+    .near-chips .btn { font-size: 12px; padding: 1px 8px; border-radius: 12px; }
+    #loading { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; z-index: 2000; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #loading.show { display: flex; }
+    .file-list { font-size: 13px; }
+    .file-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  </style>
+</head>
+<body>
+  <nav class="navbar bg-white border-bottom">
+    <div class="container-fluid app py-0">
+      <span class="navbar-brand fw-bold mb-0">🧾 승강기안전공단 노조 여비 청구</span>
+      <div id="userBox" class="d-none small">
+        <span id="userLabel" class="me-2 text-secondary"></span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="logout()">로그아웃</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app">
+    <div id="alertBox"></div>
+
+    <!-- ── STEP 1: 로그인 ───────────────────────────── -->
+    <section id="step1" class="step active narrow">
+      <div class="card"><div class="card-body p-4">
+        <div class="org-head text-center mb-4">
+          <!-- 로고: src에 이미지(base64 또는 공개 URL)를 넣으면 표시, 비어 있으면 숨김 -->
+          <!-- ⚠ 저장소에는 로고 데이터가 빠져 있음: 기존 Index.html의 orgLogo src(data:image/png;base64,...) 값을 그대로 붙여 넣으세요 -->
+          <img id="orgLogo" class="org-logo" src="" alt="한국승강기안전공단 노동조합 로고">
+          <div class="org-name">한국승강기안전공단 노동조합</div>
+          <div class="text-secondary small">출장 여비 청구</div>
+        </div>
+        <h5 class="fw-bold mb-1">로그인</h5>
+        <p class="text-secondary small mb-4">사번과 성명으로 로그인하세요.</p>
+        <form onsubmit="login(event)">
+          <div class="mb-3">
+            <label class="form-label" for="empId">사번</label>
+            <input id="empId" class="form-control form-control-lg" autocomplete="username" required>
+          </div>
+          <div class="mb-4">
+            <label class="form-label" for="empName">성명</label>
+            <input id="empName" class="form-control form-control-lg" autocomplete="name" required>
+          </div>
+          <button class="btn btn-primary btn-lg w-100" type="submit">로그인</button>
+        </form>
+      </div></div>
+    </section>
+
+    <!-- ── STEP 2: 출장 선택 ────────────────────────── -->
+    <section id="step2" class="step narrow">
+      <h6 class="fw-bold mb-3">청구할 출장을 선택하세요</h6>
+      <div id="tripList" class="list-group"></div>
+    </section>
+
+    <!-- ── STEP 3: 여비 입력 ────────────────────────── -->
+    <section id="step3" class="step">
+      <button class="btn btn-link px-0 mb-2" onclick="showStep(2)">← 출장 목록</button>
+
+      <div class="card"><div class="card-body">
+        <div class="card-title mb-1" id="tripTitle"></div>
+        <div class="small text-secondary" id="tripMeta"></div>
+        <div class="alert alert-info small py-2 mt-2 mb-0 d-none" id="editNotice"></div>
+      </div></div>
+
+      <form id="claimForm" onsubmit="submitClaim(event)" novalidate>
+       <!-- 구분 -->
+        <div class="card"><div class="card-body">
+          <div class="card-title">1. 📋 기본 정보</div>
+          <div class="row g-3">
+            <div class="col-12 col-md-auto" style="min-width:120px">
+              <label class="form-label" for="category">구분</label>
+              <select id="category" class="form-select" onchange="toggleCategoryEtc()">
+                <option>근무지내</option><option selected>근무지외</option><option>국외</option><option>기타</option>
+              </select>
+              <input id="categoryEtc" class="form-control mt-1 d-none" placeholder="기타 내용">
+            </div>
+            <div class="col-12 col-md">
+              <label class="form-label" for="fareReason">운임청구사유 <span class="text-secondary">(대중교통 이용 → 교통편 KTX, 1~5번 → 자차로 바뀌어요)</span></label>
+              <select id="fareReason" class="form-select" onchange="onReasonChange()"></select>
+            </div>
+            <div class="col-12 col-md-2">
+              <label class="form-label d-block">조합차량 이용여부</label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="unionCar" id="ucNo" value="무" checked>
+                <label class="btn btn-outline-primary" for="ucNo">무</label>
+                <input type="radio" class="btn-check" name="unionCar" id="ucYes" value="유">
+                <label class="btn btn-outline-primary" for="ucYes">유</label>
+              </div>
+            </div>
+          </div>
+        </div></div>
+
+        <!-- 청구 내역 (가로 표) -->
+        <div class="card"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+            <div class="card-title mb-0">2. 청구 내역</div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="calcAll()">📍 거리 계산</button>
+          </div>
+          <div class="form-text">
+            자차일 경우 [📍 거리 계산]을 누르면 이동이 있는 줄(출발지≠도착지 또는 경과지 있음)을 한 번에 계산해요.
+            경과지가 여러 곳이면 쉼표(,)로 구분하세요 (최대 5곳).
+          </div>
+          <div class="scroll-hint d-md-none mb-1">← 표를 좌우로 밀어서 입력하세요 →</div>
+          <div class="table-wrap">
+            <table class="table table-bordered claim-table">
+              <thead>
+                <tr>
+                  <th style="width:140px">일자</th>
+                  <th style="width:140px">출발지</th>
+                  <th style="width:65px">경과지</th>
+                  <th style="width:140px">도착지</th>
+                  <th style="width:82px">교통편</th>
+                  <th style="width:80px">km</th>
+                  <th style="width:118px">운임</th>
+                  <th style="width:88px">기타 <small class="fw-normal text-secondary">(통행료 등)</small></th>
+                  <th style="width:78px">일비</th>
+                  <th style="width:84px">식비</th>
+                  <th style="width:88px">숙박비</th>
+                  <th style="width:30px"></th>
+                </tr>
+              </thead>
+              <tbody id="rowBody"></tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="5" class="text-center">합계</td>
+                  <td id="sumKm"></td>
+                  <td id="sumFare"></td>
+                  <td id="sumEtc"></td>
+                  <td id="sumDaily"></td>
+                  <td id="sumMeal"></td>
+                  <td id="sumLodging"></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <datalist id="branchList"></datalist>
+          <div class="d-flex justify-content-between align-items-start mt-2 gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">+ 줄 추가</button>
+            <div class="form-text m-0 text-end" id="ruleHint"></div>
+          </div>
+
+        </div></div>
+
+        <!-- 경로 증빙: 거리 계산 지도 + 직접 첨부 사진 (둘 다 PDF '이동 경로 증빙'에 들어감) -->
+        <div class="card" id="mapCard"><div class="card-body">
+          <div class="card-title">3. 경로 증빙 <span class="text-secondary fw-normal small">(PDF 증빙에 들어가요)</span></div>
+          <div id="mapList"></div>
+          <div id="mapEmpty" class="small text-secondary mb-2">[📍 거리 계산]을 누르면 경로 지도가 여기에 나와요.</div>
+          <div class="border-top pt-3 mt-2">
+            <div class="small fw-bold mb-2">추가 증빙 사진 <span class="text-secondary fw-normal">(자동 거리계산과 다를 시, 카카오맵 길찾기 캡처, 승차권 등 · 이미지·PDF)</span></div>
+            <input type="file" id="routeInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this, 'route')">
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-outline-primary" onclick="$('routeInput').click()">파일 선택</button>
+              <span id="routeFileCount" class="text-secondary small">첨부된 사진 없음</span>
+            </div>
+            <ul id="routeFileList" class="file-list list-unstyled mt-2 mb-0"></ul>
+          </div>
+        </div></div>
+
+        <div class="total-box mb-3">
+          <span>총 청구금액</span>
+          <span class="amount" id="totalAmount">0원</span>
+        </div>
+
+        <div class="row g-3">
+          <!-- 계좌 -->
+          <div class="col-lg-6">
+            <div class="card h-100"><div class="card-body">
+              <div class="card-title">4. 입금 계좌</div>
+              <div class="mb-2">
+                <label class="form-label" for="bank">은행</label>
+                <input id="bank" class="form-control" list="bankList" required>
+                <datalist id="bankList">
+                  <option>국민은행</option><option>신한은행</option><option>우리은행</option><option>하나은행</option>
+                  <option>농협은행</option><option>기업은행</option><option>카카오뱅크</option><option>토스뱅크</option>
+                  <option>케이뱅크</option><option>새마을금고</option><option>신협</option><option>우체국</option>
+                  <option>SC제일은행</option><option>부산은행</option><option>대구은행(iM뱅크)</option><option>광주은행</option>
+                </datalist>
+              </div>
+              <div class="mb-2">
+                <label class="form-label" for="account">계좌번호</label>
+                <input id="account" class="form-control" inputmode="numeric" placeholder="숫자와 - 만" required>
+              </div>
+              <div>
+                <label class="form-label" for="holder">예금주</label>
+                <input id="holder" class="form-control" required>
+              </div>
+            </div></div>
+          </div>
+
+          <!-- 영수증 -->
+          <div class="col-lg-6">
+            <div class="card h-100"><div class="card-body">
+              <div class="card-title">5. 기타 영수증 <span class="text-secondary fw-normal small">(하이패스, 주유 등, 이미지·PDF, 여러 장 가능)</span></div>
+              <input type="file" id="receiptInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this)">
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary" onclick="$('receiptInput').click()">파일 선택</button>
+                <span id="fileCount" class="text-secondary small">첨부된 영수증 없음</span>
+              </div>
+              <ul id="fileList" class="file-list list-unstyled mt-2 mb-0"></ul>
+              <div class="form-text">영수증은 청구서 PDF 안에 들어가요. PDF 영수증은 페이지별 이미지로 바뀌어 들어가요.</div>
+            </div></div>
+          </div>
+        </div>
+
+        <!-- 서명 -->
+        <div class="card mt-3"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2" style="max-width:520px">
+            <div class="card-title mb-0">6. 서명</div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">지우기</button>
+          </div>
+          <canvas id="sigPad"></canvas>
+          <div class="form-text">위 칸에 손가락이나 마우스로 서명하세요. 청구서의 (서 명) 자리에 들어가요.</div>
+        </div></div>
+
+        <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">제출하기</button>
+      </form>
+    </section>
+
+    <!-- ── STEP 4: 완료 ─────────────────────────────── -->
+    <section id="step4" class="step narrow">
+      <div class="card"><div class="card-body p-4 text-center">
+        <div style="font-size:48px">✅</div>
+        <h5 class="fw-bold mt-2" id="doneTitle">제출이 완료되었습니다</h5>
+        <p class="text-secondary mb-1" id="doneMsg"></p>
+        <p class="text-secondary small mb-4">마감 전까지는 같은 출장을 다시 눌러 수정할 수 있어요.</p>
+        <button class="btn btn-primary w-100" onclick="refreshTrips()">출장 목록으로</button>
+      </div></div>
+    </section>
+  </div>
+
+  <!-- 운임 조회 창 -->
+  <div id="fareModal" class="fare-modal d-none" onclick="if (event.target === this) closeFare()">
+    <div class="card fare-box"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <div class="card-title mb-0">💲 운임 조회</div>
+          <div class="small text-secondary" id="fareRowLabel"></div>
+        </div>
+        <button type="button" class="btn-close" onclick="closeFare()"></button>
+      </div>
+      <!-- 1단계: 열차 운임 조회 / 카카오맵 길찾기 선택 -->
+      <div id="fareChoice" class="d-grid gap-2">
+        <button type="button" class="btn btn-primary btn-lg text-start" onclick="showTrainFare()">
+          🚆 열차(KTX) 운임 조회
+          <div class="small fw-normal opacity-75">역을 고르고 조회하면 운임이 자동으로 들어가요</div>
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-lg text-start" onclick="openKakaoRoute()">
+          🗺️ 카카오맵 길찾기 (버스 등)
+          <div class="small fw-normal opacity-75">대중교통 길찾기가 새 창으로 열려요 · 운임을 확인하고 직접 입력하세요</div>
+        </button>
+      </div>
+
+      <!-- 2단계: 열차 운임 조회 -->
+      <div id="fareTrain" class="d-none">
+      <button type="button" class="btn btn-link btn-sm px-0 mb-1" onclick="showFareChoice()">← 뒤로</button>
+      <div class="row g-2 align-items-end">
+        <div class="col-5">
+          <label class="form-label" for="fareDep">출발역</label>
+          <input id="fareDep" class="form-control" list="farePlaceList" autocomplete="off">
+        </div>
+        <div class="col-5">
+          <label class="form-label" for="fareArr">도착역</label>
+          <input id="fareArr" class="form-control" list="farePlaceList" autocomplete="off">
+        </div>
+        <div class="col-2">
+          <button type="button" class="btn btn-primary w-100" onclick="searchFare()">조회</button>
+        </div>
+        <div class="col-5"><div id="fareDepNear" class="near-chips"></div></div>
+        <div class="col-5"><div id="fareArrNear" class="near-chips"></div></div>
+      </div>
+      <datalist id="farePlaceList"></datalist>
+      <div id="fareNote" class="small mt-2"></div>
+      <div id="fareResults" class="fare-results list-group mt-2"></div>
+      </div>
+    </div></div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div id="loadingMsg" class="small text-secondary">처리 중...</div>
+  </div>
+
+<script>
+  const FARE_REASONS = [
+    '대중교통 이용',
+    '1. 산간오지 도서벽지 등 대중교통수단이 없어 자가용을 이용할 수 밖에 없는 경우',
+    '2. 출장경로가 매우 복잡 다양하여 대중교통을 사실상 이용할 수 없는 경우',
+    '3. 공무목적상 부득이한 심야시간대 이용 또는 긴급한 사유가 있는 경우',
+    '4. 자가용을 이용함으로써 운임이 적게 소요되는 경우',
+    '5. 하중이 무거운 수하물을 운송해야 하는 경우',
+  ];
+  const CAR = '자차';
+  const MAX_ROWS = 31;
+  const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
+  const MAX_PDF_PAGES = 10;                  // PDF 영수증 1개당 변환할 최대 페이지
+  const CDN = {
+    html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    pdfjsWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  };
+
+  const state = {
+    creds: null,        // { employeeId, name }
+    user: null,
+    trips: [],
+    trip: null,
+    transports: ['자차', '동승', 'KTX', '버스', '도보'],
+    rules: { dailyBase: 25000, dailyLong: 30000, dailyLongKm: 300, mealPrice: 8000, maxMeals: 3, maxFiles: 20 },
+    kakaoJsKey: '',
+    rows: [],           // { date, origin, waypoint, destination, transport, km, fare, meals, lodging, etc, map, stale }
+    files: [],          // 새로 올린 영수증 이미지 { name, mimeType, data, size }
+    kept: [],           // 이전 제출 영수증 { id, name }
+    routeFiles: [],     // 새로 올린 경로 증빙 사진
+    routeKept: [],      // 이전 제출 경로 증빙 사진 { id, name }
+    editing: false,
+    signed: false,
+  };
+
+  // ── 공통 ────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function won(n) { return (Number(n) || 0).toLocaleString('ko-KR') + '원'; }
+  function comma(n) { return (Number(n) || 0).toLocaleString('ko-KR'); }
+  function pos(v) { const n = Number(String(v == null ? '' : v).replace(/,/g, '')); return n > 0 ? n : 0; }
+
+  // '12345' → '12,345' (빈 값은 그대로 빈 값)
+  function moneyText(v) {
+    const d = String(v == null ? '' : v).replace(/[^\d]/g, '');
+    return d === '' ? '' : Number(d).toLocaleString('ko-KR');
+  }
+
+  // 입력 중 쉼표 넣기 (커서 위치 유지) → 숫자만 반환
+  function formatMoneyInput(el) {
+    const before = el.value;
+    const caret = el.selectionStart == null ? before.length : el.selectionStart;
+    const digitsLeft = before.slice(0, caret).replace(/[^\d]/g, '').length;
+    const digits = before.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
+    const text = moneyText(digits);
+    if (text !== before) {
+      el.value = text;
+      let p = 0, seen = 0;
+      while (p < text.length && seen < digitsLeft) { if (/\d/.test(text[p])) seen++; p++; }
+      try { el.setSelectionRange(p, p); } catch (e) { /* 일부 브라우저 */ }
+    }
+    return digits;
+  }
+  function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s || ''); }
+  function norm(s) { return String(s || '').replace(/\s/g, ''); }
+  function wpList(s) { return String(s || '').split(/[,，;]/).map(v => v.trim()).filter(Boolean); }
+  // 출발지 = 도착지 이고 경과지가 없으면 이동 없음
+  function isMove(r) { return !(norm(r.origin) === norm(r.destination) && !wpList(r.waypoint).length); }
+
+  const scripts = {};
+  function loadScript(src) {
+    if (!scripts[src]) {
+      scripts[src] = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => { delete scripts[src]; reject(new Error('스크립트 로드 실패: ' + src)); };
+        document.head.appendChild(s);
+      });
+    }
+    return scripts[src];
+  }
+
+  // 카카오맵 SDK (KAKAO_JS_KEY 없거나 도메인 미등록이면 null → 예비 지도 사용)
+  let kakaoReady = null, kakaoError = '';
+  function loadKakao() {
+    if (!state.kakaoJsKey) {
+      kakaoError = '스크립트 속성에 KAKAO_JS_KEY가 없어요';
+      return Promise.resolve(null);
+    }
+    if (!kakaoReady) {
+      const load = loadScript('https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' + encodeURIComponent(state.kakaoJsKey))
+        .then(() => new Promise(resolve => kakao.maps.load(() => resolve(kakao))));
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('시간 초과')), 8000));
+      kakaoReady = Promise.race([load, timeout]).catch(err => {
+        kakaoError = '카카오 지도 SDK를 불러오지 못했어요 (' + err.message + ') — JavaScript 키 또는 도메인 등록을 확인하세요';
+        console.warn(kakaoError, err);
+        return null;
+      });
+    }
+    return kakaoReady;
+  }
+
+  function run(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+
+  function loading(on, msg) {
+    $('loadingMsg').textContent = msg || '처리 중...';
+    $('loading').classList.toggle('show', on);
+  }
+
+  function alertMsg(msg, type) {
+    $('alertBox').innerHTML = msg
+      ? `<div class="alert alert-${type || 'danger'} alert-dismissible" style="white-space:pre-line">${esc(msg)}<button type="button" class="btn-close" onclick="alertMsg('')"></button></div>`
+      : '';
+    if (msg) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showStep(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    $('step' + n).classList.add('active');
+    alertMsg('');
+    window.scrollTo(0, 0);
+    if (n === 3) initSignature();
+  }
+
+  // ── STEP 1: 로그인 ──────────────────────────────
+  async function login(e) {
+    e.preventDefault();
+    const creds = { employeeId: $('empId').value.trim(), name: $('empName').value.trim() };
+    if (!creds.employeeId || !creds.name) return alertMsg('사번과 성명을 입력하세요.');
+    await loadTrips(creds);
+  }
+
+  async function loadTrips(creds) {
+    loading(true, '확인 중...');
+    try {
+      const res = await run('loginAndGetTrips', creds.employeeId, creds.name);
+      if (!res.ok) return alertMsg(res.message);
+      state.creds = creds;
+      state.user = res.user;
+      state.trips = res.trips;
+      if (res.transports && res.transports.length) state.transports = res.transports;
+      if (res.rules) state.rules = res.rules;
+      state.kakaoJsKey = res.kakaoJsKey || '';
+      loadKakao(); // 미리 로드
+      $('branchList').innerHTML = res.branches.map(b => `<option value="${esc(b)}">`).join('');
+      $('fareReason').innerHTML = FARE_REASONS.map(r => `<option>${esc(r)}</option>`).join('');
+      $('userLabel').textContent = `${res.user.성명} · ${res.user.소속}`;
+      $('userBox').classList.remove('d-none');
+      renderTrips();
+      showStep(2);
+    } catch (err) {
+      alertMsg('서버 오류: ' + err.message);
+    } finally {
+      loading(false);
+    }
+  }
+
+  function refreshTrips() { loadTrips(state.creds); }
+
+  // 다음 사람이 같은 기기에서 쓰더라도 이전 사람의 입력(계좌·영수증 등)이 남지 않게 모두 비움
+  function logout() {
+    Object.assign(state, {
+      creds: null, user: null, trips: [], trip: null,
+      rows: [], files: [], kept: [], routeFiles: [], routeKept: [], editing: false, signed: false,
+    });
+    fareState.near = { dep: [], arr: [] };
+    closeFare();
+    $('claimForm').reset();
+    $('rowBody').innerHTML = '';
+    $('mapList').innerHTML = '';
+    $('tripList').innerHTML = '';
+    renderFiles();
+    $('empId').value = '';
+    $('empName').value = '';
+    $('userBox').classList.add('d-none');
+    showStep(1);
+  }
+
+  // ── STEP 2: 출장 목록 ───────────────────────────
+  function renderTrips() {
+    if (!state.trips.length) {
+      $('tripList').innerHTML = '<div class="card"><div class="card-body text-center text-secondary py-5">청구 가능한 출장이 없습니다.</div></div>';
+      return;
+    }
+    const badge = s => s === '제출' ? '<span class="badge text-bg-success">제출완료 · 수정 가능</span>'
+      : s === '마감' ? '<span class="badge text-bg-secondary">마감</span>' : '<span class="badge text-bg-warning">미제출</span>';
+    $('tripList').innerHTML = state.trips.map((t, i) => `
+      <button type="button" class="list-group-item list-group-item-action trip-item p-3 ${t.청구상태 === '마감' ? 'locked' : ''}" onclick="openTrip(${i})">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="fw-bold">${esc(t.출장목적)}</div>
+          ${badge(t.청구상태)}
+        </div>
+        <div class="small text-secondary mt-1">📅 ${esc(period(t))}</div>
+        <div class="small text-secondary">📍 ${esc(t.기본도착지 || '-')}</div>
+      </button>`).join('');
+  }
+
+  function period(t) {
+    return t.출장시작일 === t.출장종료일 || !t.출장종료일 ? t.출장시작일 : `${t.출장시작일} ~ ${t.출장종료일}`;
+  }
+
+  async function openTrip(i) {
+    const t = state.trips[i];
+    if (t.청구상태 === '마감') return alertMsg('마감된 청구는 수정할 수 없어요.');
+
+    let claim = null, legacy = false;
+    if (t.청구상태 === '제출') {
+      loading(true, '이전 제출 내역 불러오는 중...');
+      try {
+        const res = await run('getMyClaim', state.creds.employeeId, state.creds.name, t.출장ID);
+        if (!res.ok) return alertMsg(res.message);
+        claim = res.claim;
+        legacy = !!res.legacy;
+      } catch (err) {
+        return alertMsg('서버 오류: ' + err.message);
+      } finally {
+        loading(false);
+      }
+    }
+
+    state.trip = t;
+    state.editing = t.청구상태 === '제출';
+    $('claimForm').reset();
+    // 운임청구사유 목록을 매번 새로 채움 (이전 출장에서 덧붙인 사유가 쌓이지 않게)
+    $('fareReason').innerHTML = FARE_REASONS.map(r => `<option>${esc(r)}</option>`).join('');
+    state.files = [];
+    state.kept = [];
+    state.routeFiles = [];
+    state.routeKept = [];
+
+    $('tripTitle').textContent = t.출장목적;
+    $('tripMeta').innerHTML = `출장ID ${esc(t.출장ID)} · 📅 ${esc(period(t))} · 📍 ${esc(t.기본도착지)}<br>${esc(state.user.성명)} · ${esc(state.user.소속)}`;
+    $('holder').value = state.user.성명;
+    $('submitBtn').textContent = state.editing ? '수정 제출하기' : '제출하기';
+
+    if (claim) {
+      fillFromClaim(claim);
+      showNotice(`${claim.submittedAt || ''} 제출한 내용을 불러왔어요. 고친 뒤 다시 제출하면 덮어써요. (서명은 다시 해주세요)`);
+    } else {
+      state.rows = defaultRows(t);
+      showNotice(legacy ? '이전 제출 내용을 불러올 수 없어 새로 작성해요. 다시 제출하면 기존 제출을 덮어써요.' : '');
+    }
+    toggleCategoryEtc();
+    renderFiles();
+    renderRows();
+    showStep(3);
+  }
+
+  function showNotice(text) {
+    $('editNotice').textContent = text;
+    $('editNotice').classList.toggle('d-none', !text);
+  }
+
+  // 첫날 소속→출장지 / 중간 근무일 출장지 체류(0km) / 마지막 날 출장지→소속
+  function defaultRows(t) {
+    const home = state.user.소속, dest = t.기본도착지;
+    const start = isDate(t.출장시작일) ? t.출장시작일 : today();
+    const end = isDate(t.출장종료일) ? t.출장종료일 : start;
+    const tr = reasonTransport();
+    const rows = [newRow({ date: start, origin: home, destination: dest, transport: tr })];
+    (t.근무일 || []).forEach(d => rows.push(newRow({ date: d, origin: dest, destination: dest, transport: '', km: '0' })));
+    rows.push(newRow({ date: end, origin: dest, destination: home, transport: tr }));
+    return rows;
+  }
+
+  // 운임청구사유 → 기본 교통편 (대중교통 이용 = KTX, 1~5번 = 자차)
+  function reasonTransport() {
+    return $('fareReason').value === FARE_REASONS[0] ? 'KTX' : CAR;
+  }
+
+  function onReasonChange() {
+    const tr = reasonTransport();
+    state.rows.forEach(r => {
+      if (!isMove(r)) return;
+      if (r.transport === CAR && tr !== CAR) r.fare = ''; // 자동 계산된 유류비 제거
+      r.transport = tr;
+    });
+    renderRows();
+  }
+
+  const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  function withDay(s) {
+    if (!isDate(s)) return s;
+    const [y, m, d] = s.split('-').map(Number);
+    return `${s}(${WEEKDAYS[new Date(y, m - 1, d).getDay()]})`;
+  }
+
+  // 출장 기간의 날짜 목록 (일자 선택용)
+  function tripDates(t) {
+    if (!isDate(t.출장시작일)) return [];
+    const end = isDate(t.출장종료일) ? t.출장종료일 : t.출장시작일;
+    const [y, m, d] = t.출장시작일.split('-').map(Number);
+    const out = [];
+    for (let n = 0; n < 62; n++) {
+      const dt = new Date(y, m - 1, d + n);
+      const s = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      if (s > end) break;
+      out.push(s);
+    }
+    return out;
+  }
+
+  function fillFromClaim(c) {
+    state.rows = (c.rows || []).map(r => newRow({
+      date: r.date, origin: r.origin, waypoint: r.waypoint, destination: r.destination, transport: r.transport,
+      km: String(r.km || 0), fare: r.fare ? String(r.fare) : '', meals: String(r.meals || 0),
+      daily: r.daily === '' || r.daily == null ? '' : String(r.daily),
+      lodging: r.lodging ? String(r.lodging) : '', etc: r.etc ? String(r.etc) : '',
+    }));
+    if (!state.rows.length) state.rows = defaultRows(state.trip);
+    $('category').value = c.category || '근무지외';
+    $('categoryEtc').value = c.categoryEtc || '';
+    (c.unionCar === '유' ? $('ucYes') : $('ucNo')).checked = true;
+    if (c.fareReason) {
+      if (FARE_REASONS.indexOf(c.fareReason) < 0) $('fareReason').insertAdjacentHTML('beforeend', `<option>${esc(c.fareReason)}</option>`);
+      $('fareReason').value = c.fareReason;
+    }
+    $('bank').value = c.bank || '';
+    $('account').value = c.account || '';
+    $('holder').value = c.holder || state.user.성명;
+    state.kept = c.receipts || [];
+    state.routeKept = c.routeImages || [];
+  }
+
+  function today() {
+    return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  // ── 청구 내역 표 ────────────────────────────────
+  function newRow(v) {
+    return Object.assign({
+      date: '', origin: '', waypoint: '', destination: '', transport: CAR,
+      km: '', fare: '', meals: String(state.rules.maxMeals), lodging: '', etc: '', map: null, stale: false, // 식비 기본 3끼
+      daily: '', // 비어 있으면 자동 계산, 값이 있으면 직접 입력한 일비
+    }, v || {});
+  }
+
+  function addRow() {
+    if (state.rows.length >= MAX_ROWS) return alertMsg(`최대 ${MAX_ROWS}줄까지 입력할 수 있어요.`);
+    const last = state.rows[state.rows.length - 1];
+    state.rows.push(newRow({
+      date: last ? last.date : (state.trip.출장시작일 || today()),
+      origin: last ? last.destination : state.user.소속,
+      transport: reasonTransport(),
+    }));
+    renderRows();
+  }
+
+  function removeRow(i) {
+    if (state.rows.length <= 1) return alertMsg('최소 1줄은 있어야 해요.');
+    state.rows.splice(i, 1);
+    renderRows();
+  }
+
+  function renderRows() {
+    const dates = tripDates(state.trip);
+    // 기간 안의 날짜는 '2026-09-30(수)' 선택, 기간 정보가 없으면 달력 입력
+    const dateCell = r => {
+      if (!dates.length) return `<input type="date" class="form-control" data-k="date" value="${esc(r.date)}">`;
+      const list = dates.indexOf(r.date) >= 0 || !r.date ? dates : [r.date].concat(dates);
+      return `<select class="form-select" data-k="date">
+        ${r.date ? '' : '<option value="" selected>선택</option>'}
+        ${list.map(d => `<option value="${d}" ${d === r.date ? 'selected' : ''}>${withDay(d)}</option>`).join('')}
+      </select>`;
+    };
+    const text = (k, r, attrs) => `<input class="form-control" data-k="${k}" value="${esc(r[k])}" ${attrs || ''}>`;
+    // 금액 칸: 쉼표 표시 (값은 state에 숫자만 저장)
+    const money = (k, r) => `<input type="text" class="form-control text-end" data-k="${k}" data-money inputmode="numeric" placeholder="0" value="${esc(moneyText(r[k]))}">`;
+    const meals = r => Array.from({ length: state.rules.maxMeals + 1 }, (_, n) =>
+      `<option value="${n}" ${String(n) === String(r.meals) ? 'selected' : ''}>${n}끼</option>`).join('');
+
+    $('rowBody').innerHTML = state.rows.map((r, i) => `
+      <tr data-i="${i}">
+        <td>${dateCell(r)}</td>
+        <td>${text('origin', r, 'list="branchList"')}</td>
+        <td>${text('waypoint', r)}</td>
+        <td>${text('destination', r, 'list="branchList"')}</td>
+        <td><select class="form-select" data-k="transport">
+          <option value="" ${r.transport ? '' : 'selected'}>-</option>
+          ${state.transports.map(x => `<option ${x === r.transport ? 'selected' : ''}>${esc(x)}</option>`).join('')}
+        </select></td>
+        <td>
+          <input type="number" class="form-control" data-k="km" min="0" step="0.1" inputmode="decimal" value="${esc(r.km)}">
+          <div class="cell-note" data-note="km"></div>
+        </td>
+        <td>
+          <div class="input-group input-group-sm">
+            ${money('fare', r)}
+            <button type="button" class="btn btn-outline-primary fare-btn" data-fare-btn title="KTX 운임 조회 · 카카오맵 길찾기" onclick="openFare(${i})">💲</button>
+          </div>
+        </td>
+        <td>${money('etc', r)}</td>
+        <td>
+          <input type="text" class="form-control text-end" data-k="daily" data-money inputmode="numeric" value="${esc(moneyText(r.daily))}">
+          <div class="cell-note" data-note="daily"></div>
+        </td>
+        <td>
+          <select class="form-select" data-k="meals">${meals(r)}</select>
+          <div class="cell-note" data-note="meal"></div>
+        </td>
+        <td>${money('lodging', r)}</td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="줄 삭제" onclick="removeRow(${i})">✕</button></td>
+      </tr>`).join('');
+
+    renderMaps();
+    recalc();
+  }
+
+  // 입력 → state 반영 (다시 그리지 않아서 포커스 유지)
+  $('rowBody').addEventListener('input', onRowInput);
+  $('rowBody').addEventListener('change', onRowInput);
+  function onRowInput(e) {
+    const k = e.target.dataset.k;
+    const tr = e.target.closest('tr');
+    if (!k || !tr) return;
+    const r = state.rows[Number(tr.dataset.i)];
+    if (e.target.hasAttribute('data-money')) {
+      const digits = formatMoneyInput(e.target);
+      if (r[k] === digits) return;
+      r[k] = digits;
+      recalc();
+      return;
+    }
+    if (r[k] === e.target.value) return;
+    // 자차 → 다른 교통편: 자동 계산된 유류비는 지우고 직접 입력하게
+    if (k === 'transport' && r.transport === CAR) {
+      r.fare = '';
+      tr.querySelector('[data-k="fare"]').value = '';
+    }
+    r[k] = e.target.value;
+    if (['origin', 'waypoint', 'destination'].indexOf(k) >= 0) {
+      if (r.map) { r.map = null; renderMaps(); }
+      r.stale = isMove(r);
+    }
+    if (k === 'km') r.stale = false;
+    recalc();
+  }
+
+  // 자동 계산: 자차 운임(km×유류대) · 일비(날짜별 1회, 전체 km 기준) · 식비(끼니×단가)
+  function recalc() {
+    const R = state.rules;
+    const totalKm = state.rows.reduce((a, r) => a + (isMove(r) ? pos(r.km) : 0), 0);
+    const dailyRate = totalKm > R.dailyLongKm ? R.dailyLong : R.dailyBase;
+    const seen = {};
+    const sums = { fare: 0, daily: 0, lodging: 0, meal: 0, etc: 0 };
+    const used = state.rows.map((r, i) => (filled(r) ? i : -1)).filter(i => i >= 0);
+    const firstIdx = used[0], lastIdx = used[used.length - 1];
+
+    state.rows.forEach((r, i) => {
+      const tr = $('rowBody').querySelector(`tr[data-i="${i}"]`);
+      if (!tr) return;
+      const move = isMove(r);
+      const counted = filled(r);
+
+      // 색: 출발지=도착지인 날 회색 > 첫날 출발·마지막 날 도착 빨강 > 나머지 파랑
+      const same = counted && r.origin.trim() && norm(r.origin) === norm(r.destination);
+      paint(tr.querySelector('[data-k="origin"]'), !counted ? '' : same ? 'c-same' : i === firstIdx ? 'c-home' : 'c-trip');
+      paint(tr.querySelector('[data-k="destination"]'), !counted ? '' : same ? 'c-same' : i === lastIdx ? 'c-home' : 'c-trip');
+
+      const kmEl = tr.querySelector('[data-k="km"]');
+      if (!move) { r.km = '0'; kmEl.value = '0'; }
+      kmEl.readOnly = !move;
+      kmEl.classList.toggle('auto', !move);
+
+      const fareEl = tr.querySelector('[data-k="fare"]');
+      const isCar = r.transport === CAR;
+      fareEl.readOnly = isCar;
+      fareEl.classList.toggle('auto', isCar);
+      if (isCar) { r.fare = String(Math.round(pos(r.km) * state.trip.유류대)); fareEl.value = moneyText(r.fare); }
+      tr.querySelector('[data-fare-btn]').classList.toggle('d-none', FARE_TRANSPORTS.indexOf(r.transport) < 0);
+
+      // 일비: 자동값은 흐린 글씨(placeholder)로 보여주고, 직접 입력하면 그 값 사용 (칸을 비우면 다시 자동)
+      let auto = 0;
+      if (counted && isDate(r.date) && !seen[r.date]) { seen[r.date] = true; auto = dailyRate; }
+      const manual = String(r.daily).trim() !== '';
+      const daily = manual ? Math.round(pos(r.daily)) : auto;
+      const dailyEl = tr.querySelector('[data-k="daily"]');
+      dailyEl.placeholder = auto ? comma(auto) : '0';
+      dailyEl.classList.toggle('auto', !manual);
+      const dNote = tr.querySelector('[data-note="daily"]');
+      dNote.textContent = manual ? (daily !== auto ? `직접 입력 (자동 ${comma(auto)})` : '직접 입력') : (auto ? '자동' : '');
+      dNote.classList.toggle('warn', manual && daily !== auto);
+
+      const meal = Math.round(pos(r.meals)) * R.mealPrice;
+      tr.querySelector('[data-note="meal"]').textContent = meal ? comma(meal) + '원' : '';
+
+      const note = tr.querySelector('[data-note="km"]');
+      note.textContent = r.stale ? '다시 계산' : (r.map ? '카카오 ' + r.map.km : '');
+      note.classList.toggle('warn', r.stale);
+
+      if (!counted) return;
+      sums.fare += pos(r.fare);
+      sums.daily += daily;
+      sums.lodging += pos(r.lodging);
+      sums.meal += meal;
+      sums.etc += pos(r.etc);
+    });
+
+    $('sumKm').textContent = Math.round(totalKm * 10) / 10 + 'km';
+    $('sumFare').textContent = comma(sums.fare);
+    $('sumDaily').textContent = comma(sums.daily);
+    $('sumLodging').textContent = comma(sums.lodging);
+    $('sumMeal').textContent = comma(sums.meal);
+    $('sumEtc').textContent = comma(sums.etc);
+    $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · 일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원) · 식비 1끼 ${comma(R.mealPrice)}원`;
+
+    const total = sums.fare + sums.daily + sums.lodging + sums.meal + sums.etc;
+    $('totalAmount').textContent = won(total);
+    return total;
+  }
+
+  function paint(el, cls) {
+    el.classList.remove('c-home', 'c-trip', 'c-same');
+    if (cls) el.classList.add(cls);
+  }
+
+  // 제출 대상 줄 (출발지만 채워진 빈 줄 제외 — 서버 validateRows_ 와 같은 기준)
+  // (식비는 기본 3끼라 판단에서 제외)
+  function filled(r) {
+    return !!(r.destination.trim() || r.waypoint.trim() || pos(r.km) || pos(r.fare) || pos(r.lodging) || pos(r.etc));
+  }
+
+  function toggleCategoryEtc() {
+    $('categoryEtc').classList.toggle('d-none', $('category').value !== '기타');
+  }
+
+  // ── 거리 일괄 계산 + 경로 지도 ──────────────────
+  async function calcAll() {
+    // 줄 추가 후 비워둔 줄(출발지만 있음)은 제외
+    const targets = state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r) && isMove(x.r));
+    if (!targets.length) return alertMsg('이동이 있는 줄이 없어요. (출발지와 도착지가 같고 경과지가 없는 줄은 계산하지 않아요)', 'info');
+    const empty = targets.filter(x => !x.r.origin.trim() || !x.r.destination.trim());
+    if (empty.length) return alertMsg(empty.map(x => `${x.i + 1}번째 줄: 출발지와 도착지를 입력하세요.`).join('\n'));
+
+    loading(true, `거리 계산 중... (${targets.length}개 구간)`);
+    try {
+      const res = await run('calculateDistances', targets.map(x => ({
+        origin: x.r.origin.trim(), waypoint: x.r.waypoint.trim(), destination: x.r.destination.trim(),
+      })));
+      if (!res.ok) return alertMsg(res.message);
+      const errors = [];
+      res.results.forEach((out, n) => {
+        const { r, i } = targets[n];
+        if (!out.ok) { errors.push(`${i + 1}번째 줄: ${out.message}`); return; }
+        r.km = String(out.km);
+        r.stale = false;
+        r.map = { km: out.km, places: out.places, path: out.path || [], image: out.mapImage };
+        $('rowBody').querySelector(`tr[data-i="${i}"] [data-k="km"]`).value = r.km;
+      });
+      await renderMaps();
+      recalc();
+      alertMsg(errors.length ? errors.join('\n') : `${targets.length}개 구간 거리 계산 완료`, errors.length ? 'danger' : 'success');
+    } catch (err) {
+      alertMsg('서버 오류: ' + err.message);
+    } finally {
+      loading(false);
+    }
+  }
+
+  // 경로 지도: 카카오 지도(경로선·출발/도착·이동거리 박스), 안 되면 예비 지도 이미지 + 이동거리 박스
+  async function renderMaps() {
+    const items = state.rows.map((r, i) => ({ r, i })).filter(x => x.r.map);
+    $('mapEmpty').classList.toggle('d-none', !!items.length);
+    if (!items.length) { $('mapList').innerHTML = ''; return; }
+    const kakaoLib = await loadKakao();
+
+    // 카카오 지도를 못 쓰면 이유와 등록할 도메인을 보여줌 (관리자 설정용)
+    const warn = kakaoLib ? '' : `<div class="alert alert-warning small py-2">
+      ⚠ ${esc(kakaoError)}. 지금은 기본 지도로 표시해요.<br>
+      카카오 디벨로퍼스 → 내 애플리케이션 → 플랫폼 → <b>Web 사이트 도메인</b>에 아래 주소를 등록하세요:<br>
+      <code>${esc(location.origin)}</code></div>`;
+
+    $('mapList').innerHTML = warn + items.map(({ r, i }) => {
+      const m = r.map;
+      const body = kakaoLib ? '<div class="kmap"></div>'
+        : m.image ? `<img src="data:image/png;base64,${m.image}" alt="경로 지도">` : '';
+      return `<div class="map-card">
+        <div class="cap"><b>${i + 1}번째 줄 · ${esc(withDay(r.date))}</b></div>
+        <div class="map-shot" data-i="${i}" data-mode="${kakaoLib ? 'kakao' : 'static'}">
+          ${body}
+          <div class="map-info">${mapInfoHtml(r)}</div>
+        </div>
+        <div class="small text-secondary mt-1">${m.places.map(p => esc(p.name) + (p.address ? ' (' + esc(p.address) + ')' : '')).join('<br>')}</div>
+      </div>`;
+    }).join('');
+
+    if (kakaoLib) {
+      items.forEach(({ r, i }) => {
+        const el = document.querySelector(`.map-shot[data-i="${i}"] .kmap`);
+        try { drawKakaoMap(kakaoLib, el, r.map); } catch (e) { console.warn('카카오 지도 표시 실패', e); }
+      });
+    }
+  }
+
+  function mapTitle(r) {
+    return r.map.places.map(p => p.name).join(' → ');
+  }
+
+  function mapInfoHtml(r) {
+    return `🚗 이동거리 <span class="km">${r.map.km}km</span><br>${esc(mapTitle(r))}`;
+  }
+
+  function drawKakaoMap(k, el, m) {
+    const LL = (lat, lng) => new k.maps.LatLng(lat, lng);
+    const path = m.path.map(p => LL(p[0], p[1]));
+    const first = m.places[0];
+    const map = new k.maps.Map(el, { center: path[0] || LL(first.y, first.x), level: 8 });
+    map.setZoomable(true);
+
+    const bounds = new k.maps.LatLngBounds();
+    path.forEach(p => bounds.extend(p));
+    m.places.forEach(p => bounds.extend(LL(p.y, p.x)));
+
+    if (path.length > 1) {
+      new k.maps.Polyline({ map, path, strokeWeight: 6, strokeColor: '#1d4ed8', strokeOpacity: 0.85, strokeStyle: 'solid' });
+    }
+    const last = m.places.length - 1;
+    m.places.forEach((p, i) => {
+      const [cls, label] = i === 0 ? ['pin-s', '출발'] : i === last ? ['pin-e', '도착'] : ['pin-w', '경유' + i];
+      new k.maps.CustomOverlay({ map, position: LL(p.y, p.x), yAnchor: 1.3, content: `<div class="pin ${cls}">${label}</div>` });
+    });
+    map.setBounds(bounds, 60, 40, 40, 40);
+  }
+
+  // ── 운임 조회: KTX(TAGO 열차정보) · 버스는 카카오맵 길찾기로 확인 ───
+  const FARE_TRANSPORTS = ['KTX', '버스'];   // 💲 버튼을 보여줄 교통편
+  const fareState = { i: -1, places: null, near: { dep: [], arr: [] } }; // places: [[역ID, 역 이름], ...]
+
+  function openFare(i) {
+    const r = state.rows[i];
+    fareState.i = i;
+    $('fareRowLabel').textContent = `${i + 1}번째 줄 · ${withDay(r.date)} · ${r.origin || '?'} → ${r.destination || '?'}`;
+    $('fareModal').classList.remove('d-none');
+    showFareChoice();
+  }
+
+  function showFareChoice() {
+    $('fareChoice').classList.remove('d-none');
+    $('fareTrain').classList.add('d-none');
+  }
+
+  async function showTrainFare() {
+    $('fareChoice').classList.add('d-none');
+    $('fareTrain').classList.remove('d-none');
+    await prepareTrainFare();
+  }
+
+  // 카카오맵 대중교통 길찾기 (좌표가 있으면 정확한 위치로, 없으면 서버에서 찾아서)
+  async function openKakaoRoute() {
+    const r = state.rows[fareState.i];
+    if (!r.origin.trim() || !r.destination.trim()) return fareNoteChoice('출발지와 도착지를 먼저 입력하세요.');
+    // 팝업 차단을 피하려고 클릭 순간에 창을 먼저 열어 둠
+    const win = window.open('about:blank', '_blank');
+    let o = null, d = null;
+    if (r.map && r.map.places && r.map.places.length >= 2 && !r.stale) {
+      o = r.map.places[0];
+      d = r.map.places[r.map.places.length - 1];
+    } else {
+      loading(true, '위치 찾는 중...');
+      try {
+        const res = await run('resolveRoutePlaces', r.origin.trim(), r.destination.trim());
+        if (res.ok) { o = res.origin; d = res.destination; }
+      } catch (e) { /* 이름으로 열기 */ } finally { loading(false); }
+    }
+    const label = p => String(p.name).replace(/[,/]/g, ' ');
+    const url = o && d
+      ? `https://map.kakao.com/link/by/traffic/${encodeURIComponent(label(o))},${o.y},${o.x}/${encodeURIComponent(label(d))},${d.y},${d.x}`
+      : `https://map.kakao.com/?sName=${encodeURIComponent(r.origin.trim())}&eName=${encodeURIComponent(r.destination.trim())}`;
+    if (win) win.location.href = url; else window.open(url, '_blank');
+    closeFare();
+  }
+
+  function fareNoteChoice(text) {
+    alertMsg(text);
+    closeFare();
+  }
+
+  function closeFare() {
+    $('fareModal').classList.add('d-none');
+  }
+
+  async function prepareTrainFare() {
+    $('fareResults').innerHTML = '';
+    fareNote('');
+    $('fareDepNear').innerHTML = '';
+    $('fareArrNear').innerHTML = '';
+    const places = await loadFarePlaces();
+    $('farePlaceList').innerHTML = places.map(p => `<option value="${esc(p[1])}">`).join('');
+    if (!places.length) return;
+
+    // 출발지·도착지에서 가까운 역 (카카오 좌표 기준) → 없으면 이름으로 추정
+    const r = state.rows[fareState.i];
+    const near = fareState.near = await loadNearPlaces(r.origin, r.destination);
+    renderNear('fareDep', near.dep);
+    renderNear('fareArr', near.arr);
+    $('fareDep').value = near.dep.length ? near.dep[0].name : guessPlace(places, r.origin);
+    $('fareArr').value = near.arr.length ? near.arr[0].name : guessPlace(places, r.destination);
+    if (!$('fareDep').value || !$('fareArr').value) fareNote('출발역·도착역을 목록에서 선택하세요.');
+  }
+
+  const nearCache = {};
+  async function loadNearPlaces(origin, destination) {
+    const ck = [origin, destination].join('|');
+    if (nearCache[ck]) return nearCache[ck];
+    loading(true, '가까운 역 찾는 중...');
+    try {
+      const res = await run('suggestFarePlaces', origin || '', destination || '');
+      const out = res.ok ? { dep: res.dep || [], arr: res.arr || [] } : { dep: [], arr: [] };
+      if (res.ok) nearCache[ck] = out;
+      return out;
+    } catch (err) {
+      return { dep: [], arr: [] };
+    } finally {
+      loading(false);
+    }
+  }
+
+  // 가까운 곳 버튼 (누르면 입력칸에 들어감)
+  function renderNear(inputId, list) {
+    $(inputId + 'Near').innerHTML = list.length
+      ? '<span class="text-secondary">가까운 곳:</span>' + list.map(p =>
+        `<button type="button" class="btn btn-outline-secondary" title="${esc(p.kakao)}"
+          onclick="$('${inputId}').value = this.dataset.name" data-name="${esc(p.name)}">${esc(p.name)} ${p.dist}km</button>`).join('')
+      : '';
+  }
+
+  async function loadFarePlaces() {
+    if (fareState.places) return fareState.places;
+    loading(true, '역 목록 불러오는 중... (처음 한 번만 오래 걸려요)');
+    try {
+      const res = await run('getFarePlaces');
+      if (!res.ok) { fareNote(res.message, true); return []; }
+      return (fareState.places = res.places);
+    } catch (err) {
+      fareNote('서버 오류: ' + err.message, true);
+      return [];
+    } finally {
+      loading(false);
+    }
+  }
+
+  // '대전지사' → 대전역 / '진주(본부)' → 진주역 처럼 추정
+  function guessPlace(places, text) {
+    const t = norm(text).replace(/\(.*?\)/g, '').replace(/(지사|본부|사무소|센터)$/, '');
+    if (!t) return '';
+    const name = p => norm(p[1]).replace(/역$/, '');
+    const exact = places.find(p => name(p) === t);
+    if (exact) return exact[1];
+    const inText = places.filter(p => name(p).length >= 2 && t.indexOf(name(p)) >= 0)
+      .sort((a, b) => name(b).length - name(a).length);
+    if (inText.length) return inText[0][1];
+    const inName = places.filter(p => name(p).indexOf(t) === 0).sort((a, b) => name(a).length - name(b).length);
+    return inName.length ? inName[0][1] : '';
+  }
+
+  function placeId(name) {
+    const p = (fareState.places || []).find(x => norm(x[1]) === norm(name));
+    return p ? p[0] : '';
+  }
+
+  function fareNote(text, error) {
+    $('fareNote').textContent = text;
+    $('fareNote').className = 'small mt-2 ' + (error ? 'text-danger' : 'text-secondary');
+  }
+
+  async function searchFare() {
+    const depName = $('fareDep').value.trim(), arrName = $('fareArr').value.trim();
+    if (!placeId(depName) || !placeId(arrName)) return fareNote('출발역·도착역을 목록에 있는 이름으로 선택하세요.', true);
+
+    // 고른 조합이 먼저, 운행 정보가 없으면 가까운 후보끼리 조합을 바꿔 자동 재조회 (최대 9개)
+    const depNames = [depName].concat((fareState.near.dep || []).map(p => p.name));
+    const arrNames = [arrName].concat((fareState.near.arr || []).map(p => p.name));
+    const pairs = [], seen = {};
+    depNames.forEach(d => arrNames.forEach(a => {
+      const key = d + '|' + a;
+      if (seen[key] || d === a || !placeId(d) || !placeId(a)) return;
+      seen[key] = true;
+      pairs.push([placeId(d), placeId(a), d, a]);
+    }));
+
+    loading(true, '운임 조회 중...');
+    try {
+      const res = await run('searchFaresPairs', pairs.slice(0, 9), state.rows[fareState.i].date);
+      if (!res.ok) return fareNote(res.message, true);
+      if (res.items.length && res.pair && res.pair.index > 0) {
+        // 다른 조합에서 찾았으면 입력칸도 그 조합으로 바꿔 줌
+        $('fareDep').value = res.pair.dep;
+        $('fareArr').value = res.pair.arr;
+      }
+      fareNote(res.items.length
+        ? (res.pair && res.pair.index > 0 ? `${depName}→${arrName}에는 없어서 ${res.pair.dep}→${res.pair.arr}로 찾았어요. ` : '')
+          + (res.note || '') + (res.note ? ' · ' : '') + '타실 편을 누르면 운임에 들어가요.'
+        : `운행 정보가 없어요 (조회한 조합: ${(res.tried || []).join(', ')}).`
+          + ' 공공데이터(TAGO)에 없는 노선일 수 있어요 — 그럴 땐 운임을 직접 입력해 주세요.', !res.items.length);
+      $('fareResults').innerHTML = res.items.map(it => `
+        <button type="button" class="list-group-item list-group-item-action fare-item" onclick="pickFare(${it.fare})">
+          <span>${esc(it.grade)}${it.no ? ' ' + esc(it.no) : ''} · ${esc(it.depTime)} → ${esc(it.arrTime)}</span>
+          <span class="fare">${comma(it.fare)}원</span>
+        </button>`).join('');
+    } catch (err) {
+      fareNote('서버 오류: ' + err.message, true);
+    } finally {
+      loading(false);
+    }
+  }
+
+  function pickFare(fare) {
+    const i = fareState.i;
+    const r = state.rows[i];
+    r.fare = String(fare);
+    $('rowBody').querySelector(`tr[data-i="${i}"] [data-k="fare"]`).value = moneyText(r.fare);
+    recalc();
+    closeFare();
+  }
+
+  // ── 제출 시 지도 캡처 ───────────────────────────
+  // 카카오 지도 화면을 그대로 캡처 → 막히면(타일 CORS) 예비 지도 이미지에 이동거리 박스를 그려서 사용
+  async function captureMap(i) {
+    const r = state.rows[i];
+    const el = document.querySelector(`.map-shot[data-i="${i}"]`);
+    if (!r.map || !el) return null;
+    if (el.dataset.mode === 'kakao' && await tilesCaptureable(el)) {
+      try {
+        await loadScript(CDN.html2canvas);
+        const canvas = await html2canvas(el, { useCORS: true, backgroundColor: '#ffffff', scale: 1.5, logging: false });
+        return canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
+      } catch (e) {
+        console.warn('지도 캡처 실패 → 예비 지도 사용', e);
+      }
+    }
+    return r.map.image ? composeStaticMap(r) : null;
+  }
+
+  async function tilesCaptureable(el) {
+    const tile = Array.from(el.querySelectorAll('img')).find(img => /^https?:/.test(img.src));
+    if (!tile) return true;
+    try { await fetch(tile.src, { mode: 'cors', cache: 'force-cache' }); return true; } catch (e) { return false; }
+  }
+
+  function composeStaticMap(r) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        drawInfoBox(ctx, r, c.width);
+        resolve(c.toDataURL('image/jpeg', 0.9).split(',')[1]);
+      };
+      img.onerror = () => resolve(null);
+      img.src = 'data:image/png;base64,' + r.map.image;
+    });
+  }
+
+  function drawInfoBox(ctx, r, width) {
+    const title = mapTitle(r);
+    const font = '"Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+    ctx.font = `13px ${font}`;
+    let line2 = title;
+    while (ctx.measureText(line2).width > width * 0.8 && line2.length > 4) line2 = line2.slice(0, -2);
+    if (line2 !== title) line2 += '…';
+    ctx.font = `bold 20px ${font}`;
+    const line1 = `🚗 이동거리 ${r.map.km}km`;
+    const w = Math.max(ctx.measureText(line1).width, (ctx.font = `13px ${font}`, ctx.measureText(line2).width)) + 24;
+    const x = 10, y = 10, h = 58;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.3)';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y); ctx.arcTo(x + w, y, x + w, y + h, 8); ctx.arcTo(x + w, y + h, x, y + h, 8);
+    ctx.arcTo(x, y + h, x, y, 8); ctx.arcTo(x, y, x + w, y, 8); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = `bold 20px ${font}`;
+    ctx.fillText(line1, x + 12, y + 26);
+    ctx.fillStyle = '#333';
+    ctx.font = `13px ${font}`;
+    ctx.fillText(line2, x + 12, y + 47);
+  }
+
+  // ── 영수증·경로 증빙 사진 (모두 이미지로 변환해서 PDF 안에 넣음) ─────────
+  const ATTACH = {
+    receipt: { files: 'files', kept: 'kept', list: 'fileList', count: 'fileCount', label: '영수증', empty: '첨부된 영수증 없음' },
+    route: { files: 'routeFiles', kept: 'routeKept', list: 'routeFileList', count: 'routeFileCount', label: '경로 증빙 사진', empty: '첨부된 사진 없음' },
+  };
+
+  async function addFiles(input, bucket) {
+    const b = ATTACH[bucket || 'receipt'];
+    const list = Array.from(input.files);
+    input.value = '';
+    if (!list.length) return;
+    const max = state.rules.maxFiles || 20;
+    loading(true, '파일 준비 중...');
+    try {
+      for (const file of list) {
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        if (!isPdf && !file.type.startsWith('image/')) { alertMsg(`${file.name}: 이미지 또는 PDF만 첨부할 수 있어요.`); continue; }
+        if (file.size > MAX_FILE_BYTES) { alertMsg(`${file.name}: 20MB 이하 파일만 첨부할 수 있어요.`); continue; }
+        let images;
+        try {
+          images = isPdf ? await pdfToImages(file) : [await compressImage(file)];
+        } catch (err) {
+          alertMsg(`${file.name}: ${isPdf ? 'PDF를 이미지로 바꾸지 못했어요. 사진이나 캡처로 올려주세요.' : '이미지를 읽을 수 없어요. (JPG·PNG로 올려주세요)'}`);
+          continue;
+        }
+        for (const img of images) {
+          if (state[b.files].length + state[b.kept].length >= max) { alertMsg(`${b.label}은 최대 ${max}장까지 첨부할 수 있어요.`); break; }
+          state[b.files].push(img);
+        }
+      }
+      renderFiles();
+    } finally {
+      loading(false);
+    }
+  }
+
+  // PDF 영수증 → 페이지별 JPEG (pdf.js, 워커는 blob URL로 로드)
+  let pdfjsReady = null;
+  function loadPdfJs() {
+    if (!pdfjsReady) {
+      pdfjsReady = (async () => {
+        await loadScript(CDN.pdfjs);
+        const code = await (await fetch(CDN.pdfjsWorker)).text();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+        return pdfjsLib;
+      })().catch(e => { pdfjsReady = null; throw e; });
+    }
+    return pdfjsReady;
+  }
+
+  async function pdfToImages(file) {
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const n = Math.min(doc.numPages, MAX_PDF_PAGES);
+    const out = [];
+    for (let p = 1; p <= n; p++) {
+      const page = await doc.getPage(p);
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: Math.min(2, 1600 / Math.max(base.width, base.height)) });
+      const c = document.createElement('canvas');
+      c.width = Math.round(viewport.width);
+      c.height = Math.round(viewport.height);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const data = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+      const stem = file.name.replace(/\.pdf$/i, '');
+      out.push({ name: doc.numPages > 1 ? `${stem} (${p}/${doc.numPages}쪽)` : stem, mimeType: 'image/jpeg', data, size: Math.round(data.length * 0.75) });
+    }
+    return out;
+  }
+
+  // 휴대폰 사진은 커서 1600px JPEG로 줄여서 전송
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * s);
+        c.height = Math.round(img.height * s);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        const data = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+        resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', mimeType: 'image/jpeg', data, size: Math.round(data.length * 0.75) });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+      img.src = url;
+    });
+  }
+
+  function renderFiles() {
+    Object.keys(ATTACH).forEach(bucket => {
+      const b = ATTACH[bucket];
+      const kept = state[b.kept].map((f, i) => `
+        <li><span>📄 ${esc(f.name)} <span class="badge text-bg-light">이전 제출</span></span>
+        <button type="button" class="btn btn-sm btn-link text-danger" onclick="removeKept('${bucket}', ${i})">삭제</button></li>`);
+      const added = state[b.files].map((f, i) => `
+        <li><span>📄 ${esc(f.name)} <span class="text-secondary">(${Math.ceil(f.size / 1024)}KB)</span></span>
+        <button type="button" class="btn btn-sm btn-link text-danger" onclick="removeFile('${bucket}', ${i})">삭제</button></li>`);
+      $(b.list).innerHTML = kept.concat(added).join('');
+      const n = state[b.kept].length + state[b.files].length;
+      $(b.count).textContent = n ? `${n}건 첨부됨` : b.empty;
+      $(b.count).classList.toggle('text-primary', !!n);
+      $(b.count).classList.toggle('fw-bold', !!n);
+    });
+  }
+
+  function removeFile(bucket, i) { state[ATTACH[bucket].files].splice(i, 1); renderFiles(); }
+  function removeKept(bucket, i) { state[ATTACH[bucket].kept].splice(i, 1); renderFiles(); }
+
+  // ── 서명 ────────────────────────────────────────
+  let sigCtx = null, drawing = false;
+
+  function initSignature() {
+    const c = $('sigPad');
+    const rect = c.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    c.width = rect.width * dpr;
+    c.height = rect.height * dpr;
+    sigCtx = c.getContext('2d');
+    sigCtx.scale(dpr, dpr);
+    sigCtx.lineWidth = 2.5;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#111';
+    state.signed = false;
+  }
+
+  function clearSignature() { initSignature(); }
+
+  (function bindSignature() {
+    const c = $('sigPad');
+    const at = e => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    c.addEventListener('pointerdown', e => {
+      // 화면 회전 등으로 크기가 바뀌었으면 첫 획 전에 다시 맞춤
+      if (!state.signed && Math.abs(c.width - c.getBoundingClientRect().width * (window.devicePixelRatio || 1)) > 2) initSignature();
+      drawing = true;
+      c.setPointerCapture(e.pointerId);
+      const [x, y] = at(e);
+      sigCtx.beginPath();
+      sigCtx.moveTo(x, y);
+      sigCtx.lineTo(x + 0.1, y + 0.1);
+      sigCtx.stroke();
+      state.signed = true;
+    });
+    c.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      const [x, y] = at(e);
+      sigCtx.lineTo(x, y);
+      sigCtx.stroke();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => c.addEventListener(ev, () => { drawing = false; }));
+  })();
+
+  // 투명 배경 PNG (청구서의 '(서 명)' 글자 위에 겹쳐 찍힘)
+  function signatureData() {
+    return $('sigPad').toDataURL('image/png').split(',')[1];
+  }
+
+  // ── 제출 ────────────────────────────────────────
+  function validate() {
+    const t = state.trip;
+    const rows = state.rows.filter(filled);
+    if (!rows.length) return '청구 내역을 1줄 이상 입력하세요.';
+    for (let i = 0; i < state.rows.length; i++) {
+      const r = state.rows[i];
+      if (!filled(r)) continue;
+      const n = `${i + 1}번째 줄: `;
+      if (!isDate(r.date)) return n + '일자를 입력하세요.';
+      if ((isDate(t.출장시작일) && r.date < t.출장시작일) || (isDate(t.출장종료일) && r.date > t.출장종료일)) return n + '일자가 출장 기간을 벗어났어요.';
+      if (!r.origin.trim() || !r.destination.trim()) return n + '출발지와 도착지를 모두 입력하세요.';
+      if (wpList(r.waypoint).length > 5) return n + '경과지는 최대 5곳이에요.';
+      if (isMove(r) && !r.transport) return n + '교통편을 선택하세요.';
+      if (isMove(r) && r.transport === CAR && pos(r.km) <= 0) return n + '자차는 이동거리가 필요해요. [📍 거리 계산]을 눌러주세요.';
+    }
+    if (recalc() <= 0) return '청구 금액이 0원이에요.';
+    if ($('category').value === '기타' && !$('categoryEtc').value.trim()) return '구분이 기타이면 내용을 입력하세요.';
+    if (!$('bank').value.trim() || !$('account').value.trim() || !$('holder').value.trim()) return '입금 계좌 정보를 모두 입력하세요.';
+    if (!/^[\d-]+$/.test($('account').value.trim())) return '계좌번호는 숫자와 - 만 입력하세요.';
+    if (!state.signed) return '서명을 해주세요.';
+    return '';
+  }
+
+  async function submitClaim(e) {
+    e.preventDefault();
+    const err = validate();
+    if (err) return alertMsg(err);
+    const stale = state.rows.filter(r => filled(r) && r.stale).length;
+    if (stale && !confirm(`경로를 바꾼 뒤 거리를 다시 계산하지 않은 줄이 ${stale}개 있어요.\n그대로 제출할까요?`)) return;
+    const total = recalc();
+    if (!confirm(`총 ${won(total)}을 ${state.editing ? '수정 제출' : '청구'}합니다.\n제출하시겠어요?`)) return;
+
+    // 화면의 경로 지도를 캡처 (거리 계산을 안 한 줄은 서버가 예비 지도로 채움)
+    loading(true, '경로 지도 캡처 중...');
+    const mapImages = {};
+    try {
+      for (let i = 0; i < state.rows.length; i++) {
+        const r = state.rows[i];
+        if (filled(r) && isMove(r) && r.map && !r.stale) mapImages[i] = await captureMap(i);
+      }
+    } finally {
+      loading(false);
+    }
+
+    const formData = {
+      employeeId: state.creds.employeeId,
+      name: state.creds.name,
+      tripId: state.trip.출장ID,
+      category: $('category').value,
+      categoryEtc: $('categoryEtc').value.trim(),
+      unionCar: document.querySelector('input[name="unionCar"]:checked').value,
+      fareReason: $('fareReason').value,
+      rows: state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r)).map(({ r, i }) => ({
+        no: i + 1, // 화면의 줄 번호 (서버 오류 메시지가 화면과 같은 줄을 가리키게)
+        date: r.date, origin: r.origin.trim(), waypoint: r.waypoint.trim(), destination: r.destination.trim(),
+        transport: r.transport, km: isMove(r) ? pos(r.km) : 0,
+        fare: pos(r.fare), meals: pos(r.meals), lodging: pos(r.lodging), etc: pos(r.etc),
+        daily: String(r.daily).trim() === '' ? '' : Math.round(pos(r.daily)), // '' = 자동
+        mapImage: mapImages[i] || '',
+      })),
+      bank: $('bank').value.trim(),
+      account: $('account').value.trim(),
+      holder: $('holder').value.trim(),
+      keepReceiptIds: state.kept.map(f => f.id),
+      receipts: state.files.map(f => ({ name: f.name, data: f.data })),
+      keepRouteIds: state.routeKept.map(f => f.id),
+      routeImages: state.routeFiles.map(f => ({ name: f.name, data: f.data })),
+      signature: signatureData(),
+    };
+
+    loading(true, '제출 중... 청구서 PDF를 만들고 있어요 (30초 정도 걸릴 수 있어요)');
+    try {
+      const res = await run('saveClaimData', formData);
+      if (!res.ok) return alertMsg(res.message);
+      $('doneTitle').textContent = res.updated ? '수정 제출이 완료되었습니다' : '제출이 완료되었습니다';
+      $('doneMsg').textContent = `${state.trip.출장목적} · 총 ${won(res.total)}`;
+      showStep(4);
+    } catch (err2) {
+      alertMsg('서버 오류: ' + err2.message);
+    } finally {
+      loading(false);
+    }
+  }
+</script>
+</body>
+</html>
