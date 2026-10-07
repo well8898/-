@@ -14,8 +14,6 @@
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (필수 — 장소 검색·길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면에 카카오 지도 표시용, 없으면 기본 지도로 표시)
  *                          카카오 디벨로퍼스 → 플랫폼 → Web 사이트 도메인에 웹앱 도메인 등록 필요
- *   - DATA_GO_KR_KEY     : 공공데이터포털 일반 인증키 (KTX 운임 조회용, 없으면 운임 조회 버튼만 안 됨)
- *                          활용신청: 국토교통부_(TAGO)_열차정보
  *   - DRIVE_FOLDER_ID    : 저장 폴더 ID (없으면 자동 생성)
  *
  * ▶ 최초 1회: 함수 선택 → setup → ▶ 실행 (권한 승인)
@@ -41,6 +39,7 @@ const CONFIG = {
   DAILY_BASE:   25000,                  // 일비 (1일)
   DAILY_LONG:   30000,                  // 전체 이동거리가 DAILY_LONG_KM 초과 시 일비
   DAILY_LONG_KM: 300,
+  UNION_CAR_DAILY_CUT: 10000,           // 조합차량(법인차량) 이용 시 1일 일비 감액
   MEAL_PRICE:   8000,                   // 식비 1끼
   MAX_MEALS:    3,
 
@@ -95,6 +94,7 @@ function loginAndGetTrips(employeeId, name) {
       kakaoJsKey: PropertiesService.getScriptProperties().getProperty('KAKAO_JS_KEY') || '',
       rules: {
         dailyBase: CONFIG.DAILY_BASE, dailyLong: CONFIG.DAILY_LONG, dailyLongKm: CONFIG.DAILY_LONG_KM,
+        unionCarDailyCut: CONFIG.UNION_CAR_DAILY_CUT,
         mealPrice: CONFIG.MEAL_PRICE, maxMeals: CONFIG.MAX_MEALS, maxFiles: CONFIG.MAX_FILES,
       },
     };
@@ -510,236 +510,7 @@ function getKakaoKey_() {
 
 
 // ════════════════════════════════════════════════════
-//  4. KTX 운임 조회 (국토교통부 TAGO 열차정보 공공 API)
-//     버스 운임은 화면에서 카카오맵 길찾기로 확인 후 직접 입력
-// ════════════════════════════════════════════════════
-// 2026-03 공공데이터포털 개편 후 주소 (서비스명에서 'Service' 빠지고 기능명은 대문자로 시작)
-const TAGO = {
-  BASE: 'https://apis.data.go.kr/1613000/',
-  SVC: 'TrainInfo',
-  FARE: 'GetStrtpntAlocFndTrainInfo',
-  CITY: 'GetCtyCodeList',
-  STATIONS: 'GetCtyAcctoTrainSttnList',
-  PAGE: 1000,
-  CACHE_SEC: 6 * 3600,
-};
-
-// 역 목록 → [[역ID, 역 이름], ...]
-function getFarePlaces() {
-  try {
-    const cache = CacheService.getScriptCache();
-    const cacheKey = 'tago_places_train';
-    const hit = cache.get(cacheKey);
-    if (hit) return { ok: true, places: JSON.parse(hit) };
-
-    let places = [];
-    taGoGet_(TAGO.CITY, {}).forEach(city => {
-      taGoAll_(TAGO.STATIONS, { cityCode: city.citycode || city.cityCode })
-        .forEach(s => places.push([String(s.nodeid), String(s.nodename)]));
-    });
-    // 이름 중복 제거
-    const seen = {};
-    places = places.filter(p => p[1] && !seen[p[1]] && (seen[p[1]] = true))
-      .sort((a, b) => a[1].localeCompare(b[1], 'ko'));
-    if (!places.length) throw new Error('역 목록이 비어 있습니다.');
-
-    try { cache.put(cacheKey, JSON.stringify(places), TAGO.CACHE_SEC); } catch (e) { /* 너무 크면 캐시 생략 */ }
-    return { ok: true, places: places };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-// 카카오맵 길찾기 링크용 좌표 → { origin: { name, x, y }, destination: { ... } }
-function resolveRoutePlaces(origin, destination) {
-  try {
-    const key = getKakaoKey_();
-    const pick = p => ({ name: p.name, x: Number(p.x), y: Number(p.y) });
-    return { ok: true, origin: pick(resolvePlace_(origin, key)), destination: pick(resolvePlace_(destination, key)) };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-// 출발지·도착지에서 가장 가까운 역 추천 (카카오 좌표 기준, 반경 20km 안 최대 3곳)
-// → { dep: [{ name, dist, kakao }], arr: [...] }   name = TAGO 목록의 이름
-const NEAR_STATION = { queries: ['기차역', 'KTX역'], category: /기차역|기차,철도/ };
-
-function suggestFarePlaces(origin, destination) {
-  try {
-    const list = getFarePlaces();
-    if (!list.ok) throw new Error(list.message);
-    const key = getKakaoKey_();
-    const near = text => {
-      if (!String(text || '').trim()) return [];
-      try {
-        return nearestStations_(resolvePlace_(text, key), list.places, key);
-      } catch (e) {
-        return []; // 위치를 못 찾으면 추천 없음 (화면에서 이름으로 추정)
-      }
-    };
-    return { ok: true, dep: near(origin), arr: near(destination) };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-function nearestStations_(place, stations, key) {
-  const docs = [];
-  NEAR_STATION.queries.forEach(q => {
-    const res = kakaoGet_('https://dapi.kakao.com/v2/local/search/keyword.json?size=15&sort=distance&radius=20000'
-      + '&x=' + place.x + '&y=' + place.y + '&query=' + encodeURIComponent(q), key);
-    (res.documents || []).forEach(d => { if (NEAR_STATION.category.test(d.category_name || '')) docs.push(d); });
-  });
-  docs.sort((a, b) => Number(a.distance) - Number(b.distance));
-
-  const cleaned = stations.map(p => [p, cleanStationName_(p[1])]);
-  const out = [], seen = {};
-  docs.forEach(d => {
-    if (out.length >= 3) return;
-    const m = matchTagoName_(cleanStationName_(d.place_name), cleaned);
-    if (!m || seen[m]) return;
-    seen[m] = true;
-    out.push({ name: m, dist: Math.round(Number(d.distance) / 100) / 10, kakao: d.place_name });
-  });
-  return out;
-}
-
-// '대전역' → 대전 / '서울역 KTX' → 서울
-function cleanStationName_(s) {
-  return String(s || '').replace(/\s/g, '').replace(/\(.*?\)/g, '')
-    .replace(/KTX|SRT/g, '')
-    .replace(/역$/, '');
-}
-
-// 카카오 이름과 같은 TAGO 이름 → 없으면 카카오 이름 안에 들어 있는 가장 긴 TAGO 이름
-function matchTagoName_(kakaoClean, cleaned) {
-  if (!kakaoClean) return '';
-  const exact = cleaned.find(c => c[1] === kakaoClean);
-  if (exact) return exact[0][1];
-  const inside = cleaned.filter(c => c[1].length >= 2 && kakaoClean.indexOf(c[1]) >= 0)
-    .sort((a, b) => b[1].length - a[1].length);
-  return inside.length ? inside[0][0][1] : '';
-}
-
-const FARE_BASE_TIME = '08:00'; // 운임 조회 목록은 이 시각 이후 편부터
-
-// 구간 운임 조회 → { items: [{ grade, no, depTime, arrTime, fare }], usedDate, note }
-// 지난 날짜는 시간표가 없어서 오늘(없으면 내일) 기준으로 조회
-function searchFares(depId, arrId, date) {
-  try {
-    if (!depId || !arrId) throw new Error('출발역과 도착역을 목록에서 선택하세요.');
-
-    const tz = getTz_();
-    const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-    const tomorrow = Utilities.formatDate(new Date(Date.now() + 24 * 3600 * 1000), tz, 'yyyy-MM-dd');
-    // 미래 날짜는 그 날짜, 오늘·지난 날짜는 내일 기준 (오늘은 이미 떠난 편이 빠지므로)
-    const tries = isDateStr_(date) && date > today ? [date, tomorrow] : [tomorrow, today];
-
-    let items = [], used = tries[0], rawCount = 0, sample = '';
-    for (let i = 0; i < tries.length && !items.length; i++) {
-      if (i && tries[i] === tries[i - 1]) continue;
-      used = tries[i];
-      const raw = taGoAll_(TAGO.FARE, { depPlaceId: depId, arrPlaceId: arrId, depPlandTime: used.replace(/-/g, '') });
-      rawCount = raw.length;
-      items = raw.map(it => ({
-        grade: it.traingradename, no: it.trainno,
-        depTime: hhmm_(it.depplandtime), arrTime: hhmm_(it.arrplandtime), fare: wonNum_(it.adultcharge),
-      })).filter(it => it.fare > 0);
-      if (raw.length && !items.length) sample = JSON.stringify(raw[0]).slice(0, 200);
-    }
-    // 오전 8시 이후 편을 먼저, 그 전 편은 뒤로
-    const key = t => (t >= FARE_BASE_TIME ? '0' : '1') + t;
-    items.sort((a, b) => key(a.depTime).localeCompare(key(b.depTime)));
-    const sameDay = used === date;
-    return {
-      ok: true,
-      items: items,
-      rawCount: rawCount,
-      sample: sample,   // 운행 정보는 있는데 운임을 못 읽었을 때 원본 한 건 (확인용)
-      usedDate: used,
-      note: (sameDay ? '' : used + ' 기준 운임이에요')
-        + (items.length ? (sameDay ? '' : ' · ') + '오전 8시 이후 편부터 보여드려요' : ''),
-    };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-// 여러 출발·도착 조합을 차례로 조회 → 운임이 나오는 첫 조합 결과
-// pairs: [[depId, arrId, depName, arrName], ...]  (첫 번째가 사용자가 고른 조합)
-function searchFaresPairs(pairs, date) {
-  try {
-    const list = (Array.isArray(pairs) ? pairs : []).slice(0, 9);
-    if (!list.length) throw new Error('출발역과 도착역을 목록에서 선택하세요.');
-    const tried = [];
-    for (let i = 0; i < list.length; i++) {
-      const [depId, arrId, depName, arrName] = list[i];
-      const r = searchFares(depId, arrId, date);
-      if (!r.ok) { if (i === 0) return r; continue; }
-      tried.push(depName + '→' + arrName + (r.rawCount ? '(운임없음 ' + r.rawCount + '건)' : ''));
-      if (r.items.length) return Object.assign(r, { pair: { dep: depName, arr: arrName, index: i }, tried: tried });
-    }
-    return { ok: true, items: [], rawCount: 0, tried: tried, usedDate: '', note: '' };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-function taGoUrl_(op, params, keyMode) {
-  const key = String(PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
-  if (!key) throw new Error('스크립트 속성에 DATA_GO_KR_KEY(공공데이터포털 인증키)가 없습니다.');
-  // 기본: 인코딩된 키(%)를 넣었으면 그대로, 디코딩 키면 인코딩해서 사용
-  const mode = keyMode || (key.indexOf('%') >= 0 ? 'raw' : 'encode');
-  const k = mode === 'raw' ? key : encodeURIComponent(mode === 'decode' ? decodeURIComponent(key) : key);
-  const qs = Object.keys(params).map(p => p + '=' + encodeURIComponent(params[p])).join('&');
-  return TAGO.BASE + TAGO.SVC + '/' + op + '?serviceKey=' + k + '&_type=json' + (qs ? '&' + qs : '');
-}
-
-// 여러 페이지에 걸친 목록 전부 가져오기
-function taGoAll_(op, params) {
-  let all = [];
-  for (let page = 1; page <= 20; page++) {
-    const items = taGoGet_(op, Object.assign({}, params, { pageNo: page, numOfRows: TAGO.PAGE }));
-    all = all.concat(items);
-    if (items.length < TAGO.PAGE) break;
-  }
-  return all;
-}
-
-function taGoGet_(op, params) {
-  const res = UrlFetchApp.fetch(taGoUrl_(op, params), { muteHttpExceptions: true });
-  const text = res.getContentText();
-  const where = TAGO.SVC + '/' + op;
-  if (res.getResponseCode() !== 200 || /^\s*</.test(text)) {
-    const msg = (text.match(/<returnAuthMsg>([^<]+)/) || text.match(/<resultMsg>([^<]+)/) || [])[1]
-      || ('HTTP ' + res.getResponseCode() + ' ' + text.replace(/\s+/g, ' ').slice(0, 150));
-    throw new Error('공공데이터 API 오류(' + where + '): ' + msg +
-      (/KEY|REGISTERED|AUTH/i.test(msg) ? ' — 인증키·활용신청을 확인하세요 (승인 후 사용 가능까지 1~2시간 걸릴 수 있어요)' : ''));
-  }
-  const json = JSON.parse(text);
-  const root = json.response || json; // 개편 후에는 { header, body } 바로 옴
-  const header = root.header;
-  if (header && header.resultCode && String(header.resultCode) !== '00') throw new Error('공공데이터 API 오류(' + where + '): ' + header.resultMsg);
-  const items = root.body && root.body.items;
-  const item = items && items.item;
-  return !item ? [] : Array.isArray(item) ? item : [item];
-}
-
-// '23,700' / 23700 → 23700
-function wonNum_(v) {
-  return Number(String(v == null ? '' : v).replace(/[^\d]/g, '')) || 0;
-}
-
-// 20260930063000 → '06:30'
-function hhmm_(v) {
-  const s = String(v || '');
-  return s.length >= 12 ? s.slice(8, 10) + ':' + s.slice(10, 12) : '';
-}
-
-
-// ════════════════════════════════════════════════════
-//  5. 제출 / 수정 제출 → PDF 1개 생성
+//  4. 제출 / 수정 제출 → PDF 1개 생성
 // ════════════════════════════════════════════════════
 function saveClaimData(formData) {
   const created = []; // 실패 시 정리할 새 파일
@@ -755,7 +526,8 @@ function saveClaimData(formData) {
     if (!trip) throw new Error('마감되었거나 존재하지 않는 출장입니다.');
     if (trip.청구상태 === '마감') throw new Error('마감된 청구는 수정할 수 없습니다.');
 
-    const rows = validateRows_(f.rows, trip);
+    const unionCar = f.unionCar === '유' ? '유' : '무';
+    const rows = validateRows_(f.rows, trip, unionCar === '유');
     const sum = k => rows.reduce((a, r) => a + r[k], 0);
     const totals = {
       km: Math.round(sum('km') * 10) / 10,
@@ -767,7 +539,6 @@ function saveClaimData(formData) {
     const category = CONFIG.CATEGORIES.indexOf(f.category) >= 0 ? f.category : '근무지외';
     const categoryEtc = category === '기타' ? String(f.categoryEtc || '').trim() : '';
     if (category === '기타' && !categoryEtc) throw new Error('구분이 기타이면 내용을 입력하세요.');
-    const unionCar = f.unionCar === '유' ? '유' : '무';
     const fareReason = String(f.fareReason || '').trim();
 
     const bank = String(f.bank || '').trim();
@@ -893,8 +664,8 @@ function saveClaimData(formData) {
 }
 
 // 입력 줄 검증 + 금액 계산 (유류비·일비·식비는 서버에서 다시 계산)
-function validateRows_(input, trip) {
-  // 출발지만 채워진 줄(화면에서 줄 추가 후 비워둔 줄)은 빈 줄로 보고 제외 (식비는 기본 3끼라 판단에서 제외)
+function validateRows_(input, trip, unionCar) {
+  // 출발지만 채워진 줄(화면에서 줄 추가 후 비워둔 줄)은 빈 줄로 보고 제외 (식비만 고른 줄은 판단에서 제외)
   const list = (Array.isArray(input) ? input : []).filter(r => r && (
     String(r.destination || '').trim() || String(r.waypoint || '').trim() || Number(r.km) ||
     Number(r.fare) || Number(r.lodging) || Number(r.etc)
@@ -938,7 +709,9 @@ function validateRows_(input, trip) {
 
   // 일비: 날짜별 1회, 전체 이동거리 기준으로 단가 결정
   const totalKm = rows.reduce((a, r) => a + r.km, 0);
-  const rate = totalKm > CONFIG.DAILY_LONG_KM ? CONFIG.DAILY_LONG : CONFIG.DAILY_BASE;
+  // 조합차량(법인차량)을 이용했으면 1일 일비에서 감액
+  const full = totalKm > CONFIG.DAILY_LONG_KM ? CONFIG.DAILY_LONG : CONFIG.DAILY_BASE;
+  const rate = Math.max(0, full - (unionCar ? CONFIG.UNION_CAR_DAILY_CUT : 0));
   const seen = {};
   rows.forEach(r => {
     if (seen[r.date]) return;
@@ -1074,7 +847,7 @@ function buildClaimHtml_(d) {
     + '<td class="c">정산액</td><td class="r">' + w(t.total) + '</td>'
     + '<td class="c">청구(반납)액</td><td class="r">' + w(t.total) + '</td></tr>'
     + '<tr><td class="lbl">구 &nbsp; 분</td><td colspan="4" class="hl">' + cat.slice(0, 3).join(', ') + ',<br>' + cat[3] + '</td>'
-    + '<td class="c">조합차량<br>이용여부</td><td class="c">' + d.unionCar + '</td></tr>'
+    + '<td class="c">조합차량<br>(법인차량)<br>이용여부</td><td class="c">' + d.unionCar + '</td></tr>'
     + '</table>'
 
     + '<table class="detail" style="border-top:0">'
@@ -1305,39 +1078,6 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   Logger.log(props.getProperty('KAKAO_REST_API_KEY') ? '✅ KAKAO_REST_API_KEY 등록됨' : '❌ KAKAO_REST_API_KEY 미등록 (스크립트 속성에 추가하세요)');
   Logger.log(props.getProperty('KAKAO_JS_KEY') ? '✅ KAKAO_JS_KEY 등록됨' : '⚠ KAKAO_JS_KEY 미등록 — 화면 지도가 카카오 대신 기본 지도로 나옵니다');
-  Logger.log(props.getProperty('DATA_GO_KR_KEY') ? '✅ DATA_GO_KR_KEY 등록됨' : '⚠ DATA_GO_KR_KEY 미등록 — KTX 운임 조회가 안 됩니다');
-}
-
-// 공공데이터 API 오류 원인 확인: 키 넣는 방식별로 원본 응답을 로그에 출력 (키는 가려서 표시)
-function debugTago() {
-  const key = String(PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '');
-  Logger.log('키 길이 ' + key.length + ' / 앞뒤 공백 ' + (key !== key.trim()) + ' / % 포함 ' + (key.indexOf('%') >= 0)
-    + ' / + 포함 ' + (key.indexOf('+') >= 0) + ' / 끝 ' + key.trim().slice(-4));
-  ['raw', 'encode', 'decode'].forEach(mode => {
-    try {
-      const url = taGoUrl_(TAGO.CITY, {}, mode);
-      const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-      Logger.log('[' + TAGO.SVC + '/' + TAGO.CITY + ' · 키 ' + mode + '] HTTP ' + res.getResponseCode() + ' → '
-        + res.getContentText().replace(/\s+/g, ' ').slice(0, 200));
-    } catch (e) {
-      Logger.log('[' + TAGO.SVC + '/' + TAGO.CITY + ' · 키 ' + mode + '] 예외: ' + e.message);
-    }
-  });
-}
-
-// KTX 운임 조회 확인 (서울 → 대전)
-function testFares() {
-  const p = getFarePlaces();
-  if (!p.ok) { Logger.log('역 목록 실패: ' + p.message); return; }
-  Logger.log('역 ' + p.places.length + '개');
-  const dep = p.places.find(x => /^서울$/.test(x[1]));
-  const arr = p.places.find(x => /^대전$/.test(x[1]));
-  if (!dep || !arr) { Logger.log('테스트용 역(서울·대전)을 못 찾음'); return; }
-  const r = searchFares(dep[0], arr[0], '');
-  Logger.log('운임 [' + dep[1] + ' → ' + arr[1] + ']: ' + (r.ok
-    ? r.items.slice(0, 5).map(i => i.grade + ' ' + i.depTime + ' ' + i.fare + '원').join(' / ')
-      + ' (운임 ' + r.items.length + '건 / 운행 ' + r.rawCount + '건, ' + r.usedDate + ')' + (r.sample ? ' 원본: ' + r.sample : '')
-    : r.message));
 }
 
 // 거리 계산 + 예비 지도 생성 확인 → 드라이브 첨부 폴더에 test_route.png 저장
