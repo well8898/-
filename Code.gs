@@ -369,6 +369,32 @@ function computeRoute_(origin, waypoints, destination, key) {
   };
 }
 
+// 장소 이름들 → { 이름: 세부주소 }  (화면 표·PDF 표에 주소 표시용, 못 찾으면 '')
+function lookupAddresses(names) {
+  try {
+    const key = getKakaoKey_();
+    const out = {};
+    (Array.isArray(names) ? names : []).slice(0, 100).forEach(n => {
+      const q = String(n || '').trim();
+      if (!q || q in out) return;
+      try { out[q] = resolvePlace_(q, key).address || ''; } catch (e) { out[q] = ''; }
+    });
+    return { ok: true, addresses: out };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 청구 줄의 출발지·경과지·도착지 → { 이름: 세부주소 }
+function placeAddresses_(rows) {
+  const names = [];
+  rows.forEach(r => [r.origin, r.destination].concat(splitWaypoints_(r.waypoint)).forEach(n => {
+    if (n && names.indexOf(n) < 0) names.push(n);
+  }));
+  const res = lookupAddresses(names);
+  return res.ok ? res.addresses : {};
+}
+
 // 경로 점 개수 줄이기 (시작·끝점 유지)
 function thinPath_(path, max) {
   if (path.length <= max) return path;
@@ -564,13 +590,14 @@ function saveClaimData(formData) {
 
     // 구간별 경로 지도 (km는 서버에서 다시 길찾기로 확인)
     const maps = buildRouteEvidence_(rows);
+    const addresses = placeAddresses_(rows);
 
     // 서식 PDF (이것 하나만 드라이브에 남김)
     const pdfHtml = buildClaimHtml_({
       user: user, trip: trip, rows: rows, totals: totals,
       category: category, categoryEtc: categoryEtc, unionCar: unionCar, fareReason: fareReason,
       submitDate: Utilities.formatDate(new Date(), getTz_(), 'yyyy년 MM월 dd일'),
-      signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages,
+      signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages, addresses: addresses,
     });
     const pdfFile = folder.createFile(
       Utilities.newBlob(pdfHtml, 'text/html', 'claim.html').getAs('application/pdf')
@@ -786,6 +813,10 @@ function buildClaimHtml_(d) {
   const e = escHtml_;
   const w = n => (n ? Number(n).toLocaleString('ko-KR') : '0');
   const md = s => { const p = s.split('-'); return Number(p[1]) + '/' + Number(p[2]); };
+  // 장소 이름 아래 세부주소 (작은 글씨)
+  const addr = d.addresses || {};
+  const place = n => e(n) + (addr[n] ? '<div class="addr">' + e(addr[n]) + '</div>' : '');
+  const places = s => splitWaypoints_(s).map(place).join('');
 
   const cat = CONFIG.CATEGORIES.map(c => {
     const mark = d.category === c ? 'O' : '&nbsp;&nbsp;';
@@ -796,9 +827,9 @@ function buildClaimHtml_(d) {
 
   const bodyRows = d.rows.map(r => '<tr>'
     + '<td class="c">' + md(r.date) + '</td>'
-    + '<td>' + e(r.origin) + '</td>'
-    + '<td>' + e(r.waypoint) + '</td>'
-    + '<td>' + e(r.destination) + '</td>'
+    + '<td>' + place(r.origin) + '</td>'
+    + '<td>' + places(r.waypoint) + '</td>'
+    + '<td>' + place(r.destination) + '</td>'
     + '<td class="c">' + e(r.transport) + '</td>'
     + '<td class="r">' + (r.km || '') + '</td>'
     + '<td class="r">' + w(r.fare) + '</td>'
@@ -825,6 +856,7 @@ function buildClaimHtml_(d) {
     + '.hl { background: #ffff66; text-align: center; }'
     + '.c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }'
     + '.detail td, .detail th { font-size: 9pt; }'
+    + '.addr { font-size: 7pt; color: #444; line-height: 1.25; margin-top: 1px; }'
     + '.gap { height: 10px; }'
     + '.plain td { border: 0; }'
     + '.sig { position: relative; display: inline-block; width: 110px; text-align: center; }'

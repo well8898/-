@@ -36,6 +36,7 @@
     .claim-table input.auto::placeholder { color: #212529; opacity: 1; } /* 자동 계산 일비는 진하게 */
     .claim-table .cell-note { font-size: 11px; color: #777; text-align: right; line-height: 1.2; margin-top: 2px; }
     .claim-table .cell-note.warn { color: #dc3545; }
+    .claim-table .cell-note.addr { text-align: left; word-break: keep-all; }  /* 출발지·경과지·도착지 아래 세부주소 */
     /* 출발지·도착지 색: 소속(첫날 출발·마지막 날 도착)=옅은 빨강, 나머지=옅은 파랑, 출발지=도착지인 날=회색 */
     .claim-table .form-control.c-home { background: #fde4e4; }
     .claim-table .form-control.c-trip { background: #e3edfd; }
@@ -161,7 +162,7 @@
                 <tr>
                   <th style="width:140px">일자</th>
                   <th style="width:140px">출발지</th>
-                  <th style="width:65px">경과지</th>
+                  <th style="width:100px">경과지</th>
                   <th style="width:140px">도착지</th>
                   <th style="width:82px">교통편</th>
                   <th style="width:80px">km</th>
@@ -321,6 +322,7 @@
     kept: [],           // 이전 제출 영수증 { id, name }
     routeFiles: [],     // 새로 올린 경로 증빙 사진
     routeKept: [],      // 이전 제출 경로 증빙 사진 { id, name }
+    addr: {},           // 장소 이름 → 세부주소 ('' = 못 찾음)
     editing: false,
     signed: false,
   };
@@ -671,9 +673,9 @@
     $('rowBody').innerHTML = state.rows.map((r, i) => `
       <tr data-i="${i}">
         <td>${dateCell(r)}</td>
-        <td>${text('origin', r, 'list="branchList"')}</td>
-        <td>${text('waypoint', r)}</td>
-        <td>${text('destination', r, 'list="branchList"')}</td>
+        <td>${text('origin', r, 'list="branchList"')}<div class="cell-note addr" data-addr="origin"></div></td>
+        <td>${text('waypoint', r)}<div class="cell-note addr" data-addr="waypoint"></div></td>
+        <td>${text('destination', r, 'list="branchList"')}<div class="cell-note addr" data-addr="destination"></div></td>
         <td><select class="form-select" data-k="transport">
           <option value="" ${r.transport ? '' : 'selected'}>-</option>
           ${state.transports.map(x => `<option ${x === r.transport ? 'selected' : ''}>${esc(x)}</option>`).join('')}
@@ -700,6 +702,47 @@
 
     renderMaps();
     recalc();
+    renderAddresses();
+    fetchAddresses();
+  }
+
+  // ── 세부주소 (출발지·경과지·도착지 칸 아래에 표시) ──
+  const PLACE_KEYS = ['origin', 'waypoint', 'destination'];
+  const addrPending = {};
+  function placeNames(r, k) {
+    return k === 'waypoint' ? wpList(r.waypoint) : (r[k].trim() ? [r[k].trim()] : []);
+  }
+
+  function renderAddresses() {
+    state.rows.forEach((r, i) => {
+      const tr = $('rowBody').querySelector(`tr[data-i="${i}"]`);
+      if (!tr) return;
+      PLACE_KEYS.forEach(k => {
+        const el = tr.querySelector(`[data-addr="${k}"]`);
+        const names = placeNames(r, k);
+        const missing = names.some(n => state.addr[n] === '');
+        const text = names.map(n => state.addr[n]).filter(Boolean).join(' / ');
+        el.textContent = text || (missing ? '주소를 찾지 못했어요' : '');
+        el.classList.toggle('warn', !text && missing);
+      });
+    });
+  }
+
+  // 아직 모르는 장소만 서버에 물어봄 (지사는 지사별 주소 탭, 나머지는 카카오 검색)
+  async function fetchAddresses() {
+    const names = [];
+    state.rows.forEach(r => PLACE_KEYS.forEach(k => placeNames(r, k).forEach(n => {
+      if (!(n in state.addr) && !addrPending[n] && names.indexOf(n) < 0) names.push(n);
+    })));
+    if (!names.length) return;
+    names.forEach(n => { addrPending[n] = true; });
+    try {
+      const res = await run('lookupAddresses', names);
+      if (res.ok) Object.assign(state.addr, res.addresses);
+    } catch (e) { /* 주소 표시는 보조 기능이라 무시 */ } finally {
+      names.forEach(n => { delete addrPending[n]; });
+    }
+    renderAddresses();
   }
 
   // 입력 → state 반영 (다시 그리지 않아서 포커스 유지)
@@ -710,6 +753,8 @@
     const tr = e.target.closest('tr');
     if (!k || !tr) return;
     const r = state.rows[Number(tr.dataset.i)];
+    // 장소 칸을 다 입력하고 나가면(change) 세부주소 조회
+    if (e.type === 'change' && PLACE_KEYS.indexOf(k) >= 0) { r[k] = e.target.value; renderAddresses(); fetchAddresses(); }
     if (e.target.hasAttribute('data-money')) {
       const digits = formatMoneyInput(e.target);
       if (r[k] === digits) return;
@@ -727,6 +772,7 @@
     if (['origin', 'waypoint', 'destination'].indexOf(k) >= 0) {
       if (r.map) { r.map = null; renderMaps(); }
       r.stale = isMove(r);
+      renderAddresses();
     }
     if (k === 'km') r.stale = false;
     recalc();
@@ -843,10 +889,16 @@
         r.km = String(out.km);
         r.stale = false;
         r.map = { km: out.km, places: out.places, path: out.path || [], image: out.mapImage };
+        // 거리 계산에서 찾은 주소도 세부주소로 사용 (places = [출발, 경유..., 도착])
+        [r.origin.trim()].concat(wpList(r.waypoint), [r.destination.trim()]).forEach((n, j) => {
+          const a = out.places[j] && out.places[j].address;
+          if (a && !state.addr[n]) state.addr[n] = a;
+        });
         $('rowBody').querySelector(`tr[data-i="${i}"] [data-k="km"]`).value = r.km;
       });
       await renderMaps();
       recalc();
+      renderAddresses();
       alertMsg(errors.length ? errors.join('\n') : `${targets.length}개 구간 거리 계산 완료`, errors.length ? 'danger' : 'success');
     } catch (err) {
       alertMsg('서버 오류: ' + err.message);
