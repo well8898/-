@@ -58,6 +58,7 @@ const CONFIG = {
   TRANSPORTS:   ['자차', '동승', 'KTX', '버스', '도보'],
   CAR:          '자차',                 // 유류비 자동 계산 대상
   RIDE:         '동승',                 // 운임 0원 (일비·식비 등은 동일)
+  RECEIPT_TRANSPORTS: ['KTX', '버스', '자차'], // 이 교통편으로 이동한 줄이 있으면 운임 영수증 필수
   CATEGORIES:   ['근무지내', '근무지외', '국외', '기타'],
   MAX_ROWS:     31,
   MAX_WAYPOINTS: 5,                     // 카카오 길찾기 경유지 최대 5개
@@ -664,6 +665,9 @@ function saveClaimData(formData) {
     const keepIds = Array.isArray(f.keepReceiptIds) ? f.keepReceiptIds.map(String) : [];
     const receipts = mergeImages_(prev && prev.receipts, keepIds, f.receipts, 'r', '영수증');
     const routeImages = mergeImages_(prev && prev.routeImages, f.keepRouteIds, f.routeImages, 'p', '경로 증빙');
+    if (rows.some(r => isMove_(r) && CONFIG.RECEIPT_TRANSPORTS.indexOf(r.transport) >= 0) && !receipts.length) {
+      throw new Error('대중교통(KTX·버스)이나 자차를 이용한 줄이 있으면 운임 영수증을 1장 이상 첨부하세요.');
+    }
 
     const dates = rows.map(r => r.date).sort();
     const startDate = dates[0], endDate = dates[dates.length - 1];

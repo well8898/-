@@ -316,7 +316,7 @@
           <!-- 영수증 -->
           <div class="col-lg-6">
             <div class="card h-100"><div class="card-body">
-              <div class="card-title">5. 운임 영수증 <span class="text-secondary fw-normal small">(하이패스, 주유, 대중교통 영수증 등)</span></div>
+              <div class="card-title">5. 운임 영수증 <span class="text-danger fw-normal small">(대중교통·자차 이용 시 필수)</span> <span class="text-secondary fw-normal small">(하이패스, 주유, 대중교통 영수증 등)</span></div>
               <input type="file" id="receiptInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this)">
               <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-outline-primary" onclick="$('receiptInput').click()">파일 선택</button>
@@ -388,7 +388,8 @@
   const INNER = '근무지내';       // 식비 없음, 일비는 출장 시간(4시간 이상/미만) 기준
   const CAR = '자차';
   const CALC_WAIT_MSG = '거리 계산 중입니다. (30초~60초 정도 걸립니다.)';
-  const RIDE = '동승';   // 운임 0원, 나머지(일비·식비 등)는 동일
+  const RIDE = '동승';
+  const RECEIPT_TRANSPORTS = ['KTX', '버스', CAR];   // 이 교통편으로 이동한 줄이 있으면 운임 영수증 필수 (서버와 같은 기준)   // 운임 0원, 나머지(일비·식비 등)는 동일
   const MAX_ROWS = 31;
   const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
   const MAX_PDF_PAGES = 10;                  // PDF 영수증 1개당 변환할 최대 페이지
@@ -1403,6 +1404,8 @@
     if ($('category').value === '기타' && !$('categoryEtc').value.trim()) return '구분이 기타이면 내용을 입력하세요.';
     if (!$('bank').value.trim() || !$('account').value.trim() || !$('holder').value.trim()) return '입금 계좌 정보를 모두 입력하세요.';
     if (!/^[\d-]+$/.test($('account').value.trim())) return '계좌번호는 숫자와 - 만 입력하세요.';
+    if (state.rows.some(r => filled(r) && isMove(r) && RECEIPT_TRANSPORTS.indexOf(r.transport) >= 0) && !(state.files.length + state.kept.length))
+      return '대중교통(KTX·버스)이나 자차를 이용한 줄이 있으면 5. 운임 영수증을 1장 이상 첨부하세요.';
     if (!state.signed) return '서명을 해주세요.';
     return '';
   }
