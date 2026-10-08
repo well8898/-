@@ -481,7 +481,7 @@ function resolveBranch_(q, key) {
   const m = coord.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
   if (m) return { x: m[2], y: m[1], name: name, address: addr };
 
-  const place = (addr && searchKakao_(addr, key)) || searchKakao_(name, key);
+  const place = (addr && searchKakao_(searchableAddress_(addr), key)) || searchKakao_(name, key);
   if (!place) throw new Error("'" + name + "' 위치를 찾지 못했습니다. 지사별 주소 탭에 주소를 입력하세요.");
 
   // 다음부터는 시트 값 재사용
@@ -490,6 +490,14 @@ function resolveBranch_(q, key) {
   if (addrCol >= 0 && !addr) sheet.getRange(rowNo, addrCol + 1).setValue(place.address);
 
   return { x: place.x, y: place.y, name: name, address: addr || place.address };
+}
+
+// 시트 주소 → 카카오 주소 검색용 (우편번호·괄호·층수·건물명 제거)
+// '(08375) 서울 구로구 디지털로 31길 41, 13층 (구로동, ...)' → '서울 구로구 디지털로 31길 41'
+function searchableAddress_(addr) {
+  const s = String(addr || '').replace(/^\s*\(\d{5}\)\s*/, '').replace(/\([^)]*\)?/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = s.match(/^(.*?(?:로|길)\s*(?:\d+(?:번)?(?:길|가길)\s*)?\d+(?:-\d+)?)/);
+  return m ? m[1] : s.split(',')[0].trim();
 }
 
 // 카카오 주소 검색 → 실패 시 키워드(상호) 검색
