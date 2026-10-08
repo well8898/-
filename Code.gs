@@ -27,7 +27,7 @@
  *   출장마다 겹치지 않게 적으세요 (예: 2026 임단협 워크숍(10/14)). 예전 '출장ID' 머리글도 그대로 읽힘
  *
  * ▶ 제출 시 생성물 (드라이브 / 여비청구_첨부 / 출장명 폴더)
- *   - 사번_성명_날짜_여비청구및영수증.pdf  ← 이것 하나 (서식 + 서명 + 영수증 이미지 + 경로 지도)
+ *   - 출장명_사번_성명_출장일자.pdf        ← 이것 하나 (서식 + 서명 + 영수증 이미지 + 경로 지도)
  *   - _수정용데이터 / _상세_사번.json      ← 수정할 때 입력값·영수증을 다시 불러오는 데이터 (지우지 마세요)
  *   수정 제출하면 이전 PDF는 휴지통으로 이동
  */
@@ -684,7 +684,9 @@ function saveClaimData(formData) {
 
     const dates = rows.map(r => r.date).sort();
     const startDate = dates[0], endDate = dates[dates.length - 1];
-    const prefix = safeName_(user.사번 + '_' + user.성명 + '_' + startDate);
+    // PDF 이름: 출장명_사번_성명_출장일자 (여러 날이면 시작일~종료일)
+    const pdfName = [tripId, user.사번, user.성명, startDate === endDate ? startDate : startDate + '~' + endDate]
+      .join('_').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() + '.pdf'; // 파일 이름에 못 쓰는 글자만 '-'로
 
     // 구간별 경로 지도 (km는 서버에서 다시 길찾기로 확인)
     const maps = buildRouteEvidence_(rows);
@@ -699,7 +701,7 @@ function saveClaimData(formData) {
     });
     const pdfFile = folder.createFile(
       Utilities.newBlob(pdfHtml, 'text/html', 'claim.html').getAs('application/pdf')
-        .setName(prefix + '_여비청구및영수증.pdf'));
+        .setName(pdfName));
     created.push(pdfFile.getId());
 
     // 수정용 상세 데이터 (_수정용데이터 폴더)
