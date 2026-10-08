@@ -180,7 +180,7 @@ function findMyClaims_(empId) {
   const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const t = readTable_(CONFIG.SHEET_CLAIM);
-  const idCol = t.idx('출장ID'), empCol = t.idx('사번'), stCol = t.idx('마감여부');
+  const idCol = t.idx('출장ID'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시');
   if (idCol < 0 || empCol < 0) return out;
   t.rows.forEach((row, i) => {
     if (!sameEmpId_(row[empCol], empId)) return;
@@ -188,7 +188,8 @@ function findMyClaims_(empId) {
     if (!id) return;
     const locked = stCol >= 0 && String(row[stCol]).trim() === CONFIG.CLOSED_STATUS;
     // 같은 출장에 행이 여러 개면 마지막 행 기준, 하나라도 마감이면 마감
-    out[id] = { rowNo: i + 2, locked: locked || (out[id] ? out[id].locked : false) };
+    const at = atCol >= 0 && row[atCol] instanceof Date ? Utilities.formatDate(row[atCol], getTz_(), 'yyyy-MM-dd HH:mm') : String(atCol >= 0 ? row[atCol] : '').trim();
+    out[id] = { rowNo: i + 2, submittedAt: at, locked: locked || (out[id] ? out[id].locked : false) };
   });
   return out;
 }
@@ -284,7 +285,8 @@ function getMyClaim(employeeId, name, tripId) {
     if (mine.locked) throw new Error('마감된 청구는 수정할 수 없습니다.');
 
     const detail = loadDetail_(getTripFolder_(tripId), auth.user.사번);
-    if (!detail) return { ok: true, claim: null, legacy: true };
+    // 시트에 제출 행은 있는데 수정용 데이터 파일이 없음 (시트에 직접 넣은 행, 예전 버전 제출 등)
+    if (!detail) return { ok: true, claim: null, legacy: { rowNo: mine.rowNo, submittedAt: mine.submittedAt } };
     return {
       ok: true,
       claim: {

@@ -121,6 +121,7 @@
     .nav-logo { height: 44px; width: auto; display: block; }
     .nav-sub { color: #dbe4f0; font-size: 19px; font-weight: 500; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.4); }
     @media (max-width: 575.98px) { .nav-logo { height: 28px; } .nav-sub { display: none; } }
+    #loadingMsg { font-size: 20px !important; font-weight: 500; color: var(--gov-navy) !important; text-align: center; padding: 0 16px; }
     .gov-footer { max-width: 1500px; margin: 8px auto 0; padding: 14px 16px 0; border-top: 1px solid var(--gov-line); color: var(--gov-muted); font-size: 16px; text-align: center; }
   </style>
 </head>
@@ -386,6 +387,7 @@
   const NO_REASON = '해당없음';   // 근무지내 기본값
   const INNER = '근무지내';       // 식비 없음, 일비는 출장 시간(4시간 이상/미만) 기준
   const CAR = '자차';
+  const CALC_WAIT_MSG = '거리 계산 중입니다. (30초~60초 정도 걸립니다.)';
   const RIDE = '동승';   // 운임 0원, 나머지(일비·식비 등)는 동일
   const MAX_ROWS = 31;
   const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
@@ -593,14 +595,14 @@
     const t = state.trips[i];
     if (t.청구상태 === '마감') return alertMsg('마감된 청구는 수정할 수 없어요.');
 
-    let claim = null, legacy = false;
+    let claim = null, legacy = null;
     if (t.청구상태 === '제출') {
       loading(true, '이전 제출 내역 불러오는 중...');
       try {
         const res = await run('getMyClaim', state.creds.employeeId, state.creds.name, t.출장ID);
         if (!res.ok) return alertMsg(res.message);
         claim = res.claim;
-        legacy = !!res.legacy;
+        legacy = res.legacy || null;
       } catch (err) {
         return alertMsg('서버 오류: ' + err.message);
       } finally {
@@ -628,14 +630,18 @@
       showNotice(`${claim.submittedAt || ''} 제출한 내용을 불러왔어요. 고친 뒤 다시 제출하면 덮어써요. (서명은 다시 해주세요)`);
     } else {
       state.rows = defaultRows(t);
-      showNotice(legacy ? '이전 제출 내용을 불러올 수 없어 새로 작성해요. 다시 제출하면 기존 제출을 덮어써요.' : '');
+      showNotice(legacy ? `'여비 청구 데이터' 시트 ${legacy.rowNo}행에 이 출장의 제출 기록${legacy.submittedAt ? '(' + legacy.submittedAt + ')' : ''}이 있지만 입력 내용을 불러올 수 없어 새로 작성해요. 제출하면 그 행을 덮어써요.` : '');
     }
     toggleCategoryEtc();
     renderFiles();
     renderRows();
     showStep(3);
-    // 이동이 있는 줄은 바로 거리·경로 지도 계산 (불러온 제출 내역은 km 유지, 지도만)
-    autoCalc(state.rows.map((_, i) => i), !!claim);
+    // 이동이 있는 줄은 바로 거리·경로 지도 계산 (불러온 제출 내역은 km 유지, 지도만) — 끝날 때까지 대기 화면
+    const targets = state.rows.map((r, i) => ({ r, i })).filter(x => canCalc(x.r));
+    if (targets.length) {
+      loading(true, CALC_WAIT_MSG);
+      try { await computeRoutes(targets, !!claim); } finally { loading(false); }
+    }
   }
 
   function showNotice(text) {
@@ -1066,7 +1072,7 @@
     if (!targets.length) return alertMsg('이동이 있는 줄이 없어요. (출발지와 도착지가 같고 경과지가 없는 줄은 계산하지 않아요)', 'info');
     const empty = targets.filter(x => !canCalc(x.r));
     if (empty.length) return alertMsg(empty.map(x => `${x.i + 1}번째 줄: 출발지와 도착지를 입력하세요.`).join('\n'));
-    loading(true, `거리 계산 중... (${targets.length}개 구간)`);
+    loading(true, CALC_WAIT_MSG);
     try {
       const errors = await computeRoutes(targets, false);
       alertMsg(errors.length ? errors.join('\n') : `${targets.length}개 구간 거리 계산 완료`, errors.length ? 'danger' : 'success');
