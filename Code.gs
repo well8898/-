@@ -6,7 +6,11 @@
  * ▶ 시트 구성 (헤더 이름으로 열을 찾으므로 열 순서는 상관없음)
  *   - 여비 청구 데이터 : 출장 1건당 1인 1행 (여러 구간은 줄바꿈으로 합쳐 기록, 금액·km는 합계)
  *                        마감여부를 '마감'으로 바꾸면 그 사람은 더 이상 수정 불가
- *   - 출장 관리        : 출장ID | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 유류대 | 마감여부
+ *   - 출장 관리        : 출장ID | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 마감여부
+ *                        (유류대 열을 두고 값을 적으면 그 출장만 그 단가 사용 — 보통은 비워 두세요)
+ *   - 유류대           : 적용시작일 | 유류대(원/km) | 비고
+ *                        분기마다 한 줄 추가 (예: 2026-10-01 | 307). 출장시작일 기준으로
+ *                        그날 이전에 시작한 가장 최근 단가가 적용됨. setup 실행 시 탭이 없으면 만들어 줌
  *   - 대상자 명단      : 출장ID | 사번 | 성명 | 소속(= 지사별 주소의 지사 이름)
  *   - 지사별 주소      : 지사 | 주소 | 좌표   (주소·좌표는 비워두면 카카오 검색으로 자동 채움)
  *
@@ -31,11 +35,12 @@ const CONFIG = {
   SHEET_TRIP:   '출장 관리',
   SHEET_MEMBER: '대상자 명단',
   SHEET_BRANCH: '지사별 주소',
+  SHEET_FUEL:   '유류대',
   ORG_NAME:     '한국승강기안전공단',   // 지사 이름 검색 시 앞에 붙임 (예: 한국승강기안전공단 대전지사)
   HOLIDAY_CALENDAR: 'ko.south_korea#holiday@group.v.calendar.google.com',
 
   // 금액 기준
-  DEFAULT_FUEL_RATE: 307,               // 출장 관리 '유류대'가 비었을 때 단가 (원/km)
+  DEFAULT_FUEL_RATE: 307,               // 유류대 탭이 없거나 해당 기간 단가가 없을 때만 쓰는 예비 단가 (원/km)
   DAILY_BASE:   25000,                  // 일비 (1일)
   DAILY_LONG:   30000,                  // 전체 이동거리가 DAILY_LONG_KM 초과 시 일비
   DAILY_LONG_KM: 300,
@@ -152,14 +157,15 @@ function getOpenTrips_(tripIds, empId, withWorkDays) {
     const id = String(row[c.출장ID]).trim();
     if (!id || tripIds.indexOf(id) < 0) return;
     if (String(row[c.마감여부]).trim() !== CONFIG.OPEN_STATUS) return;
-    const rate = rateCol >= 0 ? toWon_(row[rateCol]) : 0;
+    const rate = rateCol >= 0 ? toWon_(row[rateCol]) : 0; // 출장별로 따로 적은 단가 (보통 비어 있음)
+    const start = fmtDate_(row[c.출장시작일]);
     const trip = {
       출장ID:     id,
       출장목적:   String(row[c.출장목적]).trim(),
       기본도착지: String(row[c.기본도착지]).trim(),
       출장시작일: fmtDate_(row[c.출장시작일]),
       출장종료일: fmtDate_(row[c.출장종료일]),
-      유류대:     rate > 0 ? rate : CONFIG.DEFAULT_FUEL_RATE,
+      유류대:     rate > 0 ? rate : fuelRateFor_(start),
       청구상태:   mine[id] ? (mine[id].locked ? '마감' : '제출') : '미제출',
     };
     if (withWorkDays) trip.근무일 = middleWorkDays_(trip.출장시작일, trip.출장종료일);
@@ -185,6 +191,31 @@ function findMyClaims_(empId) {
     out[id] = { rowNo: i + 2, locked: locked || (out[id] ? out[id].locked : false) };
   });
   return out;
+}
+
+// 유류대 탭 → 그 날짜에 적용되는 단가 (적용시작일 ≤ 날짜 중 가장 최근)
+// 날짜가 비었으면 오늘 기준, 탭이 없거나 맞는 줄이 없으면 CONFIG.DEFAULT_FUEL_RATE
+let fuelRates_ = null;
+function fuelRateFor_(date) {
+  if (!fuelRates_) {
+    fuelRates_ = [];
+    if (getSS_().getSheetByName(CONFIG.SHEET_FUEL)) {
+      const t = readTable_(CONFIG.SHEET_FUEL);
+      const dCol = t.idx('적용시작일');
+      const rCol = t.headers.findIndex(h => h.indexOf('유류대') === 0);
+      if (dCol >= 0 && rCol >= 0) {
+        t.rows.forEach(r => {
+          const d = fmtDate_(r[dCol]), v = toWon_(r[rCol]);
+          if (isDateStr_(d) && v > 0) fuelRates_.push([d, v]);
+        });
+        fuelRates_.sort((a, b) => a[0].localeCompare(b[0]));
+      }
+    }
+  }
+  const day = isDateStr_(date) ? date : Utilities.formatDate(new Date(), getTz_(), 'yyyy-MM-dd');
+  let rate = 0;
+  fuelRates_.forEach(([d, v]) => { if (d <= day) rate = v; });
+  return rate || CONFIG.DEFAULT_FUEL_RATE;
 }
 
 // 시작일·종료일 사이(양 끝 제외)에서 주말·공휴일을 뺀 날짜 목록
@@ -1159,6 +1190,20 @@ function setup() {
   [CONFIG.SHEET_CLAIM, CONFIG.SHEET_TRIP, CONFIG.SHEET_MEMBER, CONFIG.SHEET_BRANCH].forEach(name => {
     Logger.log((getSS_().getSheetByName(name) ? '✅ ' : '❌ 없음: ') + name);
   });
+
+  // 유류대 탭이 없으면 만들어 둠 (분기마다 한 줄씩 추가해서 사용)
+  let fuel = getSS_().getSheetByName(CONFIG.SHEET_FUEL);
+  if (!fuel) {
+    fuel = getSS_().insertSheet(CONFIG.SHEET_FUEL);
+    fuel.getRange(1, 1, 2, 3).setValues([
+      ['적용시작일', '유류대(원/km)', '비고'],
+      ['2026-01-01', CONFIG.DEFAULT_FUEL_RATE, '예시 — 실제 분기 단가로 고치세요'],
+    ]);
+    fuel.getRange(2, 1).setNumberFormat('yyyy-mm-dd');
+    fuel.setFrozenRows(1);
+    Logger.log('✅ 유류대 탭을 만들었어요. 분기마다 적용시작일과 단가를 한 줄씩 추가하세요.');
+  }
+  Logger.log('✅ 오늘 적용 유류대: ' + fuelRateFor_('') + '원/km');
 
   const headers = ensureClaimHeaders_(getSS_().getSheetByName(CONFIG.SHEET_CLAIM));
   Logger.log('✅ 여비 청구 데이터 헤더: ' + headers.filter(Boolean).join(' | '));
