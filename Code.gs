@@ -6,12 +6,12 @@
  * ▶ 시트 구성 (헤더 이름으로 열을 찾으므로 열 순서는 상관없음)
  *   - 여비 청구 데이터 : 출장 1건당 1인 1행 (여러 구간은 줄바꿈으로 합쳐 기록, 금액·km는 합계)
  *                        마감여부를 '마감'으로 바꾸면 그 사람은 더 이상 수정 불가
- *   - 출장 관리        : 출장ID | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 마감여부
+ *   - 출장 관리        : 출장명 | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 마감여부
  *                        (유류대 열을 두고 값을 적으면 그 출장만 그 단가 사용 — 보통은 비워 두세요)
  *   - 유류대           : 적용시작일 | 유류대(원/km) | 비고
  *                        분기마다 한 줄 추가 (예: 2026-10-01 | 307). 출장시작일 기준으로
  *                        그날 이전에 시작한 가장 최근 단가가 적용됨. setup 실행 시 탭이 없으면 만들어 줌
- *   - 대상자 명단      : 출장ID | 사번 | 성명 | 소속(= 지사별 주소의 지사 이름)
+ *   - 대상자 명단      : 출장명 | 사번 | 성명 | 소속(= 지사별 주소의 지사 이름)
  *   - 지사별 주소      : 지사 | 주소 | 좌표   (주소·좌표는 비워두면 카카오 검색으로 자동 채움)
  *
  * ▶ 스크립트 속성 (프로젝트 설정 → 스크립트 속성)
@@ -23,7 +23,10 @@
  * ▶ 최초 1회: 함수 선택 → setup → ▶ 실행 (권한 승인)
  *   이후 testDistance / testPdf / testHolidays 로 동작 확인
  *
- * ▶ 제출 시 생성물 (드라이브 / 여비청구_첨부 / 출장ID 폴더)
+ * ▶ 출장명 = 출장을 구분하는 이름 (출장 관리·대상자 명단·여비 청구 데이터를 이 값으로 연결)
+ *   출장마다 겹치지 않게 적으세요 (예: 2026 임단협 워크숍(10/14)). 예전 '출장ID' 머리글도 그대로 읽힘
+ *
+ * ▶ 제출 시 생성물 (드라이브 / 여비청구_첨부 / 출장명 폴더)
  *   - 사번_성명_날짜_여비청구및영수증.pdf  ← 이것 하나 (서식 + 서명 + 영수증 이미지 + 경로 지도)
  *   - _수정용데이터 / _상세_사번.json      ← 수정할 때 입력값·영수증을 다시 불러오는 데이터 (지우지 마세요)
  *   수정 제출하면 이전 PDF는 휴지통으로 이동
@@ -72,13 +75,13 @@ const CONFIG = {
 
 // 여비 청구 데이터 표준 헤더 (없는 열은 이 순서 기준 위치에 자동 삽입)
 const CLAIM_HEADERS = [
-  '마감여부', '제출일시', '출장ID', '출장목적', '사번', '성명', '소속', '출장시작일', '출장종료일',
+  '마감여부', '제출일시', '출장명', '출장목적', '사번', '성명', '소속', '출장시작일', '출장종료일',
   '출발지', '경과지', '도착지', '교통편', '이동거리(km)', '운임_유류비', '일비', '숙박비', '식비', '기타비용',
   '총청구금액', '운임청구사유', '입금은행', '계좌번호', '예금주', '여비 청구 및 영수증',
 ];
 
 // 숫자로 바뀌면 앞자리 0이 사라지는 열 → 텍스트 서식으로 저장
-const CLAIM_TEXT_COLS = ['출장ID', '사번', '계좌번호'];
+const CLAIM_TEXT_COLS = ['출장명', '사번', '계좌번호'];
 
 
 // ════════════════════════════════════════════════════
@@ -125,7 +128,7 @@ function authenticate_(employeeId, name) {
   if (!nm) throw new Error('성명을 입력하세요.');
 
   const t = readTable_(CONFIG.SHEET_MEMBER);
-  const c = requireCols_(t, ['출장ID', '사번', '성명', '소속']);
+  const c = requireCols_(t, ['출장명', '사번', '성명', '소속']);
 
   let user = null;
   const tripIds = [];
@@ -139,7 +142,7 @@ function authenticate_(employeeId, name) {
         소속: String(row[c.소속]).trim(),
       };
     }
-    const tripId = String(row[c.출장ID]).trim();
+    const tripId = String(row[c.출장명]).trim();
     if (tripId && tripIds.indexOf(tripId) < 0) tripIds.push(tripId);
   });
 
@@ -150,19 +153,19 @@ function authenticate_(employeeId, name) {
 // 본인에게 배정된 출장 중 '진행중'인 것만 (withWorkDays: 중간 근무일 목록 포함)
 function getOpenTrips_(tripIds, empId, withWorkDays) {
   const t = readTable_(CONFIG.SHEET_TRIP);
-  const c = requireCols_(t, ['출장ID', '출장목적', '기본도착지', '출장시작일', '출장종료일', '마감여부']);
+  const c = requireCols_(t, ['출장명', '출장목적', '기본도착지', '출장시작일', '출장종료일', '마감여부']);
   const rateCol = t.idx('유류대');
   const mine = findMyClaims_(empId);
 
   const trips = [];
   t.rows.forEach(row => {
-    const id = String(row[c.출장ID]).trim();
+    const id = String(row[c.출장명]).trim();
     if (!id || tripIds.indexOf(id) < 0) return;
     if (String(row[c.마감여부]).trim() !== CONFIG.OPEN_STATUS) return;
     const rate = rateCol >= 0 ? toWon_(row[rateCol]) : 0; // 출장별로 따로 적은 단가 (보통 비어 있음)
     const start = fmtDate_(row[c.출장시작일]);
     const trip = {
-      출장ID:     id,
+      출장명:     id,
       출장목적:   String(row[c.출장목적]).trim(),
       기본도착지: String(row[c.기본도착지]).trim(),
       출장시작일: fmtDate_(row[c.출장시작일]),
@@ -176,22 +179,22 @@ function getOpenTrips_(tripIds, empId, withWorkDays) {
   return trips;
 }
 
-// 출장 목록이 비었을 때 이유: 대상자 명단의 출장ID가 출장 관리에 있는지, 마감여부가 '진행중'인지
+// 출장 목록이 비었을 때 이유: 대상자 명단의 출장명이 출장 관리에 있는지, 마감여부가 '진행중'인지
 function tripCheck_(tripIds) {
   const t = readTable_(CONFIG.SHEET_TRIP);
-  const idCol = t.idx('출장ID'), stCol = t.idx('마감여부');
+  const idCol = t.idx('출장명'), stCol = t.idx('마감여부');
   const status = {};
   t.rows.forEach(r => { const id = String(r[idCol]).trim(); if (id) status[id] = String(r[stCol]).trim(); });
   return tripIds.map(id => ({ id: id, found: id in status, status: status[id] || '' }));
 }
 
-// 출장ID → { rowNo, locked }  (본인 제출 행)
+// 출장명 → { rowNo, locked }  (본인 제출 행)
 function findMyClaims_(empId) {
   const out = {};
   const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const t = readTable_(CONFIG.SHEET_CLAIM);
-  const idCol = t.idx('출장ID'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시'), purposeCol = t.idx('출장목적');
+  const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시'), purposeCol = t.idx('출장목적');
   if (idCol < 0 || empCol < 0) return out;
   t.rows.forEach((row, i) => {
     if (!sameEmpId_(row[empCol], empId)) return;
@@ -724,7 +727,7 @@ function saveClaimData(formData) {
     const values = {
       마감여부: CONFIG.OPEN_STATUS,
       제출일시: new Date(),
-      출장ID: tripId,
+      출장명: tripId,
       출장목적: trip.출장목적,
       사번: user.사번,
       성명: user.성명,
@@ -888,6 +891,11 @@ function buildRouteEvidence_(rows) {
 function ensureClaimHeaders_(sheet) {
   const lastCol = Math.max(sheet.getLastColumn(), 1);
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+  const legacyKey = headers.indexOf('출장ID');
+  if (legacyKey >= 0 && headers.indexOf('출장명') < 0) {
+    sheet.getRange(1, legacyKey + 1).setValue('출장명'); // 기존 제출 행은 그대로 연결됨
+    headers[legacyKey] = '출장명';
+  }
 
   if (headers.every(h => !h)) {
     sheet.getRange(1, 1, 1, CLAIM_HEADERS.length).setValues([CLAIM_HEADERS]);
@@ -1143,6 +1151,9 @@ function readTable_(sheetName) {
   if (!sheet) throw new Error("'" + sheetName + "' 시트를 찾을 수 없습니다.");
   const values = sheet.getDataRange().getValues();
   const headers = (values[0] || []).map(h => String(h).trim());
+  // 예전 시트 호환: '출장명' 열이 없고 '출장ID' 열이 있으면 그 열을 출장명으로 읽음
+  const legacyKey = headers.indexOf('출장ID');
+  if (legacyKey >= 0 && headers.indexOf('출장명') < 0) headers[legacyKey] = '출장명';
   return {
     name: sheetName,
     sheet: sheet,
@@ -1208,8 +1219,8 @@ function setup() {
     Logger.log((getSS_().getSheetByName(name) ? '✅ ' : '❌ 없음: ') + name);
   });
 
-  // 출장 관리: 같은 출장ID가 두 번 이상 쓰였는지 (같은 ID면 서로 다른 출장도 같은 출장으로 처리됨)
-  const trips = readTable_(CONFIG.SHEET_TRIP), idCol = trips.idx('출장ID');
+  // 출장 관리: 같은 출장명이 두 번 이상 쓰였는지 (같은 이름이면 서로 다른 출장도 같은 출장으로 처리됨)
+  const trips = readTable_(CONFIG.SHEET_TRIP), idCol = trips.idx('출장명');
   if (idCol >= 0) {
     const rowsById = {};
     trips.rows.forEach((r, i) => {
@@ -1218,8 +1229,8 @@ function setup() {
     });
     const dup = Object.keys(rowsById).filter(id => rowsById[id].length > 1);
     Logger.log(dup.length
-      ? '❌ 출장 관리에 겹치는 출장ID: ' + dup.map(id => id + '(' + rowsById[id].join('·') + '행)').join(', ') + ' — 출장마다 다른 ID로 바꾸세요'
-      : '✅ 출장ID 겹침 없음');
+      ? '❌ 출장 관리에 겹치는 출장명: ' + dup.map(id => id + '(' + rowsById[id].join('·') + '행)').join(', ') + ' — 출장마다 다른 이름으로 바꾸세요 (예: 끝에 날짜 붙이기)'
+      : '✅ 출장명 겹침 없음');
   }
 
   // 유류대 탭이 없으면 만들어 둠 (분기마다 한 줄씩 추가해서 사용)

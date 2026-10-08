@@ -577,10 +577,10 @@
   // ── STEP 2: 출장 목록 ───────────────────────────
   function renderTrips() {
     if (!state.trips.length) {
-      // 왜 없는지 안내 (대상자 명단의 출장ID가 출장 관리에 없거나, 마감여부가 '진행중'이 아님)
+      // 왜 없는지 안내 (대상자 명단의 출장명이 출장 관리에 없거나, 마감여부가 '진행중'이 아님)
       const why = (state.tripCheck || []).map(c => !c.found
-        ? `출장ID ${esc(c.id)}: '출장 관리' 탭에 같은 출장ID가 없어요`
-        : `출장ID ${esc(c.id)}: 마감여부가 '${esc(c.status || '(빈칸)')}'이에요 ('진행중'이어야 보여요)`);
+        ? `출장명 '${esc(c.id)}': '출장 관리' 탭에 같은 출장명이 없어요`
+        : `출장명 '${esc(c.id)}': 마감여부가 '${esc(c.status || '(빈칸)')}'이에요 ('진행중'이어야 보여요)`);
       $('tripList').innerHTML = `<div class="card"><div class="card-body text-center text-secondary py-5">청구 가능한 출장이 없습니다.
         <div class="small mt-3 text-start d-inline-block">${why.length ? why.join('<br>') : "'대상자 명단' 탭에 배정된 출장이 없어요"}<br>담당자에게 알려 주세요.</div></div></div>`;
       return;
@@ -610,7 +610,7 @@
     if (t.청구상태 === '제출') {
       loading(true, '이전 제출 내역 불러오는 중...');
       try {
-        const res = await run('getMyClaim', state.creds.employeeId, state.creds.name, t.출장ID);
+        const res = await run('getMyClaim', state.creds.employeeId, state.creds.name, t.출장명);
         if (!res.ok) return alertMsg(res.message);
         claim = res.claim;
         legacy = res.legacy || null;
@@ -632,7 +632,7 @@
     state.routeKept = [];
 
     $('tripTitle').textContent = t.출장목적;
-    $('tripMeta').innerHTML = `출장ID ${esc(t.출장ID)} · 출장기간 ${esc(period(t))} · 출장지 ${esc(t.기본도착지)}<br>${esc(state.user.성명)} · ${esc(state.user.소속)}`;
+    $('tripMeta').innerHTML = `출장명 ${esc(t.출장명)} · 출장기간 ${esc(period(t))} · 출장지 ${esc(t.기본도착지)}<br>${esc(state.user.성명)} · ${esc(state.user.소속)}`;
     $('holder').value = state.user.성명;
     $('submitBtn').textContent = state.editing ? '수정 제출하기' : '제출하기';
 
@@ -641,7 +641,7 @@
       showNotice(`${claim.submittedAt || ''} 제출한 내용을 불러왔어요. 고친 뒤 다시 제출하면 덮어써요. (서명은 다시 해주세요)`);
     } else {
       state.rows = defaultRows(t);
-      showNotice(legacy ? `'여비 청구 데이터' 시트 ${legacy.rowNo}행에 같은 출장ID(${t.출장ID})의 제출 기록${legacy.submittedAt ? '(' + legacy.submittedAt + ')' : ''}${legacy.purpose && legacy.purpose !== t.출장목적 ? ` — 출장목적 '${legacy.purpose}'` : ''}이 있지만 입력 내용을 불러올 수 없어 새로 작성해요. 제출하면 그 행을 덮어써요. 다른 출장의 기록이면 담당자에게 알려 주세요.` : '');
+      showNotice(legacy ? `'여비 청구 데이터' 시트 ${legacy.rowNo}행에 같은 출장명(${t.출장명})의 제출 기록${legacy.submittedAt ? '(' + legacy.submittedAt + ')' : ''}${legacy.purpose && legacy.purpose !== t.출장목적 ? ` — 출장목적 '${legacy.purpose}'` : ''}이 있지만 입력 내용을 불러올 수 없어 새로 작성해요. 제출하면 그 행을 덮어써요. 다른 출장의 기록이면 담당자에게 알려 주세요.` : '');
     }
     toggleCategoryEtc();
     renderFiles();
@@ -1512,7 +1512,7 @@
     const formData = {
       employeeId: state.creds.employeeId,
       name: state.creds.name,
-      tripId: state.trip.출장ID,
+      tripId: state.trip.출장명,
       category: $('category').value,
       categoryEtc: $('categoryEtc').value.trim(),
       innerHours: isInner() ? $('innerHours').value : '',
