@@ -967,9 +967,9 @@ function buildClaimHtml_(d) {
 
   // 증빙 영수증
   if (d.receipts.length) {
-    html += '<div class="page"><h2>증빙 영수증</h2>';
+    html += '<div class="page"><h2>운임 영수증</h2>';
     d.receipts.forEach((r, i) => {
-      html += '<div class="evi"><div class="cap">영수증 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
+      html += '<div class="evi"><div class="cap">운임 영수증 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
         + '<img src="data:' + r.mimeType + ';base64,' + r.data + '"></div>';
     });
     html += '</div>';
@@ -986,7 +986,7 @@ function buildClaimHtml_(d) {
         + '</div>';
     });
     extra.forEach((r, i) => {
-      html += '<div class="evi"><div class="cap b">첨부 경로 증빙 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
+      html += '<div class="evi"><div class="cap b">별도 경로 증빙 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
         + '<img src="data:' + r.mimeType + ';base64,' + r.data + '"></div>';
     });
     html += '</div>';

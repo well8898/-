@@ -211,7 +211,7 @@
           <div id="mapList"></div>
           <div id="mapEmpty" class="small text-secondary mb-2">[📍 거리 계산]을 누르면 경로 지도가 여기에 나와요.</div>
           <div class="border-top pt-3 mt-2">
-            <div class="small fw-bold mb-2">추가 증빙 사진 <span class="text-secondary fw-normal">(자동 거리계산과 다를 시, 카카오맵 길찾기 캡처, 승차권 등 · 이미지·PDF)</span></div>
+            <div class="small fw-bold mb-2">별도 경로 증빙 사진 <span class="text-secondary fw-normal">(자동 거리계산과 다를 시 길찾기 캡처 증빙 · 이미지·PDF)</span></div>
             <input type="file" id="routeInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this, 'route')">
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-outline-primary" onclick="$('routeInput').click()">파일 선택</button>
@@ -255,7 +255,7 @@
           <!-- 영수증 -->
           <div class="col-lg-6">
             <div class="card h-100"><div class="card-body">
-              <div class="card-title">5. 기타 영수증 <span class="text-secondary fw-normal small">(하이패스, 주유 등, 이미지·PDF, 여러 장 가능)</span></div>
+              <div class="card-title">5. 운임 영수증 <span class="text-secondary fw-normal small">(하이패스, 주유, 대중교통 영수증 등 · 이미지·PDF, 여러 장 가능)</span></div>
               <input type="file" id="receiptInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this)">
               <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-outline-primary" onclick="$('receiptInput').click()">파일 선택</button>
@@ -1096,8 +1096,8 @@
 
   // ── 영수증·경로 증빙 사진 (모두 이미지로 변환해서 PDF 안에 넣음) ─────────
   const ATTACH = {
-    receipt: { files: 'files', kept: 'kept', list: 'fileList', count: 'fileCount', label: '영수증', empty: '첨부된 영수증 없음' },
-    route: { files: 'routeFiles', kept: 'routeKept', list: 'routeFileList', count: 'routeFileCount', label: '경로 증빙 사진', empty: '첨부된 사진 없음' },
+    receipt: { files: 'files', kept: 'kept', list: 'fileList', count: 'fileCount', label: '운임 영수증', empty: '첨부된 영수증 없음' },
+    route: { files: 'routeFiles', kept: 'routeKept', list: 'routeFileList', count: 'routeFileCount', label: '별도 경로 증빙 사진', empty: '첨부된 사진 없음' },
   };
 
   async function addFiles(input, bucket) {
