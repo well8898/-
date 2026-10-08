@@ -532,6 +532,7 @@
       state.creds = creds;
       state.user = res.user;
       state.trips = res.trips;
+      state.tripCheck = res.tripCheck || [];
       if (res.transports && res.transports.length) state.transports = res.transports;
       if (res.rules) state.rules = res.rules;
       state.kakaoJsKey = res.kakaoJsKey || '';
@@ -572,7 +573,12 @@
   // ── STEP 2: 출장 목록 ───────────────────────────
   function renderTrips() {
     if (!state.trips.length) {
-      $('tripList').innerHTML = '<div class="card"><div class="card-body text-center text-secondary py-5">청구 가능한 출장이 없습니다.</div></div>';
+      // 왜 없는지 안내 (대상자 명단의 출장ID가 출장 관리에 없거나, 마감여부가 '진행중'이 아님)
+      const why = (state.tripCheck || []).map(c => !c.found
+        ? `출장ID ${esc(c.id)}: '출장 관리' 탭에 같은 출장ID가 없어요`
+        : `출장ID ${esc(c.id)}: 마감여부가 '${esc(c.status || '(빈칸)')}'이에요 ('진행중'이어야 보여요)`);
+      $('tripList').innerHTML = `<div class="card"><div class="card-body text-center text-secondary py-5">청구 가능한 출장이 없습니다.
+        <div class="small mt-3 text-start d-inline-block">${why.length ? why.join('<br>') : "'대상자 명단' 탭에 배정된 출장이 없어요"}<br>담당자에게 알려 주세요.</div></div></div>`;
       return;
     }
     const badge = s => s === '제출' ? '<span class="badge text-bg-success">제출완료 · 수정 가능</span>'

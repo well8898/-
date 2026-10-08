@@ -101,6 +101,7 @@ function loginAndGetTrips(employeeId, name) {
       ok: true,
       user: auth.user,
       trips: getOpenTrips_(auth.tripIds, auth.user.사번, true),
+      tripCheck: tripCheck_(auth.tripIds), // 출장이 0건일 때 이유 안내용
       branches: getBranchNames_(),
       transports: CONFIG.TRANSPORTS,
       kakaoJsKey: PropertiesService.getScriptProperties().getProperty('KAKAO_JS_KEY') || '',
@@ -173,6 +174,15 @@ function getOpenTrips_(tripIds, empId, withWorkDays) {
     trips.push(trip);
   });
   return trips;
+}
+
+// 출장 목록이 비었을 때 이유: 대상자 명단의 출장ID가 출장 관리에 있는지, 마감여부가 '진행중'인지
+function tripCheck_(tripIds) {
+  const t = readTable_(CONFIG.SHEET_TRIP);
+  const idCol = t.idx('출장ID'), stCol = t.idx('마감여부');
+  const status = {};
+  t.rows.forEach(r => { const id = String(r[idCol]).trim(); if (id) status[id] = String(r[stCol]).trim(); });
+  return tripIds.map(id => ({ id: id, found: id in status, status: status[id] || '' }));
 }
 
 // 출장ID → { rowNo, locked }  (본인 제출 행)
