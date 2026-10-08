@@ -180,7 +180,7 @@ function findMyClaims_(empId) {
   const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const t = readTable_(CONFIG.SHEET_CLAIM);
-  const idCol = t.idx('출장ID'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시');
+  const idCol = t.idx('출장ID'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시'), purposeCol = t.idx('출장목적');
   if (idCol < 0 || empCol < 0) return out;
   t.rows.forEach((row, i) => {
     if (!sameEmpId_(row[empCol], empId)) return;
@@ -189,7 +189,8 @@ function findMyClaims_(empId) {
     const locked = stCol >= 0 && String(row[stCol]).trim() === CONFIG.CLOSED_STATUS;
     // 같은 출장에 행이 여러 개면 마지막 행 기준, 하나라도 마감이면 마감
     const at = atCol >= 0 && row[atCol] instanceof Date ? Utilities.formatDate(row[atCol], getTz_(), 'yyyy-MM-dd HH:mm') : String(atCol >= 0 ? row[atCol] : '').trim();
-    out[id] = { rowNo: i + 2, submittedAt: at, locked: locked || (out[id] ? out[id].locked : false) };
+    const purpose = purposeCol >= 0 ? String(row[purposeCol]).trim() : '';
+    out[id] = { rowNo: i + 2, submittedAt: at, purpose: purpose, locked: locked || (out[id] ? out[id].locked : false) };
   });
   return out;
 }
@@ -286,7 +287,7 @@ function getMyClaim(employeeId, name, tripId) {
 
     const detail = loadDetail_(getTripFolder_(tripId), auth.user.사번);
     // 시트에 제출 행은 있는데 수정용 데이터 파일이 없음 (시트에 직접 넣은 행, 예전 버전 제출 등)
-    if (!detail) return { ok: true, claim: null, legacy: { rowNo: mine.rowNo, submittedAt: mine.submittedAt } };
+    if (!detail) return { ok: true, claim: null, legacy: { rowNo: mine.rowNo, submittedAt: mine.submittedAt, purpose: mine.purpose } };
     return {
       ok: true,
       claim: {
@@ -1192,6 +1193,20 @@ function setup() {
   [CONFIG.SHEET_CLAIM, CONFIG.SHEET_TRIP, CONFIG.SHEET_MEMBER, CONFIG.SHEET_BRANCH].forEach(name => {
     Logger.log((getSS_().getSheetByName(name) ? '✅ ' : '❌ 없음: ') + name);
   });
+
+  // 출장 관리: 같은 출장ID가 두 번 이상 쓰였는지 (같은 ID면 서로 다른 출장도 같은 출장으로 처리됨)
+  const trips = readTable_(CONFIG.SHEET_TRIP), idCol = trips.idx('출장ID');
+  if (idCol >= 0) {
+    const rowsById = {};
+    trips.rows.forEach((r, i) => {
+      const id = String(r[idCol]).trim();
+      if (id) (rowsById[id] = rowsById[id] || []).push(i + 2);
+    });
+    const dup = Object.keys(rowsById).filter(id => rowsById[id].length > 1);
+    Logger.log(dup.length
+      ? '❌ 출장 관리에 겹치는 출장ID: ' + dup.map(id => id + '(' + rowsById[id].join('·') + '행)').join(', ') + ' — 출장마다 다른 ID로 바꾸세요'
+      : '✅ 출장ID 겹침 없음');
+  }
 
   // 유류대 탭이 없으면 만들어 둠 (분기마다 한 줄씩 추가해서 사용)
   let fuel = getSS_().getSheetByName(CONFIG.SHEET_FUEL);
