@@ -897,7 +897,19 @@
       renderAddresses();
     }
     if (k === 'km') r.stale = false;
+    if (k === 'transport') syncWalkReason();
     recalc();
+  }
+
+  // 이동한 줄의 교통편이 모두 '도보'면 운임청구사유를 '해당없음'으로,
+  // 도보만 있다가 다른 교통편이 생기면 '대중교통 이용'으로 되돌림 (교통편 자동 변경은 하지 않음)
+  const WALK = '도보';
+  function syncWalkReason() {
+    const moves = state.rows.filter(r => filled(r) && isMove(r) && r.transport);
+    if (!moves.length) return;
+    const allWalk = moves.every(r => r.transport === WALK);
+    if (allWalk) $('fareReason').value = NO_REASON;
+    else if ($('fareReason').value === NO_REASON && !isInner()) $('fareReason').value = FARE_REASONS[0];
   }
 
   // 자동 계산: 자차 운임(km×유류대) · 일비(날짜별 1회, 전체 km 기준) · 식비(끼니×단가)
@@ -1394,6 +1406,7 @@
 
   // ── 제출 ────────────────────────────────────────
   function validate() {
+    syncWalkReason();
     const t = state.trip;
     const rows = state.rows.filter(filled);
     if (!rows.length) return '청구 내역을 1줄 이상 입력하세요.';
