@@ -1060,10 +1060,12 @@
     return errors;
   }
 
-  // 자동 계산: 장소 칸을 입력하고 나갈 때, 출장을 열 때 (화면을 막지 않음)
-  function autoCalc(indices, keepKm) {
+  // 자동 계산: 장소 칸을 입력하고 나갈 때 — 끝날 때까지 대기 화면
+  async function autoCalc(indices, keepKm) {
     const targets = indices.map(i => ({ r: state.rows[i], i })).filter(x => x.r && canCalc(x.r) && !x.r.calculating);
-    if (targets.length) computeRoutes(targets, keepKm);
+    if (!targets.length) return;
+    loading(true, CALC_WAIT_MSG);
+    try { await computeRoutes(targets, keepKm); } finally { loading(false); }
   }
 
   // [거리 다시 계산] 버튼: 이동이 있는 모든 줄
