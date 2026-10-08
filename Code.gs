@@ -52,6 +52,7 @@ const CONFIG = {
   CLOSED_STATUS: '마감',
   TRANSPORTS:   ['자차', '동승', 'KTX', '버스', '도보'],
   CAR:          '자차',                 // 유류비 자동 계산 대상
+  RIDE:         '동승',                 // 운임 0원 (일비·식비 등은 동일)
   CATEGORIES:   ['근무지내', '근무지외', '국외', '기타'],
   MAX_ROWS:     31,
   MAX_WAYPOINTS: 5,                     // 카카오 길찾기 경유지 최대 5개
@@ -775,7 +776,7 @@ function validateRows_(input, trip, opts) {
     const meals = opts.inner ? 0 : Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(r.meals) || 0)));
     return {
       date: date, origin: origin, waypoint: waypoint, destination: destination, transport: transport, km: km,
-      fare: transport === CONFIG.CAR ? Math.round(km * trip.유류대) : toWon_(r.fare),
+      fare: transport === CONFIG.CAR ? Math.round(km * trip.유류대) : transport === CONFIG.RIDE ? 0 : toWon_(r.fare),
       meals: meals, meal: meals * CONFIG.MEAL_PRICE,
       lodging: toWon_(r.lodging), etc: toWon_(r.etc), daily: 0,
       dailyManual: String(r.daily == null ? '' : r.daily).trim() === '' ? null : toWon_(r.daily), // 직접 입력한 일비

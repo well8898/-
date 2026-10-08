@@ -41,7 +41,34 @@
     .claim-table .form-control.c-home { background: #fde4e4; }
     .claim-table .form-control.c-trip { background: #e3edfd; }
     .claim-table .form-control.c-same { background: #eceef1; }
-    .scroll-hint { font-size: 12px; color: #888; }
+    /* 휴대폰: 청구 내역 표를 줄마다 카드로 (칸 이름은 data-label) */
+    @media (max-width: 767.98px) {
+      .table-wrap { border: 0; overflow: visible; }
+      .claim-table { min-width: 0; }
+      .claim-table thead { display: none; }
+      .claim-table, .claim-table tbody, .claim-table tfoot, .claim-table tr, .claim-table td { display: block; width: 100%; }
+      .claim-table tbody tr { border: 1px solid #dee2e6; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: #fff; }
+      .claim-table td { border: 0 !important; display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 3px 0; }
+      .claim-table td::before { content: attr(data-label); font-size: 12px; color: #555; font-weight: 600; }
+      .claim-table td > * { grid-column: 2; }
+      .claim-table .cell-note { text-align: left; }
+      .claim-table td.row-del { display: block; text-align: right; }
+      .claim-table td.row-del::before { content: none; }
+      .claim-table tfoot tr { border: 1px solid #dee2e6; border-radius: 10px; padding: 8px 12px; background: #f6f8fa; }
+      .claim-table tfoot td { padding: 2px 0; background: transparent; }
+      .claim-table tfoot td.sum-title { display: block; text-align: left; }
+      .claim-table tfoot td.sum-title::before, .claim-table tfoot td:empty { display: none; }
+    }
+    /* 제출 전 확인 창 */
+    .review-modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .review-modal.d-none { display: none !important; }
+    .review-box { width: 100%; max-width: 860px; max-height: 92vh; overflow: auto; margin: 0; }
+    .review-table { font-size: 13px; margin: 0; }
+    .review-table th { background: #f6f8fa; white-space: nowrap; text-align: center; font-weight: 600; }
+    .review-table td { white-space: nowrap; }
+    .review-table td.num, .review-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .review-total { display: flex; justify-content: space-between; align-items: center; background: #0d6efd; color: #fff; border-radius: 10px; padding: 10px 14px; font-weight: 700; }
+    .review-total .amount { font-size: 20px; }
 
     .map-card { border: 1px solid #e3e6ea; border-radius: 10px; padding: 10px; background: #fff; margin-bottom: 10px; }
     .map-card .cap { font-size: 13px; margin-bottom: 6px; }
@@ -155,15 +182,14 @@
         <div class="card"><div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
             <div class="card-title mb-0">2. 청구 내역</div>
-            <button type="button" class="btn btn-primary btn-sm" onclick="calcAll()">거리 계산</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="calcAll()">거리 다시 계산</button>
           </div>
           <div class="form-text">
             <p class="mb-1">여비규정 별표 1의 철도운임을 원칙으로 하며, 철도를 이용할 수 없는 경우에는 버스운임으로 한다.
             다만, 공무의 형편상 부득이한 사유로 자가용 승용차를 이용하는 경우에는 실비로 지급할 수 있다.</p>
-            <p class="mb-0">[거리 계산]을 누르면 출발지에서 도착지 거리 자동 계산됩니다.
+            <p class="mb-0">출발지와 도착지를 입력하면 거리가 자동 계산됩니다.
             (여비규정에 따라 출발지는 근무지를 기준으로 통상의 경로 및 방법에 의하여 계산한다.)</p>
           </div>
-          <div class="scroll-hint d-md-none mb-1">← 표를 좌우로 밀어서 입력하세요 →</div>
           <div class="table-wrap">
             <table class="table table-bordered claim-table">
               <thead>
@@ -185,13 +211,13 @@
               <tbody id="rowBody"></tbody>
               <tfoot>
                 <tr>
-                  <td colspan="5" class="text-center">합계</td>
-                  <td id="sumKm"></td>
-                  <td id="sumFare"></td>
-                  <td id="sumEtc"></td>
-                  <td id="sumDaily"></td>
-                  <td id="sumMeal"></td>
-                  <td id="sumLodging"></td>
+                  <td colspan="5" class="text-center sum-title">합계</td>
+                  <td id="sumKm" data-label="이동거리"></td>
+                  <td id="sumFare" data-label="운임"></td>
+                  <td id="sumEtc" data-label="기타"></td>
+                  <td id="sumDaily" data-label="일비"></td>
+                  <td id="sumMeal" data-label="식비"></td>
+                  <td id="sumLodging" data-label="숙박비"></td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -209,7 +235,7 @@
         <div class="card" id="mapCard"><div class="card-body">
           <div class="card-title">3. 경로 증빙 <span class="text-secondary fw-normal small">(PDF 증빙에 들어가요)</span></div>
           <div id="mapList"></div>
-          <div id="mapEmpty" class="small text-secondary mb-2">[거리 계산]을 누르면 경로 지도가 여기에 나와요.</div>
+          <div id="mapEmpty" class="small text-secondary mb-2">출발지와 도착지를 입력하면 경로 지도가 여기에 자동으로 나와요.</div>
           <div class="border-top pt-3 mt-2">
             <div class="small fw-bold mb-2">별도 경로 증빙 사진 <span class="text-secondary fw-normal">(자동 거리계산과 다를 시 길찾기 캡처 증빙)</span></div>
             <input type="file" id="routeInput" class="d-none" accept="image/*,application/pdf" multiple onchange="addFiles(this, 'route')">
@@ -291,6 +317,21 @@
     </section>
   </div>
 
+  <!-- 제출 전 확인 창 -->
+  <div id="reviewModal" class="review-modal d-none" onclick="if (event.target === this) closeReview()">
+    <div class="card review-box"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="card-title mb-0">제출 전 확인</div>
+        <button type="button" class="btn-close" onclick="closeReview()"></button>
+      </div>
+      <div id="reviewBody"></div>
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-outline-secondary flex-fill" onclick="closeReview()">수정하기</button>
+        <button type="button" class="btn btn-primary flex-fill" id="reviewSubmit" onclick="doSubmit()">이대로 제출</button>
+      </div>
+    </div></div>
+  </div>
+
   <div id="loading">
     <div class="spinner-border text-primary" role="status"></div>
     <div id="loadingMsg" class="small text-secondary">처리 중...</div>
@@ -309,6 +350,7 @@
   const NO_REASON = '해당없음';   // 근무지내 기본값
   const INNER = '근무지내';       // 식비 없음, 일비는 출장 시간(4시간 이상/미만) 기준
   const CAR = '자차';
+  const RIDE = '동승';   // 운임 0원, 나머지(일비·식비 등)는 동일
   const MAX_ROWS = 31;
   const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
   const MAX_PDF_PAGES = 10;                  // PDF 영수증 1개당 변환할 최대 페이지
@@ -476,6 +518,7 @@
       creds: null, user: null, trips: [], trip: null,
       rows: [], files: [], kept: [], routeFiles: [], routeKept: [], editing: false, signed: false,
     });
+    closeReview();
     $('claimForm').reset();
     $('rowBody').innerHTML = '';
     $('mapList').innerHTML = '';
@@ -555,6 +598,8 @@
     renderFiles();
     renderRows();
     showStep(3);
+    // 이동이 있는 줄은 바로 거리·경로 지도 계산 (불러온 제출 내역은 km 유지, 지도만)
+    autoCalc(state.rows.map((_, i) => i), !!claim);
   }
 
   function showNotice(text) {
@@ -686,32 +731,32 @@
 
     $('rowBody').innerHTML = state.rows.map((r, i) => `
       <tr data-i="${i}">
-        <td>${dateCell(r)}</td>
-        <td>${text('origin', r, 'list="branchList"')}<div class="cell-note addr" data-addr="origin"></div></td>
-        <td>${text('waypoint', r)}<div class="cell-note addr" data-addr="waypoint"></div></td>
-        <td>${text('destination', r, 'list="branchList"')}<div class="cell-note addr" data-addr="destination"></div></td>
-        <td><select class="form-select" data-k="transport">
+        <td data-label="${i + 1}. 일자">${dateCell(r)}</td>
+        <td data-label="출발지">${text('origin', r, 'list="branchList"')}<div class="cell-note addr" data-addr="origin"></div></td>
+        <td data-label="경과지">${text('waypoint', r)}<div class="cell-note addr" data-addr="waypoint"></div></td>
+        <td data-label="도착지">${text('destination', r, 'list="branchList"')}<div class="cell-note addr" data-addr="destination"></div></td>
+        <td data-label="교통편"><select class="form-select" data-k="transport">
           <option value="" ${r.transport ? '' : 'selected'}>-</option>
           ${state.transports.map(x => `<option ${x === r.transport ? 'selected' : ''}>${esc(x)}</option>`).join('')}
         </select></td>
-        <td>
+        <td data-label="km">
           <input type="number" class="form-control" data-k="km" min="0" step="0.1" inputmode="decimal" value="${esc(r.km)}">
           <div class="cell-note" data-note="km"></div>
         </td>
-        <td>
+        <td data-label="운임">
           ${money('fare', r)}
         </td>
-        <td>${money('etc', r)}</td>
-        <td>
+        <td data-label="기타">${money('etc', r)}</td>
+        <td data-label="일비">
           <input type="text" class="form-control text-end" data-k="daily" data-money inputmode="numeric" value="${esc(moneyText(r.daily))}">
           <div class="cell-note" data-note="daily"></div>
         </td>
-        <td>
+        <td data-label="식비">
           <select class="form-select" data-k="meals">${meals(r)}</select>
           <div class="cell-note" data-note="meal"></div>
         </td>
-        <td>${money('lodging', r)}</td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="줄 삭제" onclick="removeRow(${i})">삭제</button></td>
+        <td data-label="숙박비">${money('lodging', r)}</td>
+        <td class="text-center row-del"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="줄 삭제" onclick="removeRow(${i})">삭제</button></td>
       </tr>`).join('');
 
     renderMaps();
@@ -773,7 +818,12 @@
     if (!k || !tr) return;
     const r = state.rows[Number(tr.dataset.i)];
     // 장소 칸을 다 입력하고 나가면(change) 세부주소 조회
-    if (e.type === 'change' && PLACE_KEYS.indexOf(k) >= 0) { r[k] = e.target.value; renderAddresses(); fetchAddresses(); }
+    if (e.type === 'change' && PLACE_KEYS.indexOf(k) >= 0) {
+      r[k] = e.target.value;
+      renderAddresses();
+      fetchAddresses();
+      if (!r.map || r.mapKey !== routeKey(r)) { r.map = null; autoCalc([Number(tr.dataset.i)]); }
+    }
     if (e.target.hasAttribute('data-money')) {
       const digits = formatMoneyInput(e.target);
       if (r[k] === digits) return;
@@ -830,10 +880,11 @@
       kmEl.classList.toggle('auto', !move);
 
       const fareEl = tr.querySelector('[data-k="fare"]');
-      const isCar = r.transport === CAR;
-      fareEl.readOnly = isCar;
-      fareEl.classList.toggle('auto', isCar);
+      const isCar = r.transport === CAR, isRide = r.transport === RIDE;
+      fareEl.readOnly = isCar || isRide;
+      fareEl.classList.toggle('auto', isCar || isRide);
       if (isCar) { r.fare = String(Math.round(pos(r.km) * state.trip.유류대)); fareEl.value = moneyText(r.fare); }
+      if (isRide) { r.fare = ''; fareEl.value = ''; } // 동승은 운임 0원
 
       // 일비: 자동값은 흐린 글씨(placeholder)로 보여주고, 직접 입력하면 그 값 사용 (칸을 비우면 다시 자동)
       let auto = 0;
@@ -861,9 +912,11 @@
       tr.querySelector('[data-note="meal"]').textContent = meal ? comma(meal) + '원' : '';
 
       const note = tr.querySelector('[data-note="km"]');
-      note.textContent = r.stale ? '다시 계산' : (r.map ? '카카오 ' + r.map.km : '');
-      note.classList.toggle('warn', r.stale);
+      note.textContent = r.calculating ? '계산 중…' : r.calcError ? '계산 실패' : r.stale ? '다시 계산' : (r.map ? '카카오 ' + r.map.km : '');
+      note.title = r.calcError || '';
+      note.classList.toggle('warn', !r.calculating && (!!r.calcError || r.stale));
 
+      r.calc = { daily, meal };
       if (!counted) return;
       sums.fare += pos(r.fare);
       sums.daily += daily;
@@ -921,39 +974,66 @@
   }
 
   // ── 거리 일괄 계산 + 경로 지도 ──────────────────
-  async function calcAll() {
-    // 줄 추가 후 비워둔 줄(출발지만 있음)은 제외
-    const targets = state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r) && isMove(x.r));
-    if (!targets.length) return alertMsg('이동이 있는 줄이 없어요. (출발지와 도착지가 같고 경과지가 없는 줄은 계산하지 않아요)', 'info');
-    const empty = targets.filter(x => !x.r.origin.trim() || !x.r.destination.trim());
-    if (empty.length) return alertMsg(empty.map(x => `${x.i + 1}번째 줄: 출발지와 도착지를 입력하세요.`).join('\n'));
+  // ── 거리 계산 (교통편과 상관없이 이동이 있는 줄 → km·경로 지도) ──
+  function routeKey(r) { return [norm(r.origin), wpList(r.waypoint).map(norm).join(','), norm(r.destination)].join('|'); }
+  function canCalc(r) { return isMove(r) && !!r.origin.trim() && !!r.destination.trim(); }
 
-    loading(true, `거리 계산 중... (${targets.length}개 구간)`);
+  // targets: [{ r, i }] → 실패한 줄 메시지 목록. keepKm: 이미 km가 있으면 지도만 갱신 (불러온 제출 내역)
+  async function computeRoutes(targets, keepKm) {
+    targets.forEach(x => { x.key = routeKey(x.r); x.r.calculating = true; x.r.calcError = ''; });
+    recalc();
+    let res;
     try {
-      const res = await run('calculateDistances', targets.map(x => ({
+      res = await run('calculateDistances', targets.map(x => ({
         origin: x.r.origin.trim(), waypoint: x.r.waypoint.trim(), destination: x.r.destination.trim(),
       })));
-      if (!res.ok) return alertMsg(res.message);
-      const errors = [];
-      res.results.forEach((out, n) => {
-        const { r, i } = targets[n];
-        if (!out.ok) { errors.push(`${i + 1}번째 줄: ${out.message}`); return; }
-        r.km = String(out.km);
-        r.stale = false;
-        r.map = { km: out.km, places: out.places, path: out.path || [], image: out.mapImage };
-        // 거리 계산에서 찾은 주소도 세부주소로 사용 (places = [출발, 경유..., 도착])
-        [r.origin.trim()].concat(wpList(r.waypoint), [r.destination.trim()]).forEach((n, j) => {
-          const a = out.places[j] && out.places[j].address;
-          if (a && !state.addr[n]) state.addr[n] = a;
-        });
-        $('rowBody').querySelector(`tr[data-i="${i}"] [data-k="km"]`).value = r.km;
-      });
-      await renderMaps();
-      recalc();
-      renderAddresses();
-      alertMsg(errors.length ? errors.join('\n') : `${targets.length}개 구간 거리 계산 완료`, errors.length ? 'danger' : 'success');
     } catch (err) {
-      alertMsg('서버 오류: ' + err.message);
+      res = { ok: false, message: '서버 오류: ' + err.message };
+    }
+    const errors = [];
+    targets.forEach((x, n) => {
+      const { r, i } = x;
+      r.calculating = false;
+      if (routeKey(r) !== x.key) return; // 계산하는 사이 장소가 바뀜 → 그 변경에서 다시 계산
+      const out = res.ok ? res.results[n] : { ok: false, message: res.message };
+      if (!out || !out.ok) { r.calcError = out ? out.message : '알 수 없는 오류'; errors.push(`${i + 1}번째 줄: ${r.calcError}`); return; }
+      if (!(keepKm && pos(r.km) > 0)) r.km = String(out.km);
+      r.stale = false;
+      r.map = { km: out.km, places: out.places, path: out.path || [], image: out.mapImage };
+      r.mapKey = x.key;
+      // 거리 계산에서 찾은 주소도 세부주소로 사용 (places = [출발, 경유..., 도착])
+      [r.origin.trim()].concat(wpList(r.waypoint), [r.destination.trim()]).forEach((name, j) => {
+        const a = out.places[j] && out.places[j].address;
+        if (a && !state.addr[name]) state.addr[name] = a;
+      });
+    });
+    // 줄 삭제 등으로 표가 다시 그려졌을 수 있으니 km 칸은 state 기준으로 다시 채움
+    state.rows.forEach((r, i) => {
+      const el = $('rowBody').querySelector(`tr[data-i="${i}"] [data-k="km"]`);
+      if (el && document.activeElement !== el) el.value = r.km;
+    });
+    await renderMaps();
+    recalc();
+    renderAddresses();
+    return errors;
+  }
+
+  // 자동 계산: 장소 칸을 입력하고 나갈 때, 출장을 열 때 (화면을 막지 않음)
+  function autoCalc(indices, keepKm) {
+    const targets = indices.map(i => ({ r: state.rows[i], i })).filter(x => x.r && canCalc(x.r) && !x.r.calculating);
+    if (targets.length) computeRoutes(targets, keepKm);
+  }
+
+  // [거리 다시 계산] 버튼: 이동이 있는 모든 줄
+  async function calcAll() {
+    const targets = state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r) && isMove(x.r));
+    if (!targets.length) return alertMsg('이동이 있는 줄이 없어요. (출발지와 도착지가 같고 경과지가 없는 줄은 계산하지 않아요)', 'info');
+    const empty = targets.filter(x => !canCalc(x.r));
+    if (empty.length) return alertMsg(empty.map(x => `${x.i + 1}번째 줄: 출발지와 도착지를 입력하세요.`).join('\n'));
+    loading(true, `거리 계산 중... (${targets.length}개 구간)`);
+    try {
+      const errors = await computeRoutes(targets, false);
+      alertMsg(errors.length ? errors.join('\n') : `${targets.length}개 구간 거리 계산 완료`, errors.length ? 'danger' : 'success');
     } finally {
       loading(false);
     }
@@ -1271,7 +1351,7 @@
       if (!r.origin.trim() || !r.destination.trim()) return n + '출발지와 도착지를 모두 입력하세요.';
       if (wpList(r.waypoint).length > 5) return n + '경과지는 최대 5곳이에요.';
       if (isMove(r) && !r.transport) return n + '교통편을 선택하세요.';
-      if (isMove(r) && r.transport === CAR && pos(r.km) <= 0) return n + '자차는 이동거리가 필요해요. [거리 계산]을 눌러주세요.';
+      if (isMove(r) && r.transport === CAR && pos(r.km) <= 0) return n + '자차는 이동거리가 필요해요. 출발지·도착지를 확인하고 [거리 다시 계산]을 눌러주세요.';
     }
     if (state.rows.some(r => filled(r) && isMove(r) && r.transport === CAR) && !/^[1-5]\./.test($('fareReason').value))
       return '자차를 이용한 줄이 있으면 운임청구사유를 1~5번 중에서 선택하세요.';
@@ -1287,10 +1367,65 @@
     e.preventDefault();
     const err = validate();
     if (err) return alertMsg(err);
-    const stale = state.rows.filter(r => filled(r) && r.stale).length;
-    if (stale && !confirm(`경로를 바꾼 뒤 거리를 다시 계산하지 않은 줄이 ${stale}개 있어요.\n그대로 제출할까요?`)) return;
+    openReview();
+  }
+
+  // ── 제출 전 확인 창 ─────────────────────────────
+  function openReview() {
     const total = recalc();
-    if (!confirm(`총 ${won(total)}을 ${state.editing ? '수정 제출' : '청구'}합니다.\n제출하시겠어요?`)) return;
+    const rows = state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r));
+    const s = { fare: 0, daily: 0, meal: 0, lodging: 0, etc: 0, km: 0 };
+    rows.forEach(({ r }) => {
+      s.fare += pos(r.fare); s.daily += r.calc.daily; s.meal += r.calc.meal; s.lodging += pos(r.lodging); s.etc += pos(r.etc);
+      s.km += isMove(r) ? pos(r.km) : 0;
+    });
+
+    // 확인할 점 (제출은 막지 않음)
+    const warns = [];
+    const stale = rows.filter(x => x.r.stale || x.r.calculating).map(x => x.i + 1);
+    if (stale.length) warns.push(`${stale.join(', ')}번째 줄: 장소를 바꾼 뒤 거리 계산이 끝나지 않았어요. [거리 다시 계산]을 눌러 확인하세요.`);
+    const failed = rows.filter(x => x.r.calcError).map(x => x.i + 1);
+    if (failed.length) warns.push(`${failed.join(', ')}번째 줄: 거리 자동 계산에 실패했어요. km를 직접 확인하세요.`);
+    const needReceipt = rows.filter(({ r }) => (r.transport !== CAR && r.transport !== RIDE && pos(r.fare) > 0) || pos(r.etc) > 0);
+    if (needReceipt.length && !(state.files.length + state.kept.length)) {
+      warns.push(`운임·통행료를 청구한 줄(${needReceipt.map(x => x.i + 1).join(', ')}번째)이 있는데 운임 영수증이 첨부되지 않았어요.`);
+    }
+
+    const cat = $('category').value === '기타' ? `기타(${$('categoryEtc').value.trim()})`
+      : isInner() ? `${INNER} (${$('innerHours').value})` : $('category').value;
+    const route = r => [r.origin].concat(wpList(r.waypoint), [r.destination]).map(esc).join(' → ');
+    const n = v => v ? comma(v) : '';
+    $('reviewBody').innerHTML = `
+      ${warns.length ? `<div class="alert alert-warning small py-2"><b>확인해 주세요</b><ul class="mb-0 ps-3">${warns.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
+      <div class="small mb-2">
+        구분 <b>${esc(cat)}</b> · 운임청구사유 <b>${esc($('fareReason').value)}</b> ·
+        조합차량(법인차량) <b>${document.querySelector('input[name="unionCar"]:checked').value}</b>
+      </div>
+      <div class="table-responsive border rounded mb-2">
+        <table class="table table-sm review-table">
+          <thead><tr><th>일자</th><th>구간</th><th>교통편</th><th class="num">km</th><th class="num">운임</th><th class="num">일비</th><th class="num">식비</th><th class="num">숙박비</th><th class="num">기타</th><th class="num">계</th></tr></thead>
+          <tbody>${rows.map(({ r }) => `<tr>
+            <td>${esc(withDay(r.date))}</td><td>${route(r)}</td><td>${esc(r.transport || '-')}</td>
+            <td class="num">${isMove(r) && pos(r.km) ? r.km : ''}</td><td class="num">${n(pos(r.fare))}</td><td class="num">${n(r.calc.daily)}</td>
+            <td class="num">${n(r.calc.meal)}</td><td class="num">${n(pos(r.lodging))}</td><td class="num">${n(pos(r.etc))}</td>
+            <td class="num"><b>${comma(pos(r.fare) + r.calc.daily + r.calc.meal + pos(r.lodging) + pos(r.etc))}</b></td></tr>`).join('')}</tbody>
+          <tfoot><tr><th colspan="3">합계</th><th class="num">${Math.round(s.km * 10) / 10}</th><th class="num">${comma(s.fare)}</th><th class="num">${comma(s.daily)}</th>
+            <th class="num">${comma(s.meal)}</th><th class="num">${comma(s.lodging)}</th><th class="num">${comma(s.etc)}</th><th class="num">${comma(total)}</th></tr></tfoot>
+        </table>
+      </div>
+      <div class="review-total mb-2"><span>총 청구금액</span><span class="amount">${won(total)}</span></div>
+      <div class="small text-secondary">
+        입금 계좌 <b class="text-body">${esc($('bank').value.trim())} ${esc($('account').value.trim())} (${esc($('holder').value.trim())})</b><br>
+        운임 영수증 ${state.files.length + state.kept.length}장 · 별도 경로 증빙 사진 ${state.routeFiles.length + state.routeKept.length}장 · 경로 지도 ${rows.filter(x => isMove(x.r) && x.r.map).length}개
+      </div>`;
+    $('reviewSubmit').textContent = state.editing ? '이대로 수정 제출' : '이대로 제출';
+    $('reviewModal').classList.remove('d-none');
+  }
+
+  function closeReview() { $('reviewModal').classList.add('d-none'); }
+
+  async function doSubmit() {
+    closeReview();
 
     // 화면의 경로 지도를 캡처 (거리 계산을 안 한 줄은 서버가 예비 지도로 채움)
     loading(true, '경로 지도 캡처 중...');
