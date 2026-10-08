@@ -41,24 +41,7 @@
     .claim-table .form-control.c-home { background: #fde4e4; }
     .claim-table .form-control.c-trip { background: #e3edfd; }
     .claim-table .form-control.c-same { background: #eceef1; }
-    /* 휴대폰: 청구 내역 표를 줄마다 카드로 (칸 이름은 data-label) */
-    @media (max-width: 767.98px) {
-      .table-wrap { border: 0; overflow: visible; }
-      .claim-table { min-width: 0; }
-      .claim-table thead { display: none; }
-      .claim-table, .claim-table tbody, .claim-table tfoot, .claim-table tr, .claim-table td { display: block; width: 100%; }
-      .claim-table tbody tr { border: 1px solid #dee2e6; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: #fff; }
-      .claim-table td { border: 0 !important; display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; column-gap: 8px; padding: 3px 0; }
-      .claim-table td::before { content: attr(data-label); font-size: 12px; color: #555; font-weight: 600; }
-      .claim-table td > * { grid-column: 2; }
-      .claim-table .cell-note { text-align: left; }
-      .claim-table td.row-del { display: block; text-align: right; }
-      .claim-table td.row-del::before { content: none; }
-      .claim-table tfoot tr { border: 1px solid #dee2e6; border-radius: 10px; padding: 8px 12px; background: #f6f8fa; }
-      .claim-table tfoot td { padding: 2px 0; background: transparent; }
-      .claim-table tfoot td.sum-title { display: block; text-align: left; }
-      .claim-table tfoot td.sum-title::before, .claim-table tfoot td:empty { display: none; }
-    }
+    .scroll-hint { font-size: 12px; color: #888; }
     /* 제출 전 확인 창 */
     .review-modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .review-modal.d-none { display: none !important; }
@@ -190,6 +173,7 @@
             <p class="mb-0">출발지와 도착지를 입력하면 거리가 자동 계산됩니다.
             (여비규정에 따라 출발지는 근무지를 기준으로 통상의 경로 및 방법에 의하여 계산한다.)</p>
           </div>
+          <div class="scroll-hint d-md-none mb-1">← 표를 좌우로 밀어서 입력하세요 →</div>
           <div class="table-wrap">
             <table class="table table-bordered claim-table">
               <thead>
