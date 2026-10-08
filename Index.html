@@ -124,10 +124,16 @@
           <div class="row g-3">
             <div class="col-12 col-md-auto" style="min-width:120px">
               <label class="form-label" for="category">구분</label>
-              <select id="category" class="form-select" onchange="toggleCategoryEtc()">
+              <select id="category" class="form-select" onchange="onCategoryChange()">
                 <option>근무지내</option><option selected>근무지외</option><option>국외</option><option>기타</option>
               </select>
               <input id="categoryEtc" class="form-control mt-1 d-none" placeholder="기타 내용">
+            </div>
+            <div class="col-12 col-md-auto d-none" id="innerHoursBox" style="min-width:140px">
+              <label class="form-label" for="innerHours">출장 시간 <span class="text-secondary">(근무지내)</span></label>
+              <select id="innerHours" class="form-select" onchange="recalc()">
+                <option>4시간 이상</option><option>4시간 미만</option>
+              </select>
             </div>
             <div class="col-12 col-md">
               <label class="form-label" for="fareReason">운임청구사유 <span class="text-secondary">(대중교통 이용 → 교통편 KTX, 1~5번 → 자차로 바뀌어요)</span></label>
@@ -300,7 +306,10 @@
     '3. 공무목적상 부득이한 심야시간대 이용 또는 긴급한 사유가 있는 경우',
     '4. 자가용을 이용함으로써 운임이 적게 소요되는 경우',
     '5. 하중이 무거운 수하물을 운송해야 하는 경우',
+    '해당없음',
   ];
+  const NO_REASON = '해당없음';   // 근무지내 기본값
+  const INNER = '근무지내';       // 식비 없음, 일비는 출장 시간(4시간 이상/미만) 기준
   const CAR = '자차';
   const MAX_ROWS = 31;
   const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
@@ -317,7 +326,7 @@
     trips: [],
     trip: null,
     transports: ['자차', '동승', 'KTX', '버스', '도보'],
-    rules: { dailyBase: 25000, dailyLong: 30000, dailyLongKm: 300, unionCarDailyCut: 10000, mealPrice: 8400, mealDayMax: 25000, maxMeals: 3, maxFiles: 20 },
+    rules: { dailyBase: 25000, dailyLong: 30000, dailyLongKm: 300, unionCarDailyCut: 10000, innerDailyLong: 30000, innerDailyShort: 20000, mealPrice: 8400, mealDayMax: 25000, maxMeals: 3, maxFiles: 20 },
     kakaoJsKey: '',
     rows: [],           // { date, origin, waypoint, destination, transport, km, fare, meals, lodging, etc, map, stale }
     files: [],          // 새로 올린 영수증 이미지 { name, mimeType, data, size }
@@ -568,12 +577,15 @@
   }
 
   // 운임청구사유 → 기본 교통편 (대중교통 이용 = KTX, 1~5번 = 자차)
+  // (해당없음 = 교통편을 바꾸지 않음)
   function reasonTransport() {
-    return $('fareReason').value === FARE_REASONS[0] ? 'KTX' : CAR;
+    const v = $('fareReason').value;
+    return v === NO_REASON ? '' : v === FARE_REASONS[0] ? 'KTX' : CAR;
   }
 
   function onReasonChange() {
     const tr = reasonTransport();
+    if (!tr) return renderRows();
     state.rows.forEach(r => {
       if (!isMove(r)) return;
       if (r.transport === CAR && tr !== CAR) r.fare = ''; // 자동 계산된 유류비 제거
@@ -614,6 +626,7 @@
     if (!state.rows.length) state.rows = defaultRows(state.trip);
     $('category').value = c.category || '근무지외';
     $('categoryEtc').value = c.categoryEtc || '';
+    $('innerHours').value = c.innerHours || '4시간 이상';
     (c.unionCar === '유' ? $('ucYes') : $('ucNo')).checked = true;
     if (c.fareReason) {
       if (FARE_REASONS.indexOf(c.fareReason) < 0) $('fareReason').insertAdjacentHTML('beforeend', `<option>${esc(c.fareReason)}</option>`);
@@ -792,7 +805,10 @@
     const totalKm = state.rows.reduce((a, r) => a + (isMove(r) ? pos(r.km) : 0), 0);
     // 조합차량(법인차량) 이용 시 1일 일비에서 감액 (서버 validateRows_ 와 같은 기준)
     const unionCar = $('ucYes').checked;
-    const dailyFull = totalKm > R.dailyLongKm ? R.dailyLong : R.dailyBase;
+    const inner = isInner(), innerLong = $('innerHours').value === '4시간 이상';
+    // 근무지내는 출장 시간 기준, 그 외는 전체 이동거리 기준 (서버 validateRows_ 와 같은 기준)
+    const dailyFull = inner ? (innerLong ? R.innerDailyLong : R.innerDailyShort)
+      : totalKm > R.dailyLongKm ? R.dailyLong : R.dailyBase;
     const dailyRate = Math.max(0, dailyFull - (unionCar ? R.unionCarDailyCut : 0));
     const seen = {}, mealUsed = {};
     const sums = { fare: 0, daily: 0, lodging: 0, meal: 0, etc: 0 };
@@ -834,6 +850,10 @@
       dNote.classList.toggle('warn', manual && daily !== auto);
 
       // 식비: 1끼 단가 × 끼니, 같은 날짜 합계는 하루 상한까지만 (3끼 = 25,000원, 서버 validateRows_ 와 같은 기준)
+      // 근무지내는 식비 없음 (선택 칸 비활성화)
+      const mealsEl = tr.querySelector('[data-k="meals"]');
+      mealsEl.disabled = inner;
+      if (inner && r.meals !== '0') { r.meals = '0'; mealsEl.value = '0'; }
       let meal = Math.round(pos(r.meals)) * R.mealPrice;
       if (counted) {
         const used = mealUsed[r.date] || 0;
@@ -860,7 +880,10 @@
     $('sumLodging').textContent = comma(sums.lodging);
     $('sumMeal').textContent = comma(sums.meal);
     $('sumEtc').textContent = comma(sums.etc);
-    $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · 일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원${unionCar ? `, 조합·법인차량 −${comma(R.unionCarDailyCut)}원` : ''}) · 식비 1끼 ${comma(R.mealPrice)}원 (하루 최대 ${comma(R.mealDayMax)}원)`;
+    const carCut = unionCar ? `, 조합·법인차량 −${comma(R.unionCarDailyCut)}원` : '';
+    $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · ` + (inner
+      ? `근무지내 일비 ${comma(dailyRate)}원/일 (4시간 이상 ${comma(R.innerDailyLong)}원, 미만 ${comma(R.innerDailyShort)}원${carCut}) · 식비 없음`
+      : `일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원${carCut}) · 식비 1끼 ${comma(R.mealPrice)}원 (하루 최대 ${comma(R.mealDayMax)}원)`);
 
     const total = sums.fare + sums.daily + sums.lodging + sums.meal + sums.etc;
     $('totalAmount').textContent = won(total);
@@ -880,6 +903,23 @@
 
   function toggleCategoryEtc() {
     $('categoryEtc').classList.toggle('d-none', $('category').value !== '기타');
+    $('innerHoursBox').classList.toggle('d-none', !isInner());
+  }
+
+  function isInner() { return $('category').value === INNER; }
+
+  // 근무지내로 바꾸면 운임청구사유 '해당없음', 다른 구분으로 바꾸면 '대중교통 이용'으로 되돌림
+  function onCategoryChange() {
+    toggleCategoryEtc();
+    if (isInner()) {
+      $('fareReason').value = NO_REASON;
+      renderRows();
+    } else if ($('fareReason').value === NO_REASON) {
+      $('fareReason').value = FARE_REASONS[0];
+      onReasonChange();
+    } else {
+      renderRows();
+    }
   }
 
   // ── 거리 일괄 계산 + 경로 지도 ──────────────────
@@ -1270,6 +1310,7 @@
       tripId: state.trip.출장ID,
       category: $('category').value,
       categoryEtc: $('categoryEtc').value.trim(),
+      innerHours: isInner() ? $('innerHours').value : '',
       unionCar: document.querySelector('input[name="unionCar"]:checked').value,
       fareReason: $('fareReason').value,
       rows: state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r)).map(({ r, i }) => ({

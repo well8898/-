@@ -39,6 +39,10 @@ const CONFIG = {
   DAILY_BASE:   25000,                  // 일비 (1일)
   DAILY_LONG:   30000,                  // 전체 이동거리가 DAILY_LONG_KM 초과 시 일비
   DAILY_LONG_KM: 300,
+  INNER_CATEGORY:   '근무지내',           // 식비 없음, 일비는 출장 시간 기준
+  INNER_DAILY_LONG:  30000,             // 근무지내 4시간 이상 일비
+  INNER_DAILY_SHORT: 20000,             // 근무지내 4시간 미만 일비
+  INNER_HOURS: ['4시간 이상', '4시간 미만'],
   UNION_CAR_DAILY_CUT: 10000,           // 조합차량(법인차량) 이용 시 1일 일비 감액
   MEAL_PRICE:   8400,                   // 식비 1끼
   MEAL_DAY_MAX: 25000,                  // 식비 하루 상한 (3끼 = 25,000원)
@@ -96,6 +100,7 @@ function loginAndGetTrips(employeeId, name) {
       rules: {
         dailyBase: CONFIG.DAILY_BASE, dailyLong: CONFIG.DAILY_LONG, dailyLongKm: CONFIG.DAILY_LONG_KM,
         unionCarDailyCut: CONFIG.UNION_CAR_DAILY_CUT,
+        innerDailyLong: CONFIG.INNER_DAILY_LONG, innerDailyShort: CONFIG.INNER_DAILY_SHORT,
         mealPrice: CONFIG.MEAL_PRICE, mealDayMax: CONFIG.MEAL_DAY_MAX, maxMeals: CONFIG.MAX_MEALS, maxFiles: CONFIG.MAX_FILES,
       },
     };
@@ -252,7 +257,7 @@ function getMyClaim(employeeId, name, tripId) {
       ok: true,
       claim: {
         rows: detail.rows,
-        category: detail.category, categoryEtc: detail.categoryEtc,
+        category: detail.category, categoryEtc: detail.categoryEtc, innerHours: detail.innerHours,
         unionCar: detail.unionCar, fareReason: detail.fareReason,
         bank: detail.bank, account: detail.account, holder: detail.holder,
         receipts: (detail.receipts || []).map(r => ({ id: r.id, name: r.name })),
@@ -587,7 +592,12 @@ function saveClaimData(formData) {
     if (trip.청구상태 === '마감') throw new Error('마감된 청구는 수정할 수 없습니다.');
 
     const unionCar = f.unionCar === '유' ? '유' : '무';
-    const rows = validateRows_(f.rows, trip, unionCar === '유');
+    const category = CONFIG.CATEGORIES.indexOf(f.category) >= 0 ? f.category : '근무지외';
+    const inner = category === CONFIG.INNER_CATEGORY;
+    const innerHours = inner ? (CONFIG.INNER_HOURS.indexOf(f.innerHours) >= 0 ? f.innerHours : CONFIG.INNER_HOURS[0]) : '';
+    const rows = validateRows_(f.rows, trip, {
+      unionCar: unionCar === '유', inner: inner, innerLong: innerHours === CONFIG.INNER_HOURS[0],
+    });
     const sum = k => rows.reduce((a, r) => a + r[k], 0);
     const totals = {
       km: Math.round(sum('km') * 10) / 10,
@@ -596,7 +606,6 @@ function saveClaimData(formData) {
     totals.total = totals.fare + totals.daily + totals.lodging + totals.meal + totals.etc;
     if (totals.total <= 0) throw new Error('청구 금액이 0원입니다.');
 
-    const category = CONFIG.CATEGORIES.indexOf(f.category) >= 0 ? f.category : '근무지외';
     const categoryEtc = category === '기타' ? String(f.categoryEtc || '').trim() : '';
     if (category === '기타' && !categoryEtc) throw new Error('구분이 기타이면 내용을 입력하세요.');
     const fareReason = String(f.fareReason || '').trim();
@@ -629,7 +638,7 @@ function saveClaimData(formData) {
     // 서식 PDF (이것 하나만 드라이브에 남김)
     const pdfHtml = buildClaimHtml_({
       user: user, trip: trip, rows: rows, totals: totals,
-      category: category, categoryEtc: categoryEtc, unionCar: unionCar, fareReason: fareReason,
+      category: category, categoryEtc: categoryEtc, innerHours: innerHours, unionCar: unionCar, fareReason: fareReason,
       submitDate: Utilities.formatDate(new Date(), getTz_(), 'yyyy년 MM월 dd일'),
       signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages, addresses: addresses,
     });
@@ -648,7 +657,7 @@ function saveClaimData(formData) {
         meals: r.meals, lodging: r.lodging, etc: r.etc,
         daily: r.dailyManual == null ? '' : r.dailyManual, // '' = 자동
       })),
-      category: category, categoryEtc: categoryEtc, unionCar: unionCar, fareReason: fareReason,
+      category: category, categoryEtc: categoryEtc, innerHours: innerHours, unionCar: unionCar, fareReason: fareReason,
       bank: bank, account: account, holder: holder,
       receipts: receipts,
       routeImages: routeImages,
@@ -725,7 +734,9 @@ function saveClaimData(formData) {
 }
 
 // 입력 줄 검증 + 금액 계산 (유류비·일비·식비는 서버에서 다시 계산)
-function validateRows_(input, trip, unionCar) {
+// opts: { unionCar: 조합차량(법인차량) 이용, inner: 근무지내, innerLong: 근무지내 4시간 이상 }
+function validateRows_(input, trip, opts) {
+  opts = opts || {};
   // 출발지만 채워진 줄(화면에서 줄 추가 후 비워둔 줄)은 빈 줄로 보고 제외 (식비만 고른 줄은 판단에서 제외)
   const list = (Array.isArray(input) ? input : []).filter(r => r && (
     String(r.destination || '').trim() || String(r.waypoint || '').trim() || Number(r.km) ||
@@ -757,7 +768,8 @@ function validateRows_(input, trip, unionCar) {
     const km = move ? Math.max(0, Math.round((Number(r.km) || 0) * 10) / 10) : 0;
     if (transport === CONFIG.CAR && move && km <= 0) throw new Error(n + '자차는 이동거리를 계산해야 합니다.');
 
-    const meals = Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(r.meals) || 0)));
+    // 근무지내는 식비 없음
+    const meals = opts.inner ? 0 : Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(r.meals) || 0)));
     return {
       date: date, origin: origin, waypoint: waypoint, destination: destination, transport: transport, km: km,
       fare: transport === CONFIG.CAR ? Math.round(km * trip.유류대) : toWon_(r.fare),
@@ -771,8 +783,10 @@ function validateRows_(input, trip, unionCar) {
   // 일비: 날짜별 1회, 전체 이동거리 기준으로 단가 결정
   const totalKm = rows.reduce((a, r) => a + r.km, 0);
   // 조합차량(법인차량)을 이용했으면 1일 일비에서 감액
-  const full = totalKm > CONFIG.DAILY_LONG_KM ? CONFIG.DAILY_LONG : CONFIG.DAILY_BASE;
-  const rate = Math.max(0, full - (unionCar ? CONFIG.UNION_CAR_DAILY_CUT : 0));
+  // 근무지내는 출장 시간 기준(4시간 이상/미만), 그 외는 전체 이동거리 기준
+  const full = opts.inner ? (opts.innerLong ? CONFIG.INNER_DAILY_LONG : CONFIG.INNER_DAILY_SHORT)
+    : totalKm > CONFIG.DAILY_LONG_KM ? CONFIG.DAILY_LONG : CONFIG.DAILY_BASE;
+  const rate = Math.max(0, full - (opts.unionCar ? CONFIG.UNION_CAR_DAILY_CUT : 0));
   const seen = {};
   rows.forEach(r => {
     if (seen[r.date]) return;
@@ -863,7 +877,7 @@ function buildClaimHtml_(d) {
     const mark = d.category === c ? 'O' : '&nbsp;&nbsp;';
     return c === '기타'
       ? '기타(' + (d.category === '기타' ? e(d.categoryEtc) : '직접 작성 요망') + ')'
-      : c + '(' + mark + ')';
+      : c + '(' + mark + (d.category === c && d.innerHours ? ', ' + e(d.innerHours) : '') + ')';
   });
 
   const bodyRows = d.rows.map(r => '<tr>'
