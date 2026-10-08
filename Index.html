@@ -317,7 +317,7 @@
     trips: [],
     trip: null,
     transports: ['자차', '동승', 'KTX', '버스', '도보'],
-    rules: { dailyBase: 25000, dailyLong: 30000, dailyLongKm: 300, unionCarDailyCut: 10000, mealPrice: 8000, maxMeals: 3, maxFiles: 20 },
+    rules: { dailyBase: 25000, dailyLong: 30000, dailyLongKm: 300, unionCarDailyCut: 10000, mealPrice: 8400, mealDayMax: 25000, maxMeals: 3, maxFiles: 20 },
     kakaoJsKey: '',
     rows: [],           // { date, origin, waypoint, destination, transport, km, fare, meals, lodging, etc, map, stale }
     files: [],          // 새로 올린 영수증 이미지 { name, mimeType, data, size }
@@ -794,7 +794,7 @@
     const unionCar = $('ucYes').checked;
     const dailyFull = totalKm > R.dailyLongKm ? R.dailyLong : R.dailyBase;
     const dailyRate = Math.max(0, dailyFull - (unionCar ? R.unionCarDailyCut : 0));
-    const seen = {};
+    const seen = {}, mealUsed = {};
     const sums = { fare: 0, daily: 0, lodging: 0, meal: 0, etc: 0 };
     const used = state.rows.map((r, i) => (filled(r) ? i : -1)).filter(i => i >= 0);
     const firstIdx = used[0], lastIdx = used[used.length - 1];
@@ -833,7 +833,13 @@
       dNote.textContent = manual ? (daily !== auto ? `직접 입력 (자동 ${comma(auto)})` : '직접 입력') : (auto ? '자동' : '');
       dNote.classList.toggle('warn', manual && daily !== auto);
 
-      const meal = Math.round(pos(r.meals)) * R.mealPrice;
+      // 식비: 1끼 단가 × 끼니, 같은 날짜 합계는 하루 상한까지만 (3끼 = 25,000원, 서버 validateRows_ 와 같은 기준)
+      let meal = Math.round(pos(r.meals)) * R.mealPrice;
+      if (counted) {
+        const used = mealUsed[r.date] || 0;
+        meal = Math.max(0, Math.min(meal, R.mealDayMax - used));
+        mealUsed[r.date] = used + meal;
+      }
       tr.querySelector('[data-note="meal"]').textContent = meal ? comma(meal) + '원' : '';
 
       const note = tr.querySelector('[data-note="km"]');
@@ -854,7 +860,7 @@
     $('sumLodging').textContent = comma(sums.lodging);
     $('sumMeal').textContent = comma(sums.meal);
     $('sumEtc').textContent = comma(sums.etc);
-    $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · 일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원${unionCar ? `, 조합·법인차량 −${comma(R.unionCarDailyCut)}원` : ''}) · 식비 1끼 ${comma(R.mealPrice)}원`;
+    $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · 일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원${unionCar ? `, 조합·법인차량 −${comma(R.unionCarDailyCut)}원` : ''}) · 식비 1끼 ${comma(R.mealPrice)}원 (하루 최대 ${comma(R.mealDayMax)}원)`;
 
     const total = sums.fare + sums.daily + sums.lodging + sums.meal + sums.etc;
     $('totalAmount').textContent = won(total);

@@ -40,7 +40,8 @@ const CONFIG = {
   DAILY_LONG:   30000,                  // 전체 이동거리가 DAILY_LONG_KM 초과 시 일비
   DAILY_LONG_KM: 300,
   UNION_CAR_DAILY_CUT: 10000,           // 조합차량(법인차량) 이용 시 1일 일비 감액
-  MEAL_PRICE:   8000,                   // 식비 1끼
+  MEAL_PRICE:   8400,                   // 식비 1끼
+  MEAL_DAY_MAX: 25000,                  // 식비 하루 상한 (3끼 = 25,000원)
   MAX_MEALS:    3,
 
   OPEN_STATUS:  '진행중',
@@ -95,7 +96,7 @@ function loginAndGetTrips(employeeId, name) {
       rules: {
         dailyBase: CONFIG.DAILY_BASE, dailyLong: CONFIG.DAILY_LONG, dailyLongKm: CONFIG.DAILY_LONG_KM,
         unionCarDailyCut: CONFIG.UNION_CAR_DAILY_CUT,
-        mealPrice: CONFIG.MEAL_PRICE, maxMeals: CONFIG.MAX_MEALS, maxFiles: CONFIG.MAX_FILES,
+        mealPrice: CONFIG.MEAL_PRICE, mealDayMax: CONFIG.MEAL_DAY_MAX, maxMeals: CONFIG.MAX_MEALS, maxFiles: CONFIG.MAX_FILES,
       },
     };
   } catch (e) {
@@ -780,6 +781,13 @@ function validateRows_(input, trip, unionCar) {
   });
   // 직접 입력한 일비가 있으면 자동값 대신 사용
   rows.forEach(r => { if (r.dailyManual != null) r.daily = r.dailyManual; });
+  // 식비: 1끼 단가 × 끼니, 같은 날짜 합계는 하루 상한까지만 (3끼 = 25,000원)
+  const mealUsed = {};
+  rows.forEach(r => {
+    const used = mealUsed[r.date] || 0;
+    r.meal = Math.max(0, Math.min(r.meal, CONFIG.MEAL_DAY_MAX - used));
+    mealUsed[r.date] = used + r.meal;
+  });
   return rows;
 }
 
