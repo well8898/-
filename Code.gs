@@ -369,20 +369,45 @@ function computeRoute_(origin, waypoints, destination, key) {
   };
 }
 
-// 장소 이름들 → { 이름: 세부주소 }  (화면 표·PDF 표에 주소 표시용, 못 찾으면 '')
+// 장소 이름들 → { addresses: { 이름: 세부주소 }, errors: { 이름: 못 찾은 이유 } }  (화면 표·PDF 표 주소 표시용)
+// 지사별 주소 탭에 있는 이름은 시트 주소를 그대로 씀 (카카오 호출 없음)
 function lookupAddresses(names) {
   try {
-    const key = getKakaoKey_();
-    const out = {};
+    const branches = branchAddressMap_();
+    const out = {}, errors = {};
+    let key = null;
     (Array.isArray(names) ? names : []).slice(0, 100).forEach(n => {
       const q = String(n || '').trim();
       if (!q || q in out) return;
-      try { out[q] = resolvePlace_(q, key).address || ''; } catch (e) { out[q] = ''; }
+      const sheetAddr = branches[q.replace(/\s/g, '')];
+      if (sheetAddr) { out[q] = sheetAddr; return; }
+      try {
+        key = key || getKakaoKey_();
+        out[q] = resolvePlace_(q, key).address || '';
+        if (!out[q]) errors[q] = '검색 결과에 주소가 없습니다.';
+      } catch (e) {
+        out[q] = '';
+        errors[q] = e.message;
+      }
     });
-    return { ok: true, addresses: out };
+    return { ok: true, addresses: out, errors: errors };
   } catch (e) {
     return { ok: false, message: e.message };
   }
+}
+
+// 지사별 주소 탭 → { 띄어쓰기 뺀 지사 이름: 주소 }  (주소가 빈 지사는 제외)
+function branchAddressMap_() {
+  const map = {};
+  if (!getSS_().getSheetByName(CONFIG.SHEET_BRANCH)) return map;
+  const t = readTable_(CONFIG.SHEET_BRANCH);
+  const nameCol = t.idx('지사'), addrCol = t.idx('주소');
+  if (nameCol < 0 || addrCol < 0) return map;
+  t.rows.forEach(r => {
+    const name = String(r[nameCol]).replace(/\s/g, ''), addr = String(r[addrCol]).trim();
+    if (name && addr) map[name] = addr;
+  });
+  return map;
 }
 
 // 청구 줄의 출발지·경과지·도착지 → { 이름: 세부주소 }
@@ -1118,6 +1143,24 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   Logger.log(props.getProperty('KAKAO_REST_API_KEY') ? '✅ KAKAO_REST_API_KEY 등록됨' : '❌ KAKAO_REST_API_KEY 미등록 (스크립트 속성에 추가하세요)');
   Logger.log(props.getProperty('KAKAO_JS_KEY') ? '✅ KAKAO_JS_KEY 등록됨' : '⚠ KAKAO_JS_KEY 미등록 — 화면 지도가 카카오 대신 기본 지도로 나옵니다');
+}
+
+// 세부주소 확인: 지사별 주소 탭 상태 + 각 지사·예시 장소의 주소 조회 결과를 로그에 출력
+function testAddresses() {
+  const sheet = getSS_().getSheetByName(CONFIG.SHEET_BRANCH);
+  if (!sheet) { Logger.log("❌ '" + CONFIG.SHEET_BRANCH + "' 탭이 없습니다. 탭 이름을 정확히 맞추세요."); return; }
+  const t = readTable_(CONFIG.SHEET_BRANCH);
+  Logger.log('지사별 주소 탭 머리글: ' + t.headers.join(' | ') + (t.idx('지사') < 0 || t.idx('주소') < 0 ? '  ❌ 지사·주소 열 이름 확인' : '  ✅'));
+  const names = getBranchNames_().concat(['세종특별자치시청', '대전역']);
+  const res = lookupAddresses(names);
+  if (!res.ok) { Logger.log('❌ ' + res.message); return; }
+  names.forEach(n => Logger.log((res.addresses[n] ? '✅ ' : '❌ ') + n + ' → ' + (res.addresses[n] || res.errors[n])));
+  // 대상자 명단 소속 중 지사별 주소 탭에 없는 이름 (이 이름들은 카카오 검색으로만 찾음)
+  const branches = branchAddressMap_();
+  const m = readTable_(CONFIG.SHEET_MEMBER), col = m.idx('소속');
+  const missing = {};
+  if (col >= 0) m.rows.forEach(r => { const v = String(r[col]).trim(); if (v && !branches[v.replace(/\s/g, '')]) missing[v] = true; });
+  Logger.log(Object.keys(missing).length ? '⚠ 지사별 주소 탭에 없는 소속: ' + Object.keys(missing).join(', ') : '✅ 모든 소속이 지사별 주소 탭에 있어요');
 }
 
 // 거리 계산 + 예비 지도 생성 확인 → 드라이브 첨부 폴더에 test_route.png 저장
