@@ -609,6 +609,9 @@ function saveClaimData(formData) {
     const categoryEtc = category === '기타' ? String(f.categoryEtc || '').trim() : '';
     if (category === '기타' && !categoryEtc) throw new Error('구분이 기타이면 내용을 입력하세요.');
     const fareReason = String(f.fareReason || '').trim();
+    if (rows.some(r => r.transport === CONFIG.CAR && r.km > 0) && !/^[1-5]\./.test(fareReason)) {
+      throw new Error('자차를 이용한 줄이 있으면 운임청구사유를 1~5번 중에서 선택하세요.');
+    }
 
     const bank = String(f.bank || '').trim();
     const account = String(f.account || '').trim();

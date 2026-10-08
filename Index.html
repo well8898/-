@@ -64,7 +64,7 @@
 <body>
   <nav class="navbar bg-white border-bottom">
     <div class="container-fluid app py-0">
-      <span class="navbar-brand fw-bold mb-0">🧾 승강기안전공단 노조 여비 청구</span>
+      <span class="navbar-brand fw-bold mb-0">승강기안전공단 노조 여비 청구</span>
       <div id="userBox" class="d-none small">
         <span id="userLabel" class="me-2 text-secondary"></span>
         <button class="btn btn-sm btn-outline-secondary" onclick="logout()">로그아웃</button>
@@ -136,7 +136,7 @@
               </select>
             </div>
             <div class="col-12 col-md">
-              <label class="form-label" for="fareReason">운임청구사유 <span class="text-secondary">(대중교통 이용 → 교통편 KTX, 1~5번 → 자차로 바뀌어요)</span></label>
+              <label class="form-label" for="fareReason">운임청구사유 <span class="text-secondary">(자차 이용 시 1~5번 중 선택 필수)</span></label>
               <select id="fareReason" class="form-select" onchange="onReasonChange()"></select>
             </div>
             <div class="col-12 col-md-2">
@@ -283,7 +283,6 @@
     <!-- ── STEP 4: 완료 ─────────────────────────────── -->
     <section id="step4" class="step narrow">
       <div class="card"><div class="card-body p-4 text-center">
-        <div style="font-size:48px">✅</div>
         <h5 class="fw-bold mt-2" id="doneTitle">제출이 완료되었습니다</h5>
         <p class="text-secondary mb-1" id="doneMsg"></p>
         <p class="text-secondary small mb-4">마감 전까지는 같은 출장을 다시 눌러 수정할 수 있어요.</p>
@@ -502,7 +501,7 @@
           <div class="fw-bold">${esc(t.출장목적)}</div>
           ${badge(t.청구상태)}
         </div>
-        <div class="small text-secondary mt-1">📅 ${esc(period(t))}</div>
+        <div class="small text-secondary mt-1">출장기간 ${esc(period(t))}</div>
         <div class="small text-secondary">출장지 ${esc(t.기본도착지 || '-')}</div>
       </button>`).join('');
   }
@@ -541,7 +540,7 @@
     state.routeKept = [];
 
     $('tripTitle').textContent = t.출장목적;
-    $('tripMeta').innerHTML = `출장ID ${esc(t.출장ID)} · 📅 ${esc(period(t))} · 출장지 ${esc(t.기본도착지)}<br>${esc(state.user.성명)} · ${esc(state.user.소속)}`;
+    $('tripMeta').innerHTML = `출장ID ${esc(t.출장ID)} · 출장기간 ${esc(period(t))} · 출장지 ${esc(t.기본도착지)}<br>${esc(state.user.성명)} · ${esc(state.user.소속)}`;
     $('holder').value = state.user.성명;
     $('submitBtn').textContent = state.editing ? '수정 제출하기' : '제출하기';
 
@@ -712,7 +711,7 @@
           <div class="cell-note" data-note="meal"></div>
         </td>
         <td>${money('lodging', r)}</td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="줄 삭제" onclick="removeRow(${i})">✕</button></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="줄 삭제" onclick="removeRow(${i})">삭제</button></td>
       </tr>`).join('');
 
     renderMaps();
@@ -969,7 +968,7 @@
 
     // 카카오 지도를 못 쓰면 이유와 등록할 도메인을 보여줌 (관리자 설정용)
     const warn = kakaoLib ? '' : `<div class="alert alert-warning small py-2">
-      ⚠ ${esc(kakaoError)}. 지금은 기본 지도로 표시해요.<br>
+      ${esc(kakaoError)}. 지금은 기본 지도로 표시해요.<br>
       카카오 디벨로퍼스 → 내 애플리케이션 → 플랫폼 → <b>Web 사이트 도메인</b>에 아래 주소를 등록하세요:<br>
       <code>${esc(location.origin)}</code></div>`;
 
@@ -1000,7 +999,7 @@
   }
 
   function mapInfoHtml(r) {
-    return `🚗 이동거리 <span class="km">${r.map.km}km</span><br>${esc(mapTitle(r))}`;
+    return `이동거리 <span class="km">${r.map.km}km</span><br>${esc(mapTitle(r))}`;
   }
 
   function drawKakaoMap(k, el, m) {
@@ -1074,7 +1073,7 @@
     while (ctx.measureText(line2).width > width * 0.8 && line2.length > 4) line2 = line2.slice(0, -2);
     if (line2 !== title) line2 += '…';
     ctx.font = `bold 20px ${font}`;
-    const line1 = `🚗 이동거리 ${r.map.km}km`;
+    const line1 = `이동거리 ${r.map.km}km`;
     const w = Math.max(ctx.measureText(line1).width, (ctx.font = `13px ${font}`, ctx.measureText(line2).width)) + 24;
     const x = 10, y = 10, h = 58;
     ctx.save();
@@ -1193,10 +1192,10 @@
     Object.keys(ATTACH).forEach(bucket => {
       const b = ATTACH[bucket];
       const kept = state[b.kept].map((f, i) => `
-        <li><span>📄 ${esc(f.name)} <span class="badge text-bg-light">이전 제출</span></span>
+        <li><span>${esc(f.name)} <span class="badge text-bg-light">이전 제출</span></span>
         <button type="button" class="btn btn-sm btn-link text-danger" onclick="removeKept('${bucket}', ${i})">삭제</button></li>`);
       const added = state[b.files].map((f, i) => `
-        <li><span>📄 ${esc(f.name)} <span class="text-secondary">(${Math.ceil(f.size / 1024)}KB)</span></span>
+        <li><span>${esc(f.name)} <span class="text-secondary">(${Math.ceil(f.size / 1024)}KB)</span></span>
         <button type="button" class="btn btn-sm btn-link text-danger" onclick="removeFile('${bucket}', ${i})">삭제</button></li>`);
       $(b.list).innerHTML = kept.concat(added).join('');
       const n = state[b.kept].length + state[b.files].length;
@@ -1274,6 +1273,8 @@
       if (isMove(r) && !r.transport) return n + '교통편을 선택하세요.';
       if (isMove(r) && r.transport === CAR && pos(r.km) <= 0) return n + '자차는 이동거리가 필요해요. [거리 계산]을 눌러주세요.';
     }
+    if (state.rows.some(r => filled(r) && isMove(r) && r.transport === CAR) && !/^[1-5]\./.test($('fareReason').value))
+      return '자차를 이용한 줄이 있으면 운임청구사유를 1~5번 중에서 선택하세요.';
     if (recalc() <= 0) return '청구 금액이 0원이에요.';
     if ($('category').value === '기타' && !$('categoryEtc').value.trim()) return '구분이 기타이면 내용을 입력하세요.';
     if (!$('bank').value.trim() || !$('account').value.trim() || !$('holder').value.trim()) return '입금 계좌 정보를 모두 입력하세요.';
