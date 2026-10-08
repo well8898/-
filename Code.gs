@@ -1,6 +1,6 @@
 /**
  * ════════════════════════════════════════════════════
- *  노조 여비 청구 미니 ERP — 서버 스크립트 (Code.gs)
+ *  한국승강기안전공단노동조합 여비 청구 미니 ERP — 서버 스크립트 (Code.gs)
  * ════════════════════════════════════════════════════
  *
  * ▶ 시트 구성 (헤더 이름으로 열을 찾으므로 열 순서는 상관없음)
@@ -80,7 +80,7 @@ const CLAIM_TEXT_COLS = ['출장ID', '사번', '계좌번호'];
 // ════════════════════════════════════════════════════
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('노조 여비 청구')
+    .setTitle('한국승강기안전공단노동조합 여비 청구')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
