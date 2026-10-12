@@ -1,0 +1,97 @@
+# Code.gs · Index.html 이 바뀌어 푸시되면 Apps Script 프로젝트에 자동 반영하고
+# 기존 웹앱 배포를 새 버전으로 바꿈 (웹앱 주소 그대로).
+#
+# 필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
+#   CLASPRC_JSON  : clasp login 후 생기는 .clasprc.json 파일 내용 전체
+#   SCRIPT_ID     : Apps Script 프로젝트 설정 → 스크립트 ID
+#   DEPLOYMENT_ID : 배포 → 배포 관리 → 지금 쓰는 웹앱 배포의 배포 ID
+# 셋 중 하나라도 없으면 아무것도 하지 않고 안내만 남김.
+
+name: Apps Script 자동 배포
+
+on:
+  push:
+    branches: [claude/admiring-mendel-ne43hk]
+    paths:
+      - Code.gs
+      - Index.html
+      - .github/workflows/deploy-apps-script.yml
+  workflow_dispatch: # Actions 탭에서 수동 실행
+
+concurrency:
+  group: apps-script-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 설정값 확인
+        id: check
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
+        run: |
+          missing=""
+          for v in CLASPRC_JSON SCRIPT_ID DEPLOYMENT_ID; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::GitHub Secrets에$missing 이(가) 없어 자동 배포를 건너뜁니다. README의 '자동 배포 설정'을 따라 등록하세요."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 20
+
+      - name: clasp 설치 · 로그인 정보
+        if: steps.check.outputs.ready == 'true'
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          npm install -g @google/clasp@2.4.2
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+
+      - name: 지금 Apps Script 프로젝트 내려받기 (설정 파일·다른 파일 유지)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
+        run: |
+          mkdir build && cd build
+          printf '{"scriptId":"%s","rootDir":".","fileExtension":"gs"}' "$SCRIPT_ID" > .clasp.json
+          clasp pull
+          echo "프로젝트 파일:"; ls -1
+          # 서버 파일 이름이 Code.gs 가 아니면 함수가 두 벌이 되어 깨지므로 멈춤
+          others=$(ls -1 *.gs 2>/dev/null | grep -v '^Code\.gs$' || true)
+          if [ ! -f Code.gs ] && [ -n "$others" ]; then
+            echo "::error::Apps Script 프로젝트의 서버 파일 이름이 Code.gs 가 아니에요 ($others). 편집기에서 파일 이름을 Code 로 바꾼 뒤 다시 실행하세요."
+            exit 1
+          fi
+          if [ ! -f appsscript.json ]; then
+            echo "::error::프로젝트를 내려받지 못했어요. SCRIPT_ID 와 CLASPRC_JSON, Apps Script API 사용 설정을 확인하세요."
+            exit 1
+          fi
+
+      - name: 수정한 Code.gs · Index.html 올리기
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          cp Code.gs Index.html build/
+          cd build
+          clasp push --force
+
+      - name: 기존 웹앱 배포를 새 버전으로 (주소 유지)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
+        run: |
+          cd build
+          clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7} $(date -u +%Y-%m-%d)"
+          clasp deployments
