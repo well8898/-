@@ -8,6 +8,8 @@
  *                        마감여부를 '마감'으로 바꾸면 그 사람은 더 이상 수정 불가
  *   - 출장 관리        : 출장명 | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 마감여부
  *                        (유류대 열을 두고 값을 적으면 그 출장만 그 단가 사용 — 보통은 비워 두세요)
+ *   - 식수             : 출장명 | 일자 | 식수(끼) | 비고   (담당자가 정하면 직원 화면 식비 칸이 그 끼니로 고정)
+ *                        일자를 비우면 그 출장 전체 기간에 적용, 일자를 적은 줄이 우선. 탭이 없거나 줄이 없으면 직원이 직접 선택
  *   - 유류대           : 적용시작일 | 유류대(원/km) | 비고
  *                        분기마다 한 줄 추가 (예: 2026-10-01 | 307). 출장시작일 기준으로
  *                        그날 이전에 시작한 가장 최근 단가가 적용됨. setup 실행 시 탭이 없으면 만들어 줌
@@ -39,6 +41,7 @@ const CONFIG = {
   SHEET_MEMBER: '대상자 명단',
   SHEET_BRANCH: '지사별 주소',
   SHEET_FUEL:   '유류대',
+  SHEET_MEAL:   '식수',
   ORG_NAME:     '한국승강기안전공단',   // 지사 이름 검색 시 앞에 붙임 (예: 한국승강기안전공단 대전지사)
   HOLIDAY_CALENDAR: 'ko.south_korea#holiday@group.v.calendar.google.com',
 
@@ -172,6 +175,7 @@ function getOpenTrips_(tripIds, empId, withWorkDays) {
       출장종료일: fmtDate_(row[c.출장종료일]),
       유류대:     rate > 0 ? rate : fuelRateFor_(start),
       청구상태:   mine[id] ? (mine[id].locked ? '마감' : '제출') : '미제출',
+      식수:       mealPlanFor_(id),   // 담당자가 정한 식수 { 'yyyy-MM-dd': 끼니, '*': 전체 기간 } 또는 null
     };
     if (withWorkDays) trip.근무일 = middleWorkDays_(trip.출장시작일, trip.출장종료일);
     trips.push(trip);
@@ -211,6 +215,29 @@ function findMyClaims_(empId) {
 
 // 유류대 탭 → 그 날짜에 적용되는 단가 (적용시작일 ≤ 날짜 중 가장 최근)
 // 날짜가 비었으면 오늘 기준, 탭이 없거나 맞는 줄이 없으면 CONFIG.DEFAULT_FUEL_RATE
+// 식수 탭 → 출장명별 { 'yyyy-MM-dd': 끼니, '*': 일자를 비운 줄(전체 기간) }  (없으면 null)
+let mealPlans_ = null;
+function mealPlanFor_(tripName) {
+  if (!mealPlans_) {
+    mealPlans_ = {};
+    if (getSS_().getSheetByName(CONFIG.SHEET_MEAL)) {
+      const t = readTable_(CONFIG.SHEET_MEAL);
+      const nCol = t.idx('출장명'), dCol = t.idx('일자');
+      const mCol = t.headers.findIndex(h => h.indexOf('식수') === 0);
+      if (nCol >= 0 && mCol >= 0) {
+        t.rows.forEach(r => {
+          const name = String(r[nCol]).trim(), raw = String(r[mCol]).trim();
+          if (!name || raw === '') return;
+          const n = Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(raw.replace(/[^\d.]/g, '')) || 0)));
+          const d = dCol >= 0 ? fmtDate_(r[dCol]) : '';
+          (mealPlans_[name] = mealPlans_[name] || {})[isDateStr_(d) ? d : '*'] = n;
+        });
+      }
+    }
+  }
+  return mealPlans_[String(tripName).trim()] || null;
+}
+
 let fuelRates_ = null;
 function fuelRateFor_(date) {
   if (!fuelRates_) {
@@ -852,6 +879,18 @@ function validateRows_(input, trip, opts) {
   });
   // 직접 입력한 일비가 있으면 자동값 대신 사용
   rows.forEach(r => { if (r.dailyManual != null) r.daily = r.dailyManual; });
+  // 담당자가 정한 식수가 있으면 그 날짜 첫 줄에 그 끼니, 같은 날 다른 줄은 0끼 (직원 입력보다 우선)
+  const plan = trip.식수;
+  if (plan) {
+    const planSeen = {};
+    rows.forEach(r => {
+      const n = Object.prototype.hasOwnProperty.call(plan, r.date) ? plan[r.date] : plan['*'];
+      if (n == null) return;
+      r.meals = planSeen[r.date] ? 0 : n;
+      planSeen[r.date] = true;
+      r.meal = r.meals * CONFIG.MEAL_PRICE;
+    });
+  }
   // 식비: 1끼 단가 × 끼니, 같은 날짜 합계는 하루 상한까지만 (3끼 = 25,000원)
   const mealUsed = {};
   rows.forEach(r => {
@@ -1233,6 +1272,17 @@ function setup() {
     Logger.log(dup.length
       ? '❌ 출장 관리에 겹치는 출장명: ' + dup.map(id => id + '(' + rowsById[id].join('·') + '행)').join(', ') + ' — 출장마다 다른 이름으로 바꾸세요 (예: 끝에 날짜 붙이기)'
       : '✅ 출장명 겹침 없음');
+  }
+
+  // 식수 탭이 없으면 만들어 둠 (담당자가 출장별로 식수를 정할 때 사용)
+  if (!getSS_().getSheetByName(CONFIG.SHEET_MEAL)) {
+    const meal = getSS_().insertSheet(CONFIG.SHEET_MEAL);
+    meal.getRange(1, 1, 2, 4).setValues([
+      ['출장명', '일자', '식수(끼)', '비고'],
+      ['(예시) 출장 관리의 출장명 그대로', '', 2, '일자를 비우면 전체 기간 · 예시 줄은 지우세요'],
+    ]);
+    meal.setFrozenRows(1);
+    Logger.log('✅ 식수 탭을 만들었어요. 출장명·일자·식수(끼)를 적으면 직원 화면 식비 칸이 그 끼니로 고정돼요.');
   }
 
   // 유류대 탭이 없으면 만들어 둠 (분기마다 한 줄씩 추가해서 사용)

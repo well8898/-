@@ -122,6 +122,7 @@
     .nav-sub { color: #dbe4f0; font-size: 19px; font-weight: 500; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.4); }
     @media (max-width: 575.98px) { .nav-logo { height: 28px; } .nav-sub { display: none; } }
     #loadingMsg { font-size: 20px !important; font-weight: 500; color: var(--gov-navy) !important; text-align: center; padding: 0 16px; }
+    .claim-table [data-note="meal"] { white-space: nowrap; }
     .gov-footer { max-width: 1500px; margin: 8px auto 0; padding: 14px 16px 0; border-top: 1px solid var(--gov-line); color: var(--gov-muted); font-size: 16px; text-align: center; }
   </style>
 </head>
@@ -923,7 +924,8 @@
     const dailyFull = inner ? (innerLong ? R.innerDailyLong : R.innerDailyShort)
       : totalKm > R.dailyLongKm ? R.dailyLong : R.dailyBase;
     const dailyRate = Math.max(0, dailyFull - (unionCar ? R.unionCarDailyCut : 0));
-    const seen = {}, mealUsed = {};
+    const seen = {}, mealUsed = {}, planSeen = {};
+    const plan = state.trip.식수 || null; // 담당자가 정한 식수 (있으면 식비 칸 고정)
     const sums = { fare: 0, daily: 0, lodging: 0, meal: 0, etc: 0 };
     const used = state.rows.map((r, i) => (filled(r) ? i : -1)).filter(i => i >= 0);
     const firstIdx = used[0], lastIdx = used[used.length - 1];
@@ -964,17 +966,23 @@
       dNote.classList.toggle('warn', manual && daily !== auto);
 
       // 식비: 1끼 단가 × 끼니, 같은 날짜 합계는 하루 상한까지만 (3끼 = 25,000원, 서버 validateRows_ 와 같은 기준)
-      // 근무지내는 식비 없음 (선택 칸 비활성화)
+      // 식비 칸: 담당자가 정한 식수 > 근무지내(0끼) > 직원 선택 (서버 validateRows_ 와 같은 기준)
       const mealsEl = tr.querySelector('[data-k="meals"]');
-      mealsEl.disabled = inner;
-      if (inner && r.meals !== '0') { r.meals = '0'; mealsEl.value = '0'; }
+      const planned = plan && counted && isDate(r.date)
+        ? (Object.prototype.hasOwnProperty.call(plan, r.date) ? plan[r.date] : plan['*']) : undefined;
+      let fixedMeals = null;
+      if (planned != null) { fixedMeals = planSeen[r.date] ? 0 : planned; planSeen[r.date] = true; }
+      else if (inner) fixedMeals = 0;
+      mealsEl.disabled = fixedMeals != null;
+      mealsEl.title = planned != null ? '출장 담당자가 정한 식수예요' : '';
+      if (fixedMeals != null && String(r.meals) !== String(fixedMeals)) { r.meals = String(fixedMeals); mealsEl.value = r.meals; }
       let meal = Math.round(pos(r.meals)) * R.mealPrice;
       if (counted) {
         const used = mealUsed[r.date] || 0;
         meal = Math.max(0, Math.min(meal, R.mealDayMax - used));
         mealUsed[r.date] = used + meal;
       }
-      tr.querySelector('[data-note="meal"]').textContent = meal ? comma(meal) + '원' : '';
+      tr.querySelector('[data-note="meal"]').textContent = (meal ? comma(meal) + '원' : '') + (planned != null ? ' (지정)' : '');
 
       const note = tr.querySelector('[data-note="km"]');
       note.textContent = r.calculating ? '계산 중…' : r.calcError ? '계산 실패' : r.stale ? '다시 계산' : (r.map ? '카카오 ' + r.map.km : '');
