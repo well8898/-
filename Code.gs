@@ -93,7 +93,8 @@ const CLAIM_TEXT_COLS = ['출장명', '사번', '계좌번호'];
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('한국승강기안전공단노동조합 여비 청구')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // Netlify 등 다른 주소의 페이지 안에서도 열리게
 }
 
 

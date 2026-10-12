@@ -46,3 +46,12 @@ GitHub Actions가 Apps Script 프로젝트의 두 파일을 바꾸고 **지금 �
 - Apps Script 프로젝트는 버전을 최대 200개까지 만들 수 있습니다. 많이 쌓이면 편집기의 '배포 관리'에서 오래된 버전을 정리하세요.
 - 편집기에서 직접 고친 내용은 다음 자동 배포 때 이 저장소의 `Code.gs`·`Index.html`로 덮어써집니다. 수정은 저장소에서 하세요.
 - 시트 탭(유류대·식수·지사별 주소 등)을 고치는 것은 배포와 상관없이 바로 반영됩니다.
+
+## 짧은 주소 (Netlify)
+
+`netlify/index.html`은 웹앱을 화면 가득 띄우는 페이지입니다. Netlify에 올리면 `이름.netlify.app` 주소로 앱이 열립니다.
+
+1. https://app.netlify.com → 사이트 선택 → **Deploys** 탭 → `netlify` 폴더를 끌어다 놓기 (또는 새 사이트는 https://app.netlify.com/drop)
+2. 주소 이름 바꾸기: **Site configuration → Change site name**
+3. 웹앱 주소가 바뀌면(새 배포를 만든 경우) `netlify/index.html` 안의 주소 두 곳을 바꾸고 다시 올리기.
+   평소처럼 '배포 관리 → 새 버전'으로 업데이트하면 주소가 그대로라 다시 올릴 필요 없음.
