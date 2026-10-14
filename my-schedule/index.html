@@ -21,6 +21,8 @@
   --k-wan: #c2392f;
   --off: #8a6d1e;
   --off-soft: #f8f0dc;
+  --hero: #1f5fbf;
+  --hero-ink: #ffffff;
   --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
     system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
@@ -41,6 +43,8 @@
     --k-wan: #f07c72;
     --off: #e2c06e;
     --off-soft: #2e2818;
+    --hero: #1e3a66;
+    --hero-ink: #eef4ff;
     color-scheme: dark;
   }
 }
@@ -59,6 +63,8 @@
   --k-wan: #f07c72;
   --off: #e2c06e;
   --off-soft: #2e2818;
+  --hero: #1e3a66;
+  --hero-ink: #eef4ff;
   color-scheme: dark;
 }
 * {
@@ -678,6 +684,45 @@ label.ghost {
     }
   }
 }
+
+/* ---- 하루 보기 (요약 · 지도 · 타임라인) ---- */
+.panel{display:flex;flex-direction:column;gap:12px}
+.sum{background:var(--hero);color:var(--hero-ink);border-radius:18px;padding:16px 18px 14px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 6px 18px -10px rgba(20,50,110,.55)}
+.sum-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sum-date{font:600 15px var(--font-body);opacity:.85}
+.sum-team{font-size:12.5px;font-weight:600;border:1px solid currentColor;border-radius:999px;padding:1px 9px;opacity:.85}
+.sum-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sum-main b{font:600 34px/1 var(--font-mono);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.sum-main span{font-size:15px;font-weight:600;opacity:.9}
+.sum-areas{font-size:18px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.sum-kinds{display:flex;gap:6px;flex-wrap:wrap}
+.sum-kinds span{background:rgba(255,255,255,.16);border-radius:8px;padding:3px 9px;font-size:13.5px;font-weight:600}
+.sum-kinds span b{font-family:var(--font-mono)}
+.sum-foot{font-size:13px;opacity:.85;border-top:1px solid rgba(255,255,255,.22);padding-top:9px}
+.kmap{position:relative}
+.kload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  font-size:14px;font-weight:600;color:var(--ink);background:var(--surface);padding:16px}
+.kload small{font-weight:400;color:var(--muted);font-size:12.5px}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--accent-soft);border-top-color:var(--accent);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legs .wait{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13.5px}
+.legs .wait .spin{width:18px;height:18px;border-width:2px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;position:relative;padding-bottom:12px}
+.tl-item::before{content:"";position:absolute;left:13px;top:30px;bottom:0;width:2px;background:var(--line)}
+.tl-item:last-child::before{display:none}
+.tl-no{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;
+  font:600 13px var(--font-mono);position:relative;z-index:1;margin-top:10px}
+.tl-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tl-head{display:flex;align-items:center;gap:8px}
+.tl-head .t{font-size:16px;padding:0}
+.tl-head .u{margin-left:auto;font-size:15px}
+.tl-card .nm{font-size:16px}
+.addr{font-size:13px;color:var(--muted)}
+.tl-card .others{margin-top:2px}
+.tl-card .maps{margin-top:4px}
+.tl-card .maps a{min-height:36px;font-size:13.5px;border-radius:9px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -895,7 +940,7 @@ function parseStops(buf) {
     });
 }
 
-const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '완성' };
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치' };
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const $ = id => document.getElementById(id);
 const store = {
@@ -1139,6 +1184,25 @@ function drawWeek() {
   });
   return h;
 }
+function daySum(d) {
+  const st = d.t.stops;
+  const areas = [...new Set(st.map(x => x.area).filter(Boolean))];
+  const kinds = {};
+  st.forEach(x => {
+    const k = KIND[x.kind] || x.kind || '기타';
+    kinds[k] = (kinds[k] || 0) + (x.units || 0);
+  });
+  const order = ['정기', '정밀', '수시', '설치'];
+  const ks = Object.keys(kinds).sort(
+    (a, b) => (order.indexOf(a) + 9) % 9 - (order.indexOf(b) + 9) % 9
+  );
+  return {
+    areas,
+    kinds: ks.map(k => [k, kinds[k]]),
+    start: st[0] ? st[0].time : '',
+    sites: places(st).length
+  };
+}
 function drawPanel(dx) {
   const p = $('panel');
   p.style.setProperty('--dx', (dx || 0) + 'px');
@@ -1152,28 +1216,37 @@ function drawPanel(dx) {
   const d = days.find(x => x.iso === sel);
   const name = curName();
   const { md, dow } = mdow(d);
-  let h = `<div class="dayhead"><h2>${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span></h2>`;
+  const dayLabel = `${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>`;
+  let h = '';
   if (d.t) {
     const b = briefText(d, name);
-    h += `<span class="pill">${esc(d.t.team)} · 환산 ${d.t.units}대</span></div>
-      <div class="brief"><p>${esc(b.s)}</p>${b.mates.length ? `<span class="crew">동행 <b>${esc(b.mates.join(', '))}</b></span>` : ''}</div>
-      ${SERVER ? '<div class="kmap" id="dmap" hidden></div><div class="legs" id="dlegs"><p class="note">현장 위치와 이동거리를 찾는 중…</p></div>' : ''}
-      <ol class="stops">${d.t.stops
+    const m = daySum(d);
+    h += `<section class="sum">
+      <div class="sum-top"><span class="sum-date">${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>
+        <span class="sum-team">${esc(d.t.team)}</span></div>
+      <div class="sum-main"><b>${esc(m.start)}</b><span>시작</span></div>
+      <div class="sum-areas">${m.areas.length ? esc(m.areas.join(' · ')) : '주소 미기재 현장'}</div>
+      <div class="sum-kinds">${m.kinds.map(([k, n]) => `<span>${esc(k)} <b>${n}</b>대</span>`).join('')}</div>
+      <div class="sum-foot">${m.sites}곳 · 환산 ${d.t.units}대${b.mates.length ? ' · 동행 ' + esc(b.mates.join(', ')) : ''}</div>
+    </section>
+      ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
+      <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
+      <ol class="tl">${d.t.stops
         .map(
-          s => `<li class="stop">
-        <div class="stop-top"><span class="t">${esc(s.time)}</span>
-          <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
-            <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</span></div></div>
-          <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
-        ${othersHtml(d, s)}
-        <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
-      </li>`
+          (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
+        <div class="tl-card">
+          <div class="tl-head"><span class="t">${esc(s.time)}</span>${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
+          <div class="nm">${esc(s.name)}</div>
+          <div class="addr">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
+          ${othersHtml(d, s)}
+          <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
+        </div></li>`
         )
         .join('')}</ol>`;
   } else if (d.off)
-    h += `<span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
+    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
   else
-    h += `<span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
+    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
   if (d.sup.length)
     h += `<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
   p.innerHTML = h;
@@ -1314,6 +1387,11 @@ async function dayExtras(d) {
     if (sel === iso && $('dlegs'))
       $('dlegs').innerHTML =
         `<p class="note">위치·거리 계산 실패: ${esc(e.message || e)}</p>`;
+    if (sel === iso && $('dmap')) {
+      $('dmap').style.height = 'auto';
+      $('dmap').innerHTML =
+        '<p class="note" style="padding:14px">지도를 표시하지 못했어요.</p>';
+    }
   }
 }
 function drawLegs(d, pts) {
@@ -1363,15 +1441,20 @@ function drawLegs(d, pts) {
 }
 async function drawDayMap(stops) {
   const el = $('dmap');
-  if (!el || !stops.length) return;
-  const k = await loadKakao();
-  if (!k) {
-    el.hidden = false;
+  if (!el) return;
+  if (!stops.length) {
     el.style.height = 'auto';
-    el.innerHTML = `<p class="note" style="padding:12px">${kakaoError}</p>`;
+    el.innerHTML =
+      '<p class="note" style="padding:14px">지도에 찍을 수 있는 현장이 없어요. 주소가 없는 현장은 지도에서 빠져요.</p>';
     return;
   }
-  el.hidden = false;
+  const k = await loadKakao();
+  if (!k) {
+    el.style.height = 'auto';
+    el.innerHTML = `<p class="note" style="padding:14px">${kakaoError}</p>`;
+    return;
+  }
+  el.innerHTML = '';
   const LL = g => new k.maps.LatLng(+g.lat, +g.lng);
   const map = new k.maps.Map(el, { center: LL(stops[0].g), level: 5 });
   const b = new k.maps.LatLngBounds();
