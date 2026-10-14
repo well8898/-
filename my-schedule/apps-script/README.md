@@ -34,3 +34,10 @@
 `Index.html`은 `my-schedule/index.html`(claude.ai 링크 버전)과 같은 화면입니다.
 그 파일 `<style>` 끝까지를 `<head>`에, 나머지를 `<body>`에 넣어 만듭니다.
 지도·거리 기능은 Apps Script 웹앱으로 열었을 때만 켜집니다.
+
+## 현장 실주소 찾는 순서
+
+1. 승강기검사접수정보 API (정밀·설치·수시) — 스크립트 속성 `DATA_GO_KR_KEY` 필요
+2. 건물 주소록 `my-schedule/data/bld/*.json` (승강기 설치 현황 CSV에서 건물명→주소, 정기 포함 전체)
+   - 새 CSV가 나오면 `python3 my-schedule/tools/build_bld.py 파일1.csv 파일2.csv my-schedule/data/bld` 로 다시 만들어 올리면 됨 (건물명·건물주소 열)
+3. 카카오 장소 검색 (동 + 건물명, 지사 50km 안)

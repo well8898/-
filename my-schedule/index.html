@@ -1569,7 +1569,7 @@ async function dayExtras(d) {
     const need = [];
     d.t.stops.forEach(s => {
       const addr = realAddr(d, s);
-      if (!s.area && !addr) return;
+      if (placeName(s.name).length < 2) return;
       const q = mapQuery(s);
       if (!(q in GEO) && !need.some(x => x.q === q))
         need.push({

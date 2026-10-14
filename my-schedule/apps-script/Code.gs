@@ -16,6 +16,9 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 // 화면(HTML): 이 프로젝트에 Index 파일이 있으면 그것을 쓰고, 없으면 GitHub에서 읽어 옴
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'claude/nifty-sagan-s6rbvp/my-schedule/apps-script/Index.html';
+// 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
+const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
+  + 'claude/nifty-sagan-s6rbvp/my-schedule/data/bld/';
 
 function doGet() {
   return HtmlService.createHtmlOutput(pageHtml_())
@@ -169,7 +172,14 @@ function findSite_(s, o) {
     if (area && a.indexOf(' ' + area) < 0) return false;
     return !o || km_(o.lat, o.lng, Number(d.y), Number(d.x)) <= REGION_KM;
   };
-  // 검사접수정보에서 찾은 실주소가 있으면 그 주소로 먼저
+  // 실주소: 검사접수정보(정밀·설치·수시)에서 찾은 것 → 없으면 건물 주소록(정기 포함 전체)
+  if (!s.addr) {
+    const cands = bookCandidates_(name, area);
+    for (let i = 0; i < Math.min(cands.length, 5); i++) {
+      const p = addrPoint_(cands[i], o);
+      if (p) return { lat: p.lat, lng: p.lng, name: name, addr: cands[i] };
+    }
+  }
   if (s.addr) {
     const ad = kakaoGet_(base + 'address.json?size=3&query=' + encodeURIComponent(cleanAddr_(s.addr)));
     const d = (ad.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
@@ -225,6 +235,42 @@ function recptnList(st, en, branch) {
   } catch (e) {
     return { ok: false, message: e.message };
   }
+}
+
+// 주소 → 좌표 (지사에서 REGION_KM 안일 때만)
+function addrPoint_(addr, o) {
+  const base = 'https://dapi.kakao.com/v2/local/search/';
+  const ad = kakaoGet_(base + 'address.json?size=3&query=' + encodeURIComponent(cleanAddr_(addr)));
+  const d = (ad.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+  return d ? { lat: Number(d.y), lng: Number(d.x) } : null;
+}
+
+// 건물 주소록에서 건물명으로 주소 후보 (일정표의 동이 들어간 주소를 앞으로)
+function bookCandidates_(name, area) {
+  const k = bookKey_(name);
+  if (k.length < 2) return [];
+  let v = 5381;
+  for (let i = 0; i < k.length; i++) v = (v * 33 + k.charCodeAt(i)) % 4294967296;
+  const file = ('00' + (v % 128)).slice(-3) + '.json';
+  let shard;
+  try {
+    const res = UrlFetchApp.fetch(BOOK_URL + file, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return [];
+    shard = JSON.parse(res.getContentText('UTF-8'));
+  } catch (e) {
+    return [];
+  }
+  const list = shard[k] || [];
+  if (!area) return list;
+  const hit = list.filter(a => a.indexOf(area) >= 0);
+  return hit.length ? hit : list;
+}
+
+// 건물명 → 주소록 키 (data/bld 를 만든 규칙과 같아야 함)
+function bookKey_(n) {
+  let x = String(n || '').replace(/\(주\)|㈜/g, '').replace(/\([^)]*$/, '')
+    .replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/, '').replace(/\s+/g, ' ').trim() || String(n || '');
+  return x.replace(/주식회사/g, '').replace(/[\s()·\-_.,#]/g, '').replace(/아파트$/, '');
 }
 
 // 접수 주소 → 카카오 주소 검색용 ('(장전동)', '일원', 쉼표 뒤 등 정리)
@@ -291,6 +337,7 @@ function kakaoGet_(url) {
 // 편집기에서 실행해 설정 확인
 function testSetup() {
   Logger.log(getConfig());
+  Logger.log('주소록: 일신2조합빌딩 → ' + bookCandidates_('일신2조합빌딩', '일산동'));
   const o = getOrigin('고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59');
   Logger.log(o);
   Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시',
