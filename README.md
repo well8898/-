@@ -6,14 +6,13 @@ Google Apps Script 웹앱입니다.
 |---|---|
 | `Code.gs` | 서버 (시트·드라이브·카카오 API·PDF) |
 | `Index.html` | 직원 화면 |
-| `Schedule.html` | 내 검사 일정 화면 (`웹앱주소?page=schedule`) — 검사 일정표 엑셀·PDF를 올리면 내 현장만 날짜별 브리핑 + 카카오 지도 핀 |
 | `data/지사별주소.xlsx` | '지사별 주소' 탭에 붙여 넣을 지사 주소 목록 |
 | `.github/workflows/deploy-apps-script.yml` | 자동 배포 |
 
 ## 자동 배포
 
-`Code.gs`, `Index.html`, `Schedule.html`이 바뀌어 `claude/admiring-mendel-ne43hk` 브랜치에 올라가면,
-GitHub Actions가 Apps Script 프로젝트의 해당 파일을 바꾸고 **지금 쓰는 웹앱 배포를 새 버전으로** 바꿉니다.
+`Code.gs` 또는 `Index.html`이 바뀌어 `claude/admiring-mendel-ne43hk` 브랜치에 올라가면,
+GitHub Actions가 Apps Script 프로젝트의 두 파일을 바꾸고 **지금 쓰는 웹앱 배포를 새 버전으로** 바꿉니다.
 웹앱 주소는 그대로입니다. 프로젝트의 설정 파일(appsscript.json)과 다른 파일은 건드리지 않습니다.
 
 ### 처음 한 번 설정

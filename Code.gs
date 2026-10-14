@@ -19,7 +19,6 @@
  * ▶ 스크립트 속성 (프로젝트 설정 → 스크립트 속성)
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (필수 — 장소 검색·길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면에 카카오 지도 표시용, 없으면 기본 지도로 표시)
- *                          (내 검사 일정 화면 = 웹앱주소?page=schedule 의 현장 지도에도 사용)
  *                          카카오 디벨로퍼스 → 플랫폼 → Web 사이트 도메인에 웹앱 도메인 등록 필요
  *   - DRIVE_FOLDER_ID    : 저장 폴더 ID (없으면 자동 생성)
  *
@@ -91,14 +90,7 @@ const CLAIM_TEXT_COLS = ['출장명', '사번', '계좌번호'];
 // ════════════════════════════════════════════════════
 //  웹앱 진입점
 // ════════════════════════════════════════════════════
-function doGet(e) {
-  // 웹앱주소?page=schedule → 내 검사 일정 (일정표 엑셀·PDF를 올리면 내 현장만 날짜별로 + 지도)
-  if (e && e.parameter && e.parameter.page === 'schedule') {
-    return HtmlService.createHtmlOutputFromFile('Schedule')
-      .setTitle('내 검사 일정')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
+function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('한국승강기안전공단노동조합 여비 청구')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -656,65 +648,6 @@ function getKakaoKey_() {
   const key = PropertiesService.getScriptProperties().getProperty('KAKAO_REST_API_KEY');
   if (!key) throw new Error('스크립트 속성에 KAKAO_REST_API_KEY가 없습니다. 관리자에게 문의하세요.');
   return key;
-}
-
-
-// ════════════════════════════════════════════════════
-//  내 검사 일정 화면 (Schedule.html) — 현장 위치 찾기
-// ════════════════════════════════════════════════════
-function getScheduleConfig() {
-  return { kakaoJsKey: PropertiesService.getScriptProperties().getProperty('KAKAO_JS_KEY') || '' };
-}
-
-// sites: [{ q: 검색어, region: '파주시', area: '목동동', name: '산내마을2단지센트럴리움아파트' }]
-// → { ok, places: { 검색어: { lat, lng, name, address } } }   못 찾은 현장은 빠짐 (지도에 표시 안 함)
-function geocodeSites(sites) {
-  try {
-    const key = getKakaoKey_();
-    const cache = CacheService.getScriptCache();
-    const places = {};
-    (Array.isArray(sites) ? sites : []).slice(0, 80).forEach(s => {
-      const q = String((s && s.q) || '').trim();
-      if (!q || q in places) return;
-      const ck = 'site:' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, q, Utilities.Charset.UTF_8));
-      const hit = cache.get(ck);
-      if (hit) { places[q] = JSON.parse(hit); return; }
-      let p = null;
-      try { p = findSite_(s, key); } catch (e) { /* 이 현장만 건너뜀 */ }
-      if (p) { places[q] = p; cache.put(ck, JSON.stringify(p), 21600); } // 6시간
-    });
-    return { ok: true, places: places };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-
-// 상호 검색 결과 중 일정표의 동·읍·면(없으면 시)에 있는 곳만 채택
-function findSite_(s, key) {
-  const base = 'https://dapi.kakao.com/v2/local/search/';
-  const area = String(s.area || '').trim();
-  const city = String(s.region || '').split(' ')[0]; // '고양시 덕양구' → '고양시'
-  const name = String(s.name || '').trim();
-  const within = d => {
-    const a = (d.address_name || '') + ' ' + (d.road_address_name || '');
-    return area ? a.indexOf(' ' + area) >= 0 : (!city || a.indexOf(city) >= 0);
-  };
-  const pick = d => ({ lat: Number(d.y), lng: Number(d.x), name: d.place_name || name, address: d.road_address_name || d.address_name || '' });
-
-  const queries = [String(s.q || ''), name, city ? city + ' ' + name : ''].filter(Boolean);
-  for (let i = 0; i < queries.length; i++) {
-    const kw = kakaoGet_(base + 'keyword.json?size=15&query=' + encodeURIComponent(queries[i]), key);
-    const d = (kw.documents || []).find(within);
-    if (d) return pick(d);
-  }
-  // 이름이 지번·도로명 주소인 경우 (예: 덕은동746, 지축4로 37)
-  if (/\d/.test(name)) {
-    const q = [s.region, area, name.replace(new RegExp('^' + area), '')].filter(Boolean).join(' ');
-    const ad = kakaoGet_(base + 'address.json?size=1&query=' + encodeURIComponent(q), key);
-    const d = (ad.documents || [])[0];
-    if (d) return { lat: Number(d.y), lng: Number(d.x), name: name, address: (d.road_address && d.road_address.address_name) || d.address_name };
-  }
-  return null;
 }
 
 

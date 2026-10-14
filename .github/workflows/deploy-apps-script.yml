@@ -1,4 +1,4 @@
-# Code.gs · Index.html · Schedule.html 이 바뀌어 푸시되면 Apps Script 프로젝트에 자동 반영하고
+# Code.gs · Index.html 이 바뀌어 푸시되면 Apps Script 프로젝트에 자동 반영하고
 # 기존 웹앱 배포를 새 버전으로 바꿈 (웹앱 주소 그대로).
 #
 # 필요한 GitHub Secrets (Settings → Secrets and variables → Actions):
@@ -15,7 +15,6 @@ on:
     paths:
       - Code.gs
       - Index.html
-      - Schedule.html
       - .github/workflows/deploy-apps-script.yml
   workflow_dispatch: # Actions 탭에서 수동 실행
 
@@ -81,10 +80,10 @@ jobs:
             exit 1
           fi
 
-      - name: 수정한 Code.gs · Index.html · Schedule.html 올리기
+      - name: 수정한 Code.gs · Index.html 올리기
         if: steps.check.outputs.ready == 'true'
         run: |
-          cp Code.gs Index.html Schedule.html build/
+          cp Code.gs Index.html build/
           cd build
           clasp push --force
 
