@@ -152,7 +152,7 @@ function geocodeSites(sites, origin) {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
       let p = null;
-      const ck = 'site:' + q + '|' + (s.addr || '') + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+      const ck = 'site3:' + q + '|' + (s.addr || '') + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
       try { p = cached_(ck, () => findSite_(s, o)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
