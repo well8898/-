@@ -122,7 +122,12 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:13px;color:var(--muted);font-weight:500}
 .field input{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;font-size:17px;font-weight:600;width:100%}
-.big{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;min-height:56px;font-size:17px;font-weight:700;width:100%;cursor:pointer}
+.big{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;min-height:56px;font-size:17px;font-weight:700;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
+label.ghost{display:inline-flex;align-items:center;cursor:pointer;user-select:none}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+.vh:focus-visible+*{outline:2px solid var(--accent)}
+.err-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--k-wan);color:#fff;font-size:13px;
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .drop{border:1.5px dashed var(--line);border-radius:14px;padding:16px;text-align:center;font-size:13.5px;color:var(--muted)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
 .msg{font-size:14px;text-align:center;min-height:1.5em}
@@ -132,7 +137,12 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
 @media (prefers-reduced-motion:no-preference){.panel{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateX(var(--dx,0))}to{opacity:1;transform:none}}}
 </style>
 
-<input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+<input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
+<div class="err-bar" id="errBar" hidden></div>
+<script>
+// 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시
+window.addEventListener('error',e=>{const b=document.getElementById('errBar');if(!b)return;b.hidden=false;b.textContent='화면 오류: '+(e.message||(e.target&&e.target.src?'불러오지 못함 '+e.target.src:'알 수 없음'));},true);
+</script>
 
 <section class="gutter" id="startView">
   <div class="col start">
@@ -141,7 +151,7 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
     </div>
     <p>지사 검사 일정표(엑셀 또는 PDF)를 올리면 내 조의 현장만 골라 날짜별로 보여 줘요.</p>
     <div class="field"><label for="name">내 이름</label><input id="name" value="" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div>
-    <button class="big" id="pick" type="button">일정표 파일 고르기</button>
+    <label class="big" id="pick" for="file" role="button" tabindex="0">일정표 파일 고르기</label>
     <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
     <div class="msg" id="msg"></div>
     <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 화면에서만 읽고 어디에도 보내지 않아요.</p>
@@ -153,7 +163,7 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
     <div class="col">
       <div class="bar-in">
         <div class="who"><small id="src">검사 일정표</small><b id="who">내 일정</b></div>
-        <button class="ghost" id="repick" type="button">파일 바꾸기</button>
+        <label class="ghost" id="repick" for="file" role="button" tabindex="0">파일 바꾸기</label>
       </div>
       <nav class="tabs" id="tabs" role="tablist" aria-label="날짜"></nav>
     </div>
@@ -448,6 +458,7 @@ function sheetItems(buf){
 async function load(file){
   const msg=$('msg');msg.className='msg';msg.textContent=file.name+' 읽는 중…';
   try{
+    if(typeof pdfjsLib==='undefined'||typeof XLSX==='undefined')throw new Error('파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.');
     const buf=await file.arrayBuffer();const yr=(file.name.match(/20\d\d/)||[])[0];
     const isPdf=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
     const items=isPdf?await pdfItems(buf):sheetItems(buf).items;
@@ -458,8 +469,8 @@ async function load(file){
     render();window.scrollTo({top:0});
   }catch(e){if(data){data=null;render();}msg.className='msg err';msg.textContent=e.message||'파일을 읽지 못했어요.';}
 }
-$('pick').onclick=()=>$('file').click();
-$('repick').onclick=()=>$('file').click();
+// 버튼은 <label for="file"> 라서 스크립트 없이도 파일 선택이 열림. 키보드(Enter·Space)만 처리
+['pick','repick'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click();}}));
 $('file').onchange=e=>{if(e.target.files[0])load(e.target.files[0]);e.target.value='';};
 document.addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over')});
 document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('drop').classList.remove('over')});
