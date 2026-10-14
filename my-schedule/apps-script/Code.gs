@@ -279,3 +279,21 @@ function testInspectApi() {
   });
   Logger.log('오늘 날짜: ' + today);
 }
+
+// 검사접수정보(ElevatorRecptnService/getRecptnV1) 확인용: 실행 → 실행 로그를 보내 주세요
+function testRecptnApi() {
+  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
+  const base = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
+    + '?serviceKey=' + encodeURIComponent(key) + '&pageNo=1&numOfRows=3';
+  const tries = [
+    '&inspct_st_de=20261015&inspct_en_de=20261015',
+    '&inspct_st_de=20261015&inspct_en_de=20261015&elevator_no=',
+    '&recptn_st_de=20261001&recptn_en_de=20261015',
+    '&inspct_st_de=20261015&inspct_en_de=20261015&_type=json'
+  ];
+  tries.forEach(t => {
+    const res = UrlFetchApp.fetch(base + t, { muteHttpExceptions: true });
+    Logger.log('▶ ' + t + ' → ' + res.getResponseCode() + '\n' + res.getContentText('UTF-8').slice(0, 2500));
+  });
+}
