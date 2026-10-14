@@ -102,12 +102,25 @@ function cleanupProperties() {
   Logger.log('정리한 속성 ' + n + '개 · 남은 속성 ' + Object.keys(props.getProperties()).length + '개');
 }
 
-// 인증키를 코드로 넣기 (속성 화면에서 추가가 안 될 때): 아래 따옴표 안에 키를 넣고 한 번 실행한 뒤, 키는 다시 지우세요
-function setDataGoKrKey() {
-  const key = '';
-  if (!key) { Logger.log('함수 안의 key 따옴표에 인증키를 넣고 실행하세요.'); return; }
-  PropertiesService.getScriptProperties().setProperty('DATA_GO_KR_KEY', key.trim());
-  Logger.log('DATA_GO_KR_KEY 저장 완료. 이제 코드의 키를 지우고 저장하세요.');
+// 아직 좌표가 없는 지사들의 주소를 한꺼번에(병렬) 검색해 BRANCH_POINTS에 저장
+function prefetchBranches_(branches) {
+  const props = PropertiesService.getScriptProperties();
+  const all = JSON.parse(props.getProperty('BRANCH_POINTS') || '{}');
+  const miss = (Array.isArray(branches) ? branches : []).filter(b => !all[b[0]]);
+  if (!miss.length) return;
+  const key = getKakaoKey_();
+  const res = UrlFetchApp.fetchAll(miss.map(b => ({
+    url: 'https://dapi.kakao.com/v2/local/search/address.json?size=1&query='
+      + encodeURIComponent(String(b[1] || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim()),
+    headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true,
+  })));
+  res.forEach((r, i) => {
+    try {
+      const d = (JSON.parse(r.getContentText()).documents || [])[0];
+      if (d) all[miss[i][0]] = { lat: Number(d.y), lng: Number(d.x) };
+    } catch (e) { /* 이 지사는 나중에 개별 검색 */ }
+  });
+  props.setProperty('BRANCH_POINTS', JSON.stringify(all));
 }
 
 // 현장이 많은 동·읍·면 이름들 → 그 동네들과 가장 잘 맞는 지사
@@ -122,6 +135,7 @@ function guessBranch(areas, branches) {
         .filter(d => (d.address_name || '').split(' ').pop() === a)
         .map(d => [Number(d.y), Number(d.x)]);
     }) || []);
+    prefetchBranches_(branches);
     let best = null;
     (Array.isArray(branches) ? branches : []).forEach(b => {
       let p = null;
@@ -253,6 +267,8 @@ function addrPoint_(addr, o) {
   return d ? { lat: Number(d.y), lng: Number(d.x) } : null;
 }
 
+const BOOK_SHARDS = {}; // 한 번 실행 동안 받은 주소록 조각
+
 // 건물 주소록에서 건물명으로 주소 후보 (일정표의 동이 들어간 주소를 앞으로)
 function bookCandidates_(name, area) {
   const k = bookKey_(name);
@@ -260,13 +276,15 @@ function bookCandidates_(name, area) {
   let v = 5381;
   for (let i = 0; i < k.length; i++) v = (v * 33 + k.charCodeAt(i)) % 4294967296;
   const file = ('00' + (v % 128)).slice(-3) + '.json';
-  let shard;
-  try {
-    const res = UrlFetchApp.fetch(BOOK_URL + file, { muteHttpExceptions: true });
-    if (res.getResponseCode() !== 200) return [];
-    shard = JSON.parse(res.getContentText('UTF-8'));
-  } catch (e) {
-    return [];
+  let shard = BOOK_SHARDS[file];
+  if (!shard) {
+    try {
+      const res = UrlFetchApp.fetch(BOOK_URL + file, { muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) return [];
+      shard = BOOK_SHARDS[file] = JSON.parse(res.getContentText('UTF-8'));
+    } catch (e) {
+      return [];
+    }
   }
   const list = shard[k] || [];
   if (!area) return list;
@@ -296,66 +314,72 @@ function km_(a, b, c, d) {
 
 // pairs: [[출발 위도, 경도, 도착 위도, 경도], ...]
 // → { ok, km: [구간 km(소수 1자리) | null], min: [구간 분 | null], src: 'TMAP' | '카카오' }  자동차 추천경로
-// 스크립트 속성 TMAP_APP_KEY 가 있으면 티맵, 없거나 실패하면 카카오내비
+// 스크립트 속성 TMAP_APP_KEY 가 있으면 티맵, 없거나 실패한 구간은 카카오내비. 캐시 없는 구간은 한꺼번에(병렬) 요청
 function routeLegs(pairs) {
   try {
     const tmapKey = (PropertiesService.getScriptProperties().getProperty('TMAP_APP_KEY') || '').trim();
+    const list = (Array.isArray(pairs) ? pairs : []).slice(0, 30);
+    const cache = CacheService.getScriptCache();
+    const ids = list.map(p => 'leg3:' + p.map(v => Number(v).toFixed(5)).join(','));
+    const hit = cache.getAll(ids);
+    const out = list.map((p, i) => (hit[ids[i]] ? JSON.parse(hit[ids[i]]) : null));
     let src = tmapKey ? 'TMAP' : '카카오';
-    const res = (Array.isArray(pairs) ? pairs : []).slice(0, 30).map(p => {
-      const id = p.map(v => Number(v).toFixed(5)).join(',');
-      let r = null;
-      if (tmapKey) {
-        try { r = cached_('tleg:' + id, () => tmapLeg_(p, tmapKey)); } catch (e) { r = null; }
-      }
-      if (!r) {
-        try { r = cached_('leg2:' + id, () => kakaoLeg_(p)); } catch (e) { r = null; }
-        if (r && tmapKey) src = 'TMAP·카카오';
-      }
-      return r || { km: null, min: null };
+    const todo = () => out.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
+    todo().forEach(i => {
+      const p = list[i];
+      if (Math.abs(p[0] - p[2]) < 1e-5 && Math.abs(p[1] - p[3]) < 1e-5) out[i] = { km: 0, min: 0 };
     });
-    return { ok: true, km: res.map(r => r.km), min: res.map(r => r.min), src: src };
+    if (tmapKey && todo().length) {
+      const idx = todo();
+      const res = UrlFetchApp.fetchAll(idx.map(i => ({
+        url: 'https://apis.openapi.sk.com/tmap/routes?version=1&format=json',
+        method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        headers: { appKey: tmapKey },
+        payload: JSON.stringify({ startX: String(list[i][1]), startY: String(list[i][0]),
+          endX: String(list[i][3]), endY: String(list[i][2]),
+          reqCoordType: 'WGS84GEO', resCoordType: 'WGS84GEO', searchOption: '0' }),
+      })));
+      res.forEach((r, n) => {
+        try {
+          if (r.getResponseCode() !== 200) return;
+          const f = (JSON.parse(r.getContentText()).features || [])[0];
+          const pr = f && f.properties;
+          if (pr && pr.totalDistance != null) {
+            out[idx[n]] = { km: Math.round(pr.totalDistance / 100) / 10, min: Math.round((pr.totalTime || 0) / 60) };
+          }
+        } catch (e) { /* 이 구간은 카카오로 */ }
+      });
+    }
+    if (todo().length) {
+      const key = getKakaoKey_();
+      const idx = todo();
+      const res = UrlFetchApp.fetchAll(idx.map(i => ({
+        url: 'https://apis-navi.kakaomobility.com/v1/directions?origin=' + list[i][1] + ',' + list[i][0]
+          + '&destination=' + list[i][3] + ',' + list[i][2] + '&priority=RECOMMEND',
+        headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true,
+      })));
+      res.forEach((r, n) => {
+        try {
+          const route = (JSON.parse(r.getContentText()).routes || [])[0];
+          if (!route) return;
+          if (route.result_code === 104) out[idx[n]] = { km: 0, min: 0 };
+          else if (route.result_code === 0) {
+            out[idx[n]] = { km: Math.round(route.summary.distance / 100) / 10,
+              min: Math.round(route.summary.duration / 60) };
+          }
+          if (tmapKey && out[idx[n]]) src = 'TMAP·카카오';
+        } catch (e) { /* 계산 실패 구간 */ }
+      });
+    }
+    const put = {};
+    out.forEach((r, i) => { if (r && !hit[ids[i]]) put[ids[i]] = JSON.stringify(r); });
+    if (Object.keys(put).length) {
+      try { cache.putAll(put, CACHE_SEC); } catch (e) { /* 생략 */ }
+    }
+    return { ok: true, km: out.map(r => (r ? r.km : null)), min: out.map(r => (r ? r.min : null)), src: src };
   } catch (e) {
     return { ok: false, message: e.message };
   }
-}
-
-// 티맵 자동차 경로 (추천)
-function tmapLeg_(p, key) {
-  if (Math.abs(p[0] - p[2]) < 1e-5 && Math.abs(p[1] - p[3]) < 1e-5) return { km: 0, min: 0 };
-  const res = UrlFetchApp.fetch('https://apis.openapi.sk.com/tmap/routes?version=1&format=json', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: { appKey: key },
-    payload: JSON.stringify({ startX: String(p[1]), startY: String(p[0]), endX: String(p[3]), endY: String(p[2]),
-      reqCoordType: 'WGS84GEO', resCoordType: 'WGS84GEO', searchOption: '0' }),
-  });
-  if (res.getResponseCode() !== 200) return null;
-  const f = (JSON.parse(res.getContentText()).features || [])[0];
-  const pr = f && f.properties;
-  if (!pr || pr.totalDistance == null) return null;
-  return { km: Math.round(pr.totalDistance / 100) / 10, min: Math.round((pr.totalTime || 0) / 60) };
-}
-
-// 카카오내비 자동차 경로 (추천)
-function kakaoLeg_(p) {
-  const url = 'https://apis-navi.kakaomobility.com/v1/directions'
-    + '?origin=' + p[1] + ',' + p[0] + '&destination=' + p[3] + ',' + p[2] + '&priority=RECOMMEND';
-  const route = (kakaoGet_(url).routes || [])[0];
-  if (!route) return null;
-  if (route.result_code === 104) return { km: 0, min: 0 }; // 출발지 = 도착지
-  if (route.result_code !== 0) return null;
-  return { km: Math.round(route.summary.distance / 100) / 10, min: Math.round(route.summary.duration / 60) };
-}
-
-// 티맵 키 확인용: 실행 → 실행 로그에 고양파주지사→일신2조합빌딩 거리가 나오면 정상
-function testTmap() {
-  const key = (PropertiesService.getScriptProperties().getProperty('TMAP_APP_KEY') || '').trim();
-  if (!key) { Logger.log('스크립트 속성에 TMAP_APP_KEY가 없습니다.'); return; }
-  const res = UrlFetchApp.fetch('https://apis.openapi.sk.com/tmap/routes?version=1&format=json', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { appKey: key },
-    payload: JSON.stringify({ startX: '126.7448', startY: '37.6684', endX: '126.7694', endY: '37.6826',
-      reqCoordType: 'WGS84GEO', resCoordType: 'WGS84GEO', searchOption: '0' }),
-  });
-  Logger.log(res.getResponseCode() + ' ' + res.getContentText().slice(0, 600));
 }
 
 // 결과(값이 있을 때만)를 6시간 캐시
@@ -371,9 +395,14 @@ function cached_(key, fn) {
   return v;
 }
 
-function kakaoGet_(url) {
+function getKakaoKey_() {
   const key = (PropertiesService.getScriptProperties().getProperty('KAKAO_REST_API_KEY') || '').trim();
   if (!key) throw new Error('스크립트 속성에 KAKAO_REST_API_KEY가 없습니다.');
+  return key;
+}
+
+function kakaoGet_(url) {
+  const key = getKakaoKey_();
   const res = UrlFetchApp.fetch(url, { headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true });
   const code = res.getResponseCode();
   if (code === 401 || code === 403) throw new Error('카카오 API 권한 오류(' + code + '). REST API 키와 카카오맵·카카오모빌리티 API 사용 설정을 확인하세요.');
@@ -384,44 +413,18 @@ function kakaoGet_(url) {
 // 편집기에서 실행해 설정 확인
 // 편집기에서 실행해 설정 확인
 function testSetup() {
-  Logger.log(getConfig());
-  Logger.log('주소록: 일신2조합빌딩 → ' + bookCandidates_('일신2조합빌딩', '일산동'));
+  const props = PropertiesService.getScriptProperties();
+  ['KAKAO_REST_API_KEY', 'KAKAO_JS_KEY', 'TMAP_APP_KEY', 'DATA_GO_KR_KEY'].forEach(k =>
+    Logger.log(k + ': ' + (props.getProperty(k) ? '있음' : '없음')));
   const o = getOrigin('고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59');
-  Logger.log(o);
-  Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시',
-    area: '목동동', name: '산내마을2단지센트럴리움아파트' }], o.origin));
-}
-
-// 검사접수정보(ElevatorRecptnService/getRecptnV1) 확인용: 실행 → 실행 로그를 보내 주세요
-function testRecptnApi() {
-  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
-  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
-  const base = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
-    + '?serviceKey=' + encodeURIComponent(key) + '&pageNo=1&numOfRows=3';
-  const tries = [
-    '&inspct_st_de=20261015&inspct_en_de=20261015',
-    '&inspct_st_de=20261015&inspct_en_de=20261015&elevator_no=',
-    '&recptn_st_de=20261001&recptn_en_de=20261015',
-    '&inspct_st_de=20261015&inspct_en_de=20261015&_type=json'
-  ];
-  tries.forEach(t => {
-    const res = UrlFetchApp.fetch(base + t, { muteHttpExceptions: true });
-    Logger.log('▶ ' + t + ' → ' + res.getResponseCode() + '\n' + res.getContentText('UTF-8').slice(0, 2500));
-  });
-}
-
-// 건물명으로 실주소 확인: 아래 세 값을 바꿔 실행 → 실행 로그에 그 기간 검사 접수 건 중 이름이 맞는 건이 나옴
-function testFindBuilding() {
-  const name = '일신2조합빌딩', st = '20261012', en = '20261016';
-  const r = recptnList(st, en, '');
-  if (!r.ok) { Logger.log('오류: ' + r.message); return; }
-  const key = x => String(x).replace(/\(주\)|㈜|주식회사|[\s()·\-_.,]/g, '');
-  const hit = r.list.filter(x => key(x.nm).indexOf(key(name)) >= 0 || key(name).indexOf(key(x.nm)) >= 0);
-  Logger.log(st + '~' + en + ' 전국 검사 접수 ' + r.list.length + '건 중 "' + name + '" ' + hit.length + '건');
-  hit.forEach(x => Logger.log(x.d + ' · ' + x.kind + ' · ' + x.nm + ' · ' + x.addr));
-  const kinds = {};
-  r.list.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
-  Logger.log('검사 종류별 건수: ' + JSON.stringify(kinds));
+  Logger.log('지사 좌표: ' + JSON.stringify(o));
+  Logger.log('주소록: 일신2조합빌딩 → ' + bookCandidates_('일신2조합빌딩', '일산동'));
+  if (o.ok) {
+    const g = geocodeSites([{ q: '일신2조합빌딩', area: '일산동', name: '일신2조합빌딩' }], o.origin);
+    Logger.log('현장 위치: ' + JSON.stringify(g));
+    const p = g.places && g.places['일신2조합빌딩'];
+    if (p) Logger.log('거리: ' + JSON.stringify(routeLegs([[o.origin.lat, o.origin.lng, p.lat, p.lng]])));
+  }
 }
 
 // 우리 지사 검사접수 건 확인: 지사 이름·기간을 바꿔 실행 → 실행 로그를 보내 주세요
