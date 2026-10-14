@@ -44,12 +44,11 @@ button,input{font:inherit;color:inherit}
 .ghost{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;min-height:40px;white-space:nowrap}
 
 /* day tabs */
-.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-block:2px 12px;scroll-snap-type:x proximity}
-.tabs::-webkit-scrollbar{display:none}
-.tab{flex:1 0 58px;scroll-snap-align:start;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 4px 7px;
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;padding-block:2px 12px}
+.tab{min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:7px 2px 6px;
   display:flex;flex-direction:column;align-items:center;gap:1px;min-height:68px;cursor:pointer}
-.tab .dw{font-size:12px;color:var(--muted)}
-.tab .dd{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.tab .dw{font-size:11.5px;color:var(--muted)}
+.tab .dd{font:600 clamp(13px,4.1vw,17px) var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 .tab .st{font-size:11px;font-weight:600;color:var(--accent)}
 .tab.off .st{color:var(--off)}
 .tab.none .st{color:var(--muted)}
@@ -67,21 +66,21 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
 .pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
 .pill.off{background:var(--off-soft);color:var(--off)}
 .pill.none{background:var(--surface);color:var(--muted)}
-.brief{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.brief{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
 .brief p{margin:0;text-wrap:pretty}
 .brief .crew{font-size:13.5px;color:var(--muted)}
 .brief .crew b{color:var(--ink)}
 
 .stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.stop{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:10px}
-.stop-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px}
+.stop-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start}
 .t{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;padding-top:1px}
 .nm{font-weight:600;font-size:16.5px;line-height:1.35;overflow-wrap:anywhere}
 .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:4px}
 .kind{font-style:normal;font-size:12px;font-weight:600;border:1px solid currentColor;border-radius:5px;padding:0 6px;line-height:1.5}
 .k-정{color:var(--k-jeong)}.k-밀{color:var(--k-mil)}.k-수{color:var(--k-su)}.k-완{color:var(--k-wan)}
 .u{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
-.u small{display:block;font:400 11.5px var(--font-body);color:var(--muted)}
+.u small{font:400 13px var(--font-body);color:var(--muted);margin-left:1px}
 .maps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .maps a{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:10px;background:var(--bg);color:var(--ink);
   text-decoration:none;font-size:14px;font-weight:600;border:1px solid var(--line)}
@@ -104,6 +103,7 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
 .msg{font-size:14px;text-align:center;min-height:1.5em}
 .msg.err{color:var(--k-wan)}
 @media (hover:none){.drop{display:none}}
+@media (max-width:359px){body{font-size:15px}.t,.u{font-size:15px}.nm{font-size:15.5px}.tabs{gap:4px}}
 @media (prefers-reduced-motion:no-preference){.panel{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateX(var(--dx,0))}to{opacity:1;transform:none}}}
 </style>
 
@@ -267,8 +267,7 @@ function render(){
     return `<button class="tab${cls}${d.iso===todayIso?' today':''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso===sel}">
       <span class="dw">${d.iso===todayIso?'오늘':dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`}).join('');
   drawPanel();
-  const on=$('tabs').querySelector('[aria-selected="true"]');if(on)on.scrollIntoView({inline:'nearest',block:'nearest'});
-}
+  }
 function drawPanel(dx){
   const d=days.find(x=>x.iso===sel);const name=curName();const {md,dow}=mdow(d);
   let h=`<div class="dayhead"><h2>${md}<span>${dow}요일${d.iso===todayIso?' · 오늘':''}</span></h2>`;
@@ -290,7 +289,6 @@ function drawPanel(dx){
 }
 function go(iso,dx){if(!iso||iso===sel)return;sel=iso;
   $('tabs').querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.iso===sel));
-  const on=$('tabs').querySelector('[aria-selected="true"]');if(on)on.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});
   drawPanel(dx);window.scrollTo({top:0});}
 $('tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t)go(t.dataset.iso)});
 // 좌우로 밀어서 날짜 넘기기
