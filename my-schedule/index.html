@@ -753,7 +753,7 @@ label.ghost {
 .memo{background:var(--off-soft);border:1px solid color-mix(in srgb,var(--off) 35%,transparent);border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.5;display:flex;flex-direction:column}
 .memo b{font-size:12px;color:var(--off)}
 .memo small{font-size:11.5px;color:var(--off);margin-top:2px}
-.memobtn{align-self:flex-start;margin-top:6px;border:0;background:none;color:var(--accent);font:600 13px var(--font-body);padding:2px 0;cursor:pointer}
+.memobtn{align-self:stretch;margin-top:6px;border:1px dashed var(--off);background:var(--off-soft);color:var(--off);font:600 13.5px var(--font-body);padding:8px 0;border-radius:9px;cursor:pointer}
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(10,15,25,.45);display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:100%;max-width:520px;background:var(--surface);border-radius:18px 18px 0 0;display:flex;flex-direction:column;gap:10px;
   padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -773,6 +773,7 @@ label.ghost {
 .ghost{white-space:nowrap;font-size:clamp(12px,3.6vw,14px)}
 .info .none{color:var(--muted);font-weight:400;font-family:var(--font-body)}
 .others b{white-space:nowrap}
+.wmemo{font-size:12.5px;color:var(--off);margin-top:3px;overflow-wrap:anywhere}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1205,6 +1206,12 @@ function openMemo(i) {
   $('memoSheet').hidden = false;
   $('memoText').focus();
 }
+function alertBar(t) {
+  const b = $('errBar');
+  b.hidden = false;
+  b.textContent = t;
+  setTimeout(() => (b.hidden = true), 6000);
+}
 function closeMemo() {
   $('memoSheet').hidden = true;
   memoStop = null;
@@ -1218,6 +1225,8 @@ function saveMemo() {
     MEMOS[k] = { t, at: n.getFullYear() + '.' + (n.getMonth() + 1) + '.' + n.getDate() };
   } else delete MEMOS[k];
   store.set('sched.memos', JSON.stringify(MEMOS));
+  if (store.get('sched.memos') !== JSON.stringify(MEMOS))
+    alertBar('이 브라우저에서는 메모를 저장할 수 없어요. 지금 화면에서만 보이고 다시 열면 사라져요.');
   const el = $('memo-' + memoIdx);
   if (el) el.innerHTML = memoHtml(memoStop, memoIdx);
   closeMemo();
@@ -1451,7 +1460,7 @@ function drawWeek() {
         .map(
           s => `<li><span class="t">${esc(s.time)}</span>
       <div style="min-width:0"><div class="nm">${esc(s.name)}${s.memo ? ` <span class="memo">${esc(s.memo)}</span>` : ''}</div>
-        <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}</div>
+        <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}${MEMOS[memoKey(s)] ? `<div class="wmemo">메모: ${esc(MEMOS[memoKey(s)].t.split('\n')[0])}</div>` : ''}</div>
       <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></li>`
         )
         .join('')}</ul>`;
