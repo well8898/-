@@ -263,3 +263,19 @@ function testElevatorApi() {
       + res.getContentText('UTF-8').slice(0, 1500));
   });
 }
+
+// 새 서비스(ElevatorInspectsafeService) 기능 이름 찾기용: 실행 → 실행 로그를 보내 주세요
+function testInspectApi() {
+  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
+  const base = 'https://apis.data.go.kr/B553664/ElevatorInspectsafeService/';
+  const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd');
+  const ops = ['getInspectsafeList', 'getElevatorInspectsafeList', 'getInspectSafeList',
+    'getElvtrInspectsafeList', 'getInspectsafeInfo', 'getInspectList', 'getInspectsafeHistList'];
+  ops.forEach(op => {
+    const url = base + op + '?serviceKey=' + encodeURIComponent(key) + '&numOfRows=2&pageNo=1';
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    Logger.log('▶ ' + op + ' → ' + res.getResponseCode() + '\n' + res.getContentText('UTF-8').slice(0, 700));
+  });
+  Logger.log('오늘 날짜: ' + today);
+}
