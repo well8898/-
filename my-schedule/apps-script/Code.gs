@@ -59,11 +59,11 @@ function getOrigin(name, address) {
   }
 }
 
+// 지사 좌표는 스크립트 속성 BRANCH_POINTS 하나에 모아서 저장 ({ 지사이름: {lat,lng} })
 function branchPoint_(name, address) {
   const props = PropertiesService.getScriptProperties();
-  const key = 'BR_' + name;
-  const saved = props.getProperty(key);
-  if (saved) return JSON.parse(saved);
+  const all = JSON.parse(props.getProperty('BRANCH_POINTS') || '{}');
+  if (all[name]) return all[name];
   const q = String(address || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
   const ad = kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=1&query=' + encodeURIComponent(q));
   let d = (ad.documents || [])[0];
@@ -73,9 +73,34 @@ function branchPoint_(name, address) {
     d = (kw.documents || [])[0];
   }
   if (!d) return null;
-  const p = { lat: Number(d.y), lng: Number(d.x) };
-  props.setProperty(key, JSON.stringify(p));
-  return p;
+  all[name] = { lat: Number(d.y), lng: Number(d.x) };
+  props.setProperty('BRANCH_POINTS', JSON.stringify(all));
+  return all[name];
+}
+
+// 예전 버전이 지사마다 만든 BR_… 속성을 BRANCH_POINTS 하나로 합치고 지움 (속성 50개 넘김 해결)
+// 편집기에서 한 번 실행하세요
+function cleanupProperties() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperties();
+  const all = JSON.parse(raw.BRANCH_POINTS || '{}');
+  let n = 0;
+  Object.keys(raw).forEach(k => {
+    if (k.indexOf('BR_') !== 0) return;
+    try { all[k.slice(3)] = JSON.parse(raw[k]); } catch (e) { /* 버림 */ }
+    props.deleteProperty(k);
+    n++;
+  });
+  props.setProperty('BRANCH_POINTS', JSON.stringify(all));
+  Logger.log('정리한 속성 ' + n + '개 · 남은 속성 ' + Object.keys(props.getProperties()).length + '개');
+}
+
+// 인증키를 코드로 넣기 (속성 화면에서 추가가 안 될 때): 아래 따옴표 안에 키를 넣고 한 번 실행한 뒤, 키는 다시 지우세요
+function setDataGoKrKey() {
+  const key = '';
+  if (!key) { Logger.log('함수 안의 key 따옴표에 인증키를 넣고 실행하세요.'); return; }
+  PropertiesService.getScriptProperties().setProperty('DATA_GO_KR_KEY', key.trim());
+  Logger.log('DATA_GO_KR_KEY 저장 완료. 이제 코드의 키를 지우고 저장하세요.');
 }
 
 // 현장이 많은 동·읍·면 이름들 → 그 동네들과 가장 잘 맞는 지사
