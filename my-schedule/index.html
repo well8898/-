@@ -1605,11 +1605,13 @@ async function dayExtras(d) {
           ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
           : encodeURIComponent(mapQuery(s));
         const nm = encodeURIComponent(placeName(s.name));
-        // 티맵 앱 길안내 (설치된 휴대폰에서만 열림)
+        // 좌표를 아는 현장: 세 앱 모두 그 위치로 바로 길찾기 (현재 위치 → 현장)
+        // 카카오맵은 웹 주소라 앱이 없어도 열림, 네이버·티맵은 앱이 깔린 휴대폰에서 열림
+        const nmc = encodeURIComponent(placeName(s.name).replace(/,/g, ' '));
         mp.innerHTML =
-          `<a href="https:\/\/map.kakao.com/link/search/${q}" target="_blank" rel="noopener">카카오맵</a>` +
-          `<a href="https:\/\/map.naver.com/p/search/${q}" target="_blank" rel="noopener">네이버지도</a>` +
-          `<a href="tmap:\/\/route?rGoName=${nm}&rGoX=${g.lng}&rGoY=${g.lat}" target="_top">티맵 길안내</a>`;
+          `<a href="https:\/\/map.kakao.com/link/to/${nmc},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오 길찾기</a>` +
+          `<a href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${nm}&appname=elevator.schedule" target="_blank" rel="noopener">네이버 길찾기</a>` +
+          `<a href="tmap:\/\/route?rGoName=${nm}&rGoX=${g.lng}&rGoY=${g.lat}" target="_blank" rel="noopener">티맵 길안내</a>`;
         mp.classList.add('three');
       }
     });
