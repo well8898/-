@@ -765,6 +765,14 @@ label.ghost {
 .resume.old{border-color:var(--line)}
 .resume small{color:var(--muted);font-size:12.5px}
 .resume b{font-size:16px}
+/* 버튼 글자가 항상 버튼 안에 들어가게: 좁으면 글자를 줄이고 두 줄까지 */
+.maps a,.maps button{min-width:0;padding:6px 6px;font-size:clamp(11.5px,3.5vw,14px);line-height:1.25;text-align:center;
+  white-space:normal;word-break:keep-all;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center}
+.maps.three a,.maps.three button{font-size:clamp(11px,3.2vw,13.5px);padding:6px 4px}
+.ghost,.tab{min-width:0}
+.ghost{white-space:nowrap;font-size:clamp(12px,3.6vw,14px)}
+.info .none{color:var(--muted);font-weight:400;font-family:var(--font-body)}
+.others b{white-space:nowrap}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1355,7 +1363,9 @@ function othersAt(d, s) {
       out.push({
         team: t.team,
         names: t.members.map(bare),
-        times: [...new Set(hit.map(x => x.time))]
+        times: [...new Set(hit.map(x => x.time))],
+        units: hit.reduce((a, x) => a + (x.units || 0), 0),
+        kinds: [...new Set(hit.map(x => KIND[x.kind] || x.kind).filter(Boolean))]
       });
   });
   return out;
@@ -1363,7 +1373,12 @@ function othersAt(d, s) {
 function othersHtml(d, s) {
   const o = othersAt(d, s);
   if (!o.length) return '';
-  return `<div class="others">${o.map(x => `<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`).join('')}</div>`;
+  return `<div class="others">${o
+    .map(
+      x =>
+        `<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b> · ${esc(x.kinds.join('·'))} <b>${x.units}대</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`
+    )
+    .join('')}</div>`;
 }
 let days = [];
 function curName() {
@@ -1689,10 +1704,18 @@ function telHref(t) {
 }
 function infoHtml(r) {
   if (!r || !(r.mnt || r.mfr || r.form)) return '';
-  const tel = String(r.tel || '').split(/[~,/]/)[0].trim();
-  const th = telHref(tel);
-  return `<div class="info">${r.mnt ? `<span>보수업체</span><b>${esc(r.mnt)}</b>` : ''}${tel ? `<span>전화</span><b class="mono">${esc(r.tel)}</b>` : ''}${r.mfr ? `<span>제조사</span><b>${esc(r.mfr)}</b>` : ''}${r.form ? `<span>형식</span><b>${esc(r.form)}</b>` : ''}</div>
-    ${th ? `<div class="maps"><a class="call" href="tel:${th}" target="_blank" rel="noopener">보수업체 전화</a><button type="button" class="copytel" data-tel="${esc(tel)}">번호 복사</button></div>` : ''}`;
+  const first = t => String(t || '').split(/[~,/]/)[0].trim();
+  const tel = first(r.tel),
+    mtel = first(r.mfrTel);
+  const th = telHref(tel),
+    mh = telHref(mtel);
+  const noMnt = !r.mnt || /보수안함|없음/.test(r.mnt);
+  // 보수업체 번호가 공단 자료에 없으면: 업체 이름으로 번호 검색 버튼 + 제조사 대표번호
+  const search = !th && !noMnt
+    ? `<a href="https:\/\/search.naver.com/search.naver?query=${encodeURIComponent(r.mnt + ' 전화번호')}" target="_blank" rel="noopener">보수업체 번호 검색</a>`
+    : '';
+  return `<div class="info">${r.mnt ? `<span>보수업체</span><b>${esc(r.mnt)}</b>` : ''}<span>보수 전화</span><b class="mono">${th ? esc(r.tel) : '<span class="none">공단 자료에 번호 없음</span>'}</b>${r.mfr ? `<span>제조사</span><b>${esc(r.mfr)}</b>` : ''}${mtel ? `<span>제조사 전화</span><b class="mono">${esc(r.mfrTel)}</b>` : ''}${r.form ? `<span>형식</span><b>${esc(r.form)}</b>` : ''}</div>
+    <div class="maps">${th ? `<a class="call" href="tel:${th}" target="_blank" rel="noopener">보수업체 전화</a><button type="button" class="copytel" data-tel="${esc(tel)}">번호 복사</button>` : search}${!th && mh ? `<a href="tel:${mh}" target="_blank" rel="noopener">제조사 전화</a>` : ''}</div>`;
 }
 async function dayExtras(d) {
   const iso = d.iso;
