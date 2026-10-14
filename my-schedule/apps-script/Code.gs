@@ -49,7 +49,7 @@ function getConfig() {
     const props = PropertiesService.getScriptProperties();
     let origin = null;
     try { origin = originPlace_(); } catch (e) { /* 출발지 없이 현장끼리만 계산 */ }
-    return { ok: true, kakaoJsKey: props.getProperty('KAKAO_JS_KEY') || '', origin: origin };
+    return { ok: true, kakaoJsKey: (props.getProperty('KAKAO_JS_KEY') || '').trim(), origin: origin };
   } catch (e) {
     return { ok: false, message: e.message };
   }
@@ -147,7 +147,7 @@ function cached_(key, fn) {
 }
 
 function kakaoGet_(url) {
-  const key = PropertiesService.getScriptProperties().getProperty('KAKAO_REST_API_KEY');
+  const key = (PropertiesService.getScriptProperties().getProperty('KAKAO_REST_API_KEY') || '').trim();
   if (!key) throw new Error('스크립트 속성에 KAKAO_REST_API_KEY가 없습니다.');
   const res = UrlFetchApp.fetch(url, { headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true });
   const code = res.getResponseCode();

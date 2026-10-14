@@ -701,7 +701,10 @@ window.addEventListener(
         (e.target && e.target.src
           ? '불러오지 못함 ' + e.target.src
           : '알 수 없음')) +
-      (e.lineno ? ' (' + e.lineno + '번째 줄)' : '');
+      (e.lineno ? ' (' + e.lineno + '번째 줄)' : '') +
+      (e.filename
+        ? ' · 파일: ' + (e.filename.split('?')[0].split('/').pop() || '화면')
+        : '');
   },
   true
 );
