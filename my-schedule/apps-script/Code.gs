@@ -6,12 +6,11 @@
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도)
  *                          카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 웹앱 도메인 등록
- *   - ORIGIN_NAME        : (선택) 출발·도착 지점 이름. 기본 '고양파주지사'
- *   - ORIGIN_ADDRESS     : (선택) 출발·도착 주소. 기본 '경기 고양시 일산서구 킨텍스로 217-59'
+ * ▶ 출발 지사는 화면에서 정함 (일정표 제목 → 지난번 선택 → 현장 동네로 추측 → 직접 선택)
  */
 
-const ORIGIN_DEFAULT = { name: '고양파주지사', address: '경기 고양시 일산서구 킨텍스로 217-59' };
-const CACHE_SEC = 21600; // 6시간
+const CACHE_SEC = 21600;   // 6시간
+const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과는 버림 (관할 지역 안에서만 핀)
 
 // 화면(HTML): 이 프로젝트에 Index 파일이 있으면 그것을 쓰고, 없으면 GitHub에서 읽어 옴
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
@@ -39,40 +38,92 @@ function pageHtml_() {
   return html;
 }
 
-// 화면 시작 시: 지도 키 + 출발지 좌표
+// 화면 시작 시: 지도 키
 function getConfig() {
   try {
-    const props = PropertiesService.getScriptProperties();
-    let origin = null;
-    try { origin = originPlace_(); } catch (e) { /* 출발지 없이 현장끼리만 계산 */ }
-    return { ok: true, kakaoJsKey: (props.getProperty('KAKAO_JS_KEY') || '').trim(), origin: origin };
+    const key = PropertiesService.getScriptProperties().getProperty('KAKAO_JS_KEY') || '';
+    return { ok: true, kakaoJsKey: key.trim() };
   } catch (e) {
     return { ok: false, message: e.message };
   }
 }
 
-function originPlace_() {
-  const props = PropertiesService.getScriptProperties();
-  const name = props.getProperty('ORIGIN_NAME') || ORIGIN_DEFAULT.name;
-  const address = props.getProperty('ORIGIN_ADDRESS') || ORIGIN_DEFAULT.address;
-  return cached_('origin:' + address, () => {
-    const ad = kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=1&query=' + encodeURIComponent(address));
-    const d = (ad.documents || [])[0];
-    if (!d) throw new Error('출발지 주소를 찾지 못했습니다: ' + address);
-    return { lat: Number(d.y), lng: Number(d.x), name: name };
-  });
+// 지사 이름·주소 → { ok, origin: { lat, lng, name } }  (좌표는 스크립트 속성에 영구 저장)
+function getOrigin(name, address) {
+  try {
+    const p = branchPoint_(name, address);
+    if (!p) throw new Error('지사 주소를 찾지 못했습니다: ' + address);
+    return { ok: true, origin: { lat: p.lat, lng: p.lng, name: name } };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
 }
 
-// sites: [{ q: 검색어, region: '파주시', area: '목동동', name: '산내마을2단지센트럴리움아파트' }]
-// → { ok, places: { 검색어: { lat, lng, name } } }   못 찾은 현장은 빠짐 (지도·거리 계산에서 제외)
-function geocodeSites(sites) {
+function branchPoint_(name, address) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'BR_' + name;
+  const saved = props.getProperty(key);
+  if (saved) return JSON.parse(saved);
+  const q = String(address || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const ad = kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=1&query=' + encodeURIComponent(q));
+  let d = (ad.documents || [])[0];
+  if (!d) {
+    const kw = kakaoGet_('https://dapi.kakao.com/v2/local/search/keyword.json?size=1&query='
+      + encodeURIComponent('한국승강기안전공단 ' + name));
+    d = (kw.documents || [])[0];
+  }
+  if (!d) return null;
+  const p = { lat: Number(d.y), lng: Number(d.x) };
+  props.setProperty(key, JSON.stringify(p));
+  return p;
+}
+
+// 현장이 많은 동·읍·면 이름들 → 그 동네들과 가장 잘 맞는 지사
+// areas: ['북면', '삼계동', ...]  branches: [[이름, 주소], ...]  → { ok, branch, hits }
+function guessBranch(areas, branches) {
+  try {
+    const list = (Array.isArray(areas) ? areas : []).slice(0, 10);
+    // 동네 이름마다 전국의 같은 이름 후보 좌표
+    const cands = list.map(a => cached_('area:' + a, () => {
+      const r = kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=30&query=' + encodeURIComponent(a));
+      return (r.documents || [])
+        .filter(d => (d.address_name || '').split(' ').pop() === a)
+        .map(d => [Number(d.y), Number(d.x)]);
+    }) || []);
+    let best = null;
+    (Array.isArray(branches) ? branches : []).forEach(b => {
+      let p = null;
+      try { p = branchPoint_(b[0], b[1]); } catch (e) { /* 건너뜀 */ }
+      if (!p) return;
+      let hits = 0, sum = 0;
+      cands.forEach(c => {
+        const m = c.length ? Math.min.apply(null, c.map(x => km_(p.lat, p.lng, x[0], x[1]))) : 999;
+        if (m <= 35) hits++;
+        sum += Math.min(m, 200);
+      });
+      if (!best || hits > best.hits || (hits === best.hits && sum < best.sum)) {
+        best = { branch: b[0], hits: hits, sum: sum };
+      }
+    });
+    if (!best || !best.hits) return { ok: false, message: '추측할 수 없음' };
+    return { ok: true, branch: best.branch, hits: best.hits };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// sites: [{ q: 검색어, region, area: '삼계동', name: '김해북부두산위브아파트' }]  origin: 지사 좌표
+// → { ok, places: { 검색어: { lat, lng, name } } }   못 찾은 현장·관할 밖 결과는 빠짐
+function geocodeSites(sites, origin) {
   try {
     const places = {};
+    const o = origin && origin.lat ? origin : null;
     (Array.isArray(sites) ? sites : []).slice(0, 60).forEach(s => {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
       let p = null;
-      try { p = cached_('site:' + q, () => findSite_(s)); } catch (e) { /* 이 현장만 건너뜀 */ }
+      const ck = 'site:' + q + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+      try { p = cached_(ck, () => findSite_(s, o)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
     return { ok: true, places: places };
@@ -81,30 +132,38 @@ function geocodeSites(sites) {
   }
 }
 
-// 상호 검색 결과 중 일정표의 동·읍·면에 있는 곳만 채택 (엉뚱한 지역에 핀이 찍히지 않게)
-function findSite_(s) {
+// 상호 검색 결과 중 일정표의 동·읍·면에 있고, 지사에서 가까운 곳 (REGION_KM 안)
+function findSite_(s, o) {
   const base = 'https://dapi.kakao.com/v2/local/search/';
   const area = String(s.area || '').trim();
-  const city = String(s.region || '').split(' ')[0];
   const name = String(s.name || '').trim();
-  const within = d => {
+  const near = o ? '&x=' + o.lng + '&y=' + o.lat + '&sort=distance' : '';
+  const ok = d => {
     const a = ' ' + (d.address_name || '') + ' ' + (d.road_address_name || '');
-    return area ? a.indexOf(' ' + area) >= 0 : (!city || a.indexOf(city) >= 0);
+    if (area && a.indexOf(' ' + area) < 0) return false;
+    return !o || km_(o.lat, o.lng, Number(d.y), Number(d.x)) <= REGION_KM;
   };
-  const queries = [String(s.q || ''), name, city ? city + ' ' + name : ''].filter(Boolean);
+  const queries = [String(s.q || ''), area + ' ' + name, name].filter(Boolean);
   for (let i = 0; i < queries.length; i++) {
-    const kw = kakaoGet_(base + 'keyword.json?size=15&query=' + encodeURIComponent(queries[i]));
-    const d = (kw.documents || []).find(within);
+    const kw = kakaoGet_(base + 'keyword.json?size=15&query=' + encodeURIComponent(queries[i]) + near);
+    const d = (kw.documents || []).find(ok);
     if (d) return { lat: Number(d.y), lng: Number(d.x), name: d.place_name || name };
   }
   // 이름이 지번·도로명 주소인 경우 (예: 덕은동746, 지축4로 37)
   if (/\d/.test(name)) {
     const q = [s.region, area, name.indexOf(area) === 0 ? name.slice(area.length) : name].filter(Boolean).join(' ');
-    const ad = kakaoGet_(base + 'address.json?size=1&query=' + encodeURIComponent(q));
-    const d = (ad.documents || [])[0];
+    const ad = kakaoGet_(base + 'address.json?size=5&query=' + encodeURIComponent(q));
+    const d = (ad.documents || []).find(ok);
     if (d) return { lat: Number(d.y), lng: Number(d.x), name: name };
   }
   return null;
+}
+
+// 두 좌표 사이 직선거리 (km)
+function km_(a, b, c, d) {
+  const r = Math.PI / 180;
+  const x = (d - b) * r * Math.cos((a + c) / 2 * r), y = (c - a) * r;
+  return Math.sqrt(x * x + y * y) * 6371;
 }
 
 // pairs: [[출발 위도, 경도, 도착 위도, 경도], ...] → { ok, km: [구간별 km(소수 1자리) | null] }  자동차 추천경로
@@ -153,7 +212,11 @@ function kakaoGet_(url) {
 }
 
 // 편집기에서 실행해 설정 확인
+// 편집기에서 실행해 설정 확인
 function testSetup() {
   Logger.log(getConfig());
-  Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시', area: '목동동', name: '산내마을2단지센트럴리움아파트' }]));
+  const o = getOrigin('고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59');
+  Logger.log(o);
+  Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시',
+    area: '목동동', name: '산내마을2단지센트럴리움아파트' }], o.origin));
 }

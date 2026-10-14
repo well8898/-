@@ -346,6 +346,7 @@ main {
 .k-수 {
   color: var(--k-su);
 }
+.k-설,
 .k-완 {
   color: var(--k-wan);
 }
@@ -733,6 +734,10 @@ label.ghost {
 .sum-list .sa{font-size:12.5px;font-weight:400;opacity:.72;margin-left:6px}
 .sum-list .sk{font-size:12.5px;font-weight:600;white-space:nowrap;background:rgba(255,255,255,.16);border-radius:6px;padding:1px 7px}
 .sum-foot{padding-top:8px;margin-top:2px}
+.branch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.branch select{font:600 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:100%}
+.branch small{font-size:12px}
+.memo{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -797,6 +802,7 @@ window.addEventListener(
   </header>
   <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
     <div class="week" id="week"></div>
+    <div class="branch" id="branchRow"></div>
     <section class="panel" id="panel" role="tabpanel"></section>
   </div></main>
 </div>
@@ -839,6 +845,18 @@ function parseItems(items, yearHint) {
   const firstMisc = rowLabels.length
     ? Math.min(...rowLabels.map(i => i.y))
     : Infinity;
+  // 행사·복무 같은 머리글이 없는 양식: 마지막 조 칸 다음부터를 기타(휴가·비고) 영역으로
+  const spacing =
+    labels.length > 1
+      ? (labels[labels.length - 1].y - labels[0].y) / (labels.length - 1)
+      : Infinity;
+  const miscStart = Math.min(
+    firstMisc,
+    labels.length > 1 ? labels[labels.length - 1].y + spacing * 0.99 : Infinity
+  );
+  const NAMES =
+    /^\s*[가-힣A-Za-z]{2,6}\s*\([^)]*\)\s*(\/\s*[가-힣A-Za-z]{2,6}\s*\([^)]*\)\s*)+$/;
+  const LEAVE = /연차|휴가|병가|돌봄|출산|공가|경조|건강|휴직/;
   const days = cols.map(c => {
     const its = items.filter(
       i => i.y > hy + 3 && i.x + i.w / 2 >= c.l && i.x + i.w / 2 < c.r
@@ -869,25 +887,30 @@ function parseItems(items, yearHint) {
     for (const L of lines) {
       if (!L.s) continue;
       if (
-        L.y >= firstMisc - 3 ||
-        /^(휴가자|임피|검사지원|출장|교육)/.test(L.s) ||
+        L.y >= miscStart - 3 ||
+        /^(휴가자|임피|검사지원)/.test(L.s) ||
         /(휴가자|검사지원):/.test(L.s)
       ) {
-        misc += (/^\S+:/.test(L.s) ? '\n' : '') + L.s;
+        // 앞줄에서 이어지는 줄('(건강),한상호' 등)은 붙이고, 나머지는 새 줄로
+        misc += (misc && !/^[(,]/.test(L.s) ? '\n' : '') + L.s;
         continue;
       }
-      const sm = L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
+      if (/^\d+$/.test(L.s)) continue; // 빈 칸의 '0' 같은 숫자
+      let sm = L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
+      if (!sm && NAMES.test(L.s)) sm = [L.s, null, null, L.s]; // 현장수 없이 이름만 있는 요약
       if (sm) {
         const lab = labels.filter(l => l.y <= L.y + 1).pop();
+        const stops = parseStops(buf);
         teams.push({
           team: lab ? lab.t : '',
-          sites: +sm[1],
-          units: +sm[2],
+          sites: sm[1] != null ? +sm[1] : places(stops).length,
+          units:
+            sm[2] != null ? +sm[2] : stops.reduce((a, x) => a + (x.units || 0), 0),
           members: sm[3]
             .split('/')
             .map(x => x.trim())
             .filter(Boolean),
-          stops: parseStops(buf)
+          stops
         });
         buf = '';
         continue;
@@ -895,23 +918,34 @@ function parseItems(items, yearHint) {
       if (/^\d{1,2}:\d{2}/.test(L.s)) buf += '\n' + L.s;
       else buf += L.s;
     }
-    const vac =
-      (misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m) || [])[1] || '';
-    const supp = [
-      ...misc.matchAll(/검사지원:([^\n]*?)(?=휴가자:|임피:|$)/gm)
-    ].map(m => m[1].trim());
+    const vac = new Set();
+    const vm = misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m);
+    if (vm)
+      vm[1].split(',').forEach(x => {
+        if (x.trim()) vac.add(x.trim());
+      });
+    for (const m of misc.matchAll(/([가-힣]{2,4})\s*\(([^)]*)\)/g))
+      if (LEAVE.test(m[2])) vac.add(m[1] + '(' + m[2] + ')');
+    const notes = misc
+      .split('\n')
+      .map(x => x.trim())
+      .filter(
+        x =>
+          x &&
+          !/^\d+$/.test(x) &&
+          !/^휴가자:/.test(x) &&
+          !/^[가-힣]{2,4}\s*\([^)]*\)(\s*[-~].*)?$/.test(x)
+      );
     return {
       label: c.s,
       iso: fmt(c.date),
       teams,
-      vacation: vac
-        .split(',')
-        .map(x => x.trim())
-        .filter(Boolean),
-      support: supp
+      vacation: [...vac],
+      support: notes
     };
   });
-  return days;
+  // 주말처럼 아무것도 없는 날은 뺌
+  return days.filter(d => d.teams.length || d.vacation.length || d.support.length);
 }
 function fmt(d) {
   return (
@@ -928,6 +962,12 @@ function parseStops(buf) {
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {
+      let memo = '';
+      const mm = s.match(/^(.*\(\d+\))\s*-\s*(.+)$/);
+      if (mm) {
+        s = mm[1];
+        memo = mm[2].trim();
+      }
       const m = s.match(
         /^(\d{1,2}:\d{2})\s*\[([^\]]+)\]\s*(?:\[([^\]]+)\])?\s*(?:\[(.*)\]|(.*?))\s*(?:\((\d+)\))?\s*$/
       );
@@ -945,12 +985,13 @@ function parseStops(buf) {
         kind: m[2],
         area: m[3] && m[3] !== '주소불명' ? m[3] : '',
         name,
-        units: m[6] ? +m[6] : null
+        units: m[6] ? +m[6] : null,
+        memo
       };
     });
 }
 
-const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치' };
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치' };
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const $ = id => document.getElementById(id);
 const store = {
@@ -1021,7 +1062,9 @@ function placeName(n) {
 function mapQuery(st) {
   let n = placeName(st.name);
   if (st.area && n.startsWith(st.area + ' ')) n = n.slice(st.area.length + 1);
-  return [st.area ? (REGION[st.area] || '') + ' ' + st.area : '', n]
+  const goyang = !BRANCH || BRANCH[0] === '고양파주지사';
+  const pre = goyang && REGION[st.area] ? REGION[st.area] : province();
+  return [st.area ? pre + ' ' + st.area : '', n]
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -1089,6 +1132,132 @@ function briefText(d, name) {
 }
 
 let sel = null; // 선택한 날짜 iso, 또는 'week'
+// 지사 목록 (data/branches.tsv) — 출발지·검색 지역 기준
+const BRANCHES = [
+  ['진주본사', '경남 진주시 소호로 102 (충무공동)'],
+  ['서울지역본부', '서울 구로구 디지털로31길 41'],
+  ['부산경남지역본부', '부산 부산진구 황령대로 24'],
+  ['대구경북지역본부', '대구 달서구 계대동문로 124'],
+  ['경인지역본부', '인천 남동구 논현로46번길 23'],
+  ['경기강원지역본부', '경기 수원시 영통구 광교로 146'],
+  ['충청지역본부', '세종특별자치시 정부2청사로 10'],
+  ['호남지역본부', '광주 서구 죽봉대로 52'],
+  ['서울남서지사', '서울 구로구 디지털로31길 53'],
+  ['서울동부지사', '서울 성동구 천호대로 376'],
+  ['서울서부지사', '서울 마포구 토정로 318'],
+  ['서울북부지사', '서울 도봉구 삼양로 538-5'],
+  ['서울강남지사', '서울 강남구 영동대로 316'],
+  ['서울강동지사', '서울 강동구 양재대로 1473'],
+  ['서울서초지사', '서울 서초구 서초대로 67'],
+  ['서울강서지사', '서울 강서구 공항대로 287'],
+  ['부산서부지사', '부산 부산진구 황령대로 24'],
+  ['부산동부지사', '부산 해운대구 센텀중앙로 90'],
+  ['부산북부지사', '부산 금정구 금정로 252'],
+  ['울산지사', '울산 중구 종가로 362-11'],
+  ['경남동부지사', '경남 창원시 성산구 원이대로 362'],
+  ['경남서부지사', '경남 창원시 마산회원구 3·15대로 685'],
+  ['진주출장소', '경남 진주시 신안로 94'],
+  ['대구서부지사', '대구 달서구 계대동문로 124'],
+  ['대구동부지사', '대구 동구 동대구로 471'],
+  ['경북동부지사', '경북 포항시 북구 삼흥로 95'],
+  ['경북서부지사', '경북 구미시 이계북로 7'],
+  ['인천남부지사', '인천 남동구 논현로46번길 23'],
+  ['경기북부지사', '경기 구리시 산마루로 19'],
+  ['양주출장소', '경기 양주시 옥정동로7가길 30'],
+  ['고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59'],
+  ['인천동부지사', '인천 부평구 무네미로 478'],
+  ['안산지사', '경기 안산시 상록구 해안로 705'],
+  ['인천서부지사', '인천 서구 원당대로 676'],
+  ['수원지사', '경기 수원시 영통구 광교로 146'],
+  ['성남지사', '경기 성남시 분당구 백현로 97'],
+  ['안양지사', '경기 안양시 만안구 안양로 119'],
+  ['용인지사', '경기 용인시 기흥구 관곡로64번길 18'],
+  ['평택안성지사', '경기 평택시 경기대로 1377'],
+  ['화성오산지사', '경기 화성시 병점2로 12'],
+  ['강원지사', '강원 원주시 호저로 47'],
+  ['강릉출장소', '강원 강릉시 강릉대로 317'],
+  ['춘천출장소', '강원 춘천시 안마산로 99'],
+  ['대전지사', '대전 유성구 도안북로 57'],
+  ['세종지사', '세종특별자치시 한누리대로 169'],
+  ['충북지사', '충북 청주시 상당구 중흥로 16'],
+  ['충남지사', '충남 아산시 배방읍 희망로46번길 45-31'],
+  ['천안지사', '충남 천안시 동남구 신촌2길 5-4'],
+  ['광주지사', '광주 서구 죽봉대로 52'],
+  ['전북동부지사', '전북특별자치도 전주시 덕진구 팔과정로 164'],
+  ['전북서부지사', '전북 익산시 익산대로16길 39'],
+  ['전남동부지사', '전남 순천시 중앙로 260'],
+  ['전남서부지사', '광주 광산구 무진대로 282'],
+  ['제주지사', '제주 제주시 연삼로 473']
+];
+let BRANCH = null; // [이름, 주소]
+let BRANCH_SRC = ''; // 'title' | 'saved' | 'guess' | 'pick'
+const branchByName = n => BRANCHES.find(b => b[0] === n) || null;
+const province = () => (BRANCH ? BRANCH[1].split(' ')[0] : '');
+// 일정표 제목·파일 이름에서 지사 이름 찾기 ('고양파주지사', '경남동부' 등)
+function branchFromText(t) {
+  const x = String(t || '').replace(/\s/g, '');
+  return (
+    BRANCHES.find(b => x.includes(b[0])) ||
+    BRANCHES.find(b => /(지사|출장소)$/.test(b[0]) && x.includes(b[0].replace(/(지사|출장소)$/, ''))) ||
+    null
+  );
+}
+function setBranch(b, src) {
+  const changed = (BRANCH && BRANCH[0]) !== (b && b[0]);
+  BRANCH = b;
+  BRANCH_SRC = src;
+  if (b) store.set('sched.branch', b[0]);
+  if (changed) {
+    for (const k in GEO) delete GEO[k];
+    ORIGIN = null;
+  }
+}
+// 동네로 지사 추측 (웹앱에서만): 현장이 많은 동·읍·면 → 가장 가까운 지사
+async function guessBranch() {
+  if (!SERVER || !data) return;
+  const cnt = {};
+  data.days.forEach(d =>
+    d.teams.forEach(t =>
+      t.stops.forEach(s => {
+        if (s.area) cnt[s.area] = (cnt[s.area] || 0) + 1;
+      })
+    )
+  );
+  const areas = Object.keys(cnt)
+    .sort((a, b) => cnt[b] - cnt[a])
+    .slice(0, 10);
+  if (!areas.length) return;
+  const bn = $('branchNote');
+  if (bn) bn.textContent = '현장 동네로 지사를 추측하는 중…';
+  try {
+    const r = await run('guessBranch', areas, BRANCHES);
+    const b = r && r.ok && branchByName(r.branch);
+    if (b && BRANCH_SRC !== 'pick') {
+      setBranch(b, 'guess');
+      render();
+    } else branchRow();
+  } catch (e) {
+    branchRow();
+  }
+}
+function branchRow() {
+  const el = $('branchRow');
+  if (!el) return;
+  const why = {
+    title: '일정표 제목에서 찾음',
+    saved: '지난번에 고른 지사',
+    guess: '현장 동네로 추측 · 틀리면 바꿔 주세요',
+    pick: '직접 고름'
+  }[BRANCH_SRC] || '어느 지사 일정표인지 골라 주세요';
+  el.innerHTML = `<label for="branchSel">출발 지사</label>
+    <select id="branchSel"><option value="">선택…</option>${BRANCHES.map(
+      b => `<option${BRANCH && b[0] === BRANCH[0] ? ' selected' : ''}>${esc(b[0])}</option>`
+    ).join('')}</select><small id="branchNote">${why}</small>`;
+  $('branchSel').onchange = e => {
+    setBranch(branchByName(e.target.value), 'pick');
+    render();
+  };
+}
 const siteKey = x => placeName(x.name).replace(/\s/g, '');
 // 같은 날 같은 현장에 가는 다른 조
 function othersAt(d, s) {
@@ -1135,6 +1304,7 @@ function render() {
   $('appView').hidden = !loaded;
   if (!loaded) return;
   $('src').textContent = data.source || '검사 일정표';
+  branchRow();
   days = mine(name);
   if (!days.some(d => d.t || d.off)) {
     $('tabs').innerHTML = '';
@@ -1181,7 +1351,7 @@ function drawWeek() {
       h += `<ul class="wlist">${d.t.stops
         .map(
           s => `<li><span class="t">${esc(s.time)}</span>
-      <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
+      <div style="min-width:0"><div class="nm">${esc(s.name)}${s.memo ? ` <span class="memo">${esc(s.memo)}</span>` : ''}</div>
         <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}</div>
       <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></li>`
         )
@@ -1189,10 +1359,15 @@ function drawWeek() {
     else
       h += `<div class="wlist flat">${d.off ? '휴가' : '배정된 현장 없음'}</div>`;
     if (d.sup.length)
-      h += `<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+      h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
     h += '</section>';
   });
   return h;
+}
+function offWhy(d, name) {
+  const v = d.vacation.find(x => bare(x) === name);
+  const m = v && v.match(/\(([^)]*)\)/);
+  return m ? ' (' + esc(m[1]) + ')' : '';
 }
 function daySum(d) {
   const st = d.t.stops;
@@ -1251,7 +1426,7 @@ function drawPanel(dx) {
           (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
         <div class="tl-card">
           <div class="tl-head"><span class="t">${esc(s.time)}</span>${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
-          <div class="nm">${esc(s.name)}</div>
+          <div class="nm">${esc(s.name)}${s.memo ? ` <span class="memo">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           ${othersHtml(d, s)}
           <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
@@ -1259,11 +1434,11 @@ function drawPanel(dx) {
         )
         .join('')}</ol>`;
   } else if (d.off)
-    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
+    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요${offWhy(d, name)}.</p></div>`;
   else
     h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
   if (d.sup.length)
-    h += `<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+    h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
   p.innerHTML = h;
   if (SERVER && d.t) dayExtras(d);
 }
@@ -1306,7 +1481,6 @@ const cfgReady = SERVER
       .then(c => {
         if (c && c.ok) {
           kakaoJsKey = c.kakaoJsKey || '';
-          ORIGIN = c.origin || null;
         }
       })
       .catch(() => {})
@@ -1356,12 +1530,16 @@ async function dayExtras(d) {
         need.push({
           q,
           area: s.area,
-          region: REGION[s.area] || '',
+          region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
           name: placeName(s.name)
         });
     });
+    if (BRANCH && !ORIGIN) {
+      const o = await run('getOrigin', BRANCH[0], BRANCH[1]);
+      if (o && o.ok) ORIGIN = o.origin;
+    }
     if (need.length) {
-      const r = await run('geocodeSites', need);
+      const r = await run('geocodeSites', need, ORIGIN);
       if (!r.ok) throw new Error(r.message);
       need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
     }
@@ -1619,7 +1797,8 @@ async function load(file) {
     const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
     const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
     const t = items.find(i => /일정표/.test(i.s));
-    const ds = parseItems(items, yr ? +yr : undefined);
+    const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
+    const ds = parseItems(items, yr ? +yr : yy ? 2000 + +yy : undefined);
     if (!ds.some(d => d.teams.length))
       throw new Error(
         '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
@@ -1630,6 +1809,13 @@ async function load(file) {
     };
     sel = null;
     msg.textContent = '';
+    const fromTitle = branchFromText((t ? t.s : '') + ' ' + file.name);
+    const saved = branchByName(store.get('sched.branch'));
+    if (fromTitle) setBranch(fromTitle, 'title');
+    else {
+      setBranch(saved, saved ? 'saved' : '');
+      guessBranch();
+    }
     render();
     window.scrollTo({ top: 0 });
   } catch (e) {
