@@ -220,3 +220,21 @@ function testSetup() {
   Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시',
     area: '목동동', name: '산내마을2단지센트럴리움아파트' }], o.origin));
 }
+
+// ── 승강기정보 API(공공데이터포털) 확인용: 편집기에서 실행 → 실행 로그를 복사해서 보내 주세요 ──
+// 스크립트 속성 DATA_GO_KR_KEY 에 공공데이터포털 '일반 인증키'를 넣고 실행
+function testElevatorApi() {
+  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
+  const base = 'https://apis.data.go.kr/B553664/BuldElevatorService/getBuldElvtrList'
+    + '?serviceKey=' + encodeURIComponent(key) + '&numOfRows=3&pageNo=1';
+  const tries = ['', '&buld_nm=' + encodeURIComponent('일신2조합빌딩'),
+    '&buldNm=' + encodeURIComponent('일신2조합빌딩'),
+    '&buld_address=' + encodeURIComponent('고양시 일산서구 일산동'),
+    '&_type=json'];
+  tries.forEach(t => {
+    const res = UrlFetchApp.fetch(base + t, { muteHttpExceptions: true });
+    Logger.log('▶ ' + (t || '(조건 없음)') + ' → ' + res.getResponseCode() + '\n'
+      + res.getContentText('UTF-8').slice(0, 1500));
+  });
+}
