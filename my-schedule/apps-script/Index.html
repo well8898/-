@@ -749,6 +749,26 @@ label.ghost {
 .dayroute b{font-size:14px}
 .dayroute small{font-size:12.5px;color:var(--muted)}
 .dayroute .maps a{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.info{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:13px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 10px}
+.info span{color:var(--muted)}
+.info b{font-weight:600;overflow-wrap:anywhere}
+.maps button{font:600 13.5px var(--font-body);min-height:36px;border-radius:9px;background:var(--bg);color:var(--ink);border:1px solid var(--line);cursor:pointer}
+.maps .call{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.memo{background:var(--off-soft);border:1px solid color-mix(in srgb,var(--off) 35%,transparent);border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.5;display:flex;flex-direction:column}
+.memo b{font-size:12px;color:var(--off)}
+.memo small{font-size:11.5px;color:var(--off);margin-top:2px}
+.memobtn{align-self:flex-start;margin-top:6px;border:0;background:none;color:var(--accent);font:600 13px var(--font-body);padding:2px 0;cursor:pointer}
+.sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(10,15,25,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;background:var(--surface);border-radius:18px 18px 0 0;display:flex;flex-direction:column;gap:10px;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font:15px/1.5 var(--font-body);background:var(--bg);color:var(--ink);resize:vertical}
+.sheet .chips{display:flex;gap:6px;flex-wrap:wrap}
+.sheet .chips button{border:1px solid var(--line);border-radius:99px;padding:4px 11px;font:13px var(--font-body);color:var(--muted);background:var(--surface);cursor:pointer}
+.sheet small{color:var(--muted);font-size:12px}
+.resume{background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.resume.old{border-color:var(--line)}
+.resume small{color:var(--muted);font-size:12.5px}
+.resume b{font-size:16px}
 </style>
 </head>
 <body>
@@ -795,12 +815,23 @@ window.addEventListener(
     </div>
     <p>지사 검사 일정표(엑셀 또는 PDF)를 올리면 내 조의 현장만 골라 날짜별로 보여 줘요.</p>
     <div class="field"><label for="name">내 이름</label><input id="name" value="" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div>
+    <div class="resume" id="resume" hidden></div>
     <label class="big" id="pick" for="file" role="button" tabindex="0">일정표 파일 고르기</label>
     <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
     <div class="msg" id="msg"></div>
     <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 화면에서만 읽고 어디에도 보내지 않아요.</p>
   </div>
 </section>
+
+<div class="sheet-bg" id="memoSheet" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="memoTitle">
+    <b id="memoTitle">메모</b>
+    <textarea id="memoText" rows="5" placeholder="주차, 관리실 연락처, 출입 방법 등"></textarea>
+    <div class="chips"><button type="button" data-add="주차: ">+ 주차</button><button type="button" data-add="관리실: ">+ 관리실 연락처</button><button type="button" data-add="출입: ">+ 출입 방법</button><button type="button" data-add="기계실: ">+ 기계실 위치</button></div>
+    <div class="maps"><button type="button" id="memoCancel">취소</button><button type="button" class="call" id="memoSave">저장</button></div>
+    <small>이 휴대폰에만 저장돼요.</small>
+  </div>
+</div>
 
 <div id="appView" hidden>
   <header class="bar gutter" id="bar">
@@ -1144,6 +1175,50 @@ function briefText(d, name) {
 }
 
 let sel = null; // 선택한 날짜 iso, 또는 'week'
+// 현장 메모: 이 휴대폰(브라우저)에만 저장. 키 = 건물명(정리) | 동
+let MEMOS = {};
+try {
+  MEMOS = JSON.parse(store.get('sched.memos') || '{}') || {};
+} catch (e) {
+  MEMOS = {};
+}
+const memoKey = s => normNm(s.name) + '|' + (s.area || '');
+function memoHtml(s, i) {
+  const m = MEMOS[memoKey(s)];
+  const body = m && m.t
+    ? `<div class="memo"><b>내 메모</b>${esc(m.t).replace(/\n/g, '<br>')}<small>${esc(m.at || '')} 작성</small></div>`
+    : '';
+  return body + `<button type="button" class="memobtn" data-i="${i}">${m && m.t ? '메모 고치기' : '메모 쓰기'}</button>`;
+}
+let memoStop = null,
+  memoIdx = -1;
+function openMemo(i) {
+  const d = days.find(x => x.iso === sel);
+  if (!d || !d.t) return;
+  memoStop = d.t.stops[i];
+  memoIdx = i;
+  $('memoTitle').textContent = placeName(memoStop.name) + ' 메모';
+  $('memoText').value = (MEMOS[memoKey(memoStop)] || {}).t || '';
+  $('memoSheet').hidden = false;
+  $('memoText').focus();
+}
+function closeMemo() {
+  $('memoSheet').hidden = true;
+  memoStop = null;
+}
+function saveMemo() {
+  if (!memoStop) return;
+  const t = $('memoText').value.trim();
+  const k = memoKey(memoStop);
+  if (t) {
+    const n = new Date();
+    MEMOS[k] = { t, at: n.getFullYear() + '.' + (n.getMonth() + 1) + '.' + n.getDate() };
+  } else delete MEMOS[k];
+  store.set('sched.memos', JSON.stringify(MEMOS));
+  const el = $('memo-' + memoIdx);
+  if (el) el.innerHTML = memoHtml(memoStop, memoIdx);
+  closeMemo();
+}
 // 지사 목록 (data/branches.tsv) — 출발지·검색 지역 기준
 const BRANCHES = [
   ['진주본사', '경남 진주시 소호로 102 (충무공동)'],
@@ -1314,6 +1389,7 @@ function render() {
   $('who').innerHTML = name ? `<em>${esc(name)}</em> 님 일정` : '내 일정';
   const loaded = !!data;
   $('startView').hidden = loaded;
+  if (!loaded) resumeCard();
   $('appView').hidden = !loaded;
   if (!loaded) return;
   $('src').textContent = data.source || '검사 일정표';
@@ -1442,6 +1518,8 @@ function drawPanel(dx) {
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="memo">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           ${othersHtml(d, s)}
+          <div id="info-${i}"></div>
+          <div id="memo-${i}">${memoHtml(s, i)}</div>
           <div class="maps" id="maps-${i}"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
         </div></li>`
         )
@@ -1471,6 +1549,27 @@ $('tabs').addEventListener('click', e => {
 $('panel').addEventListener('click', e => {
   const g = e.target.closest('[data-go]');
   if (g) go(g.dataset.go);
+  const mb = e.target.closest('.memobtn');
+  if (mb) openMemo(+mb.dataset.i);
+  const ct = e.target.closest('.copytel');
+  if (ct) {
+    const t = ct.dataset.tel;
+    const done = () => (ct.textContent = '복사했어요');
+    (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(
+      () => (ct.textContent = t)
+    );
+  }
+});
+$('memoCancel').onclick = closeMemo;
+$('memoSave').onclick = saveMemo;
+$('memoSheet').addEventListener('click', e => {
+  if (e.target === $('memoSheet')) closeMemo();
+  const a = e.target.closest('[data-add]');
+  if (a) {
+    const ta = $('memoText');
+    ta.value += (ta.value && !ta.value.endsWith('\n') ? '\n' : '') + a.dataset.add;
+    ta.focus();
+  }
 });
 // ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
 // 휴대폰인지 (앱 길안내 버튼은 휴대폰에서만)
@@ -1563,7 +1662,12 @@ const normNm = x =>
     .replace(/\(주\)|㈜|주식회사/g, '')
     .replace(/[\s()·\-_.,]/g, '');
 function realAddr(d, s) {
-  if (!RECPTN || !RECPTN.length) return '';
+  const r = matchRecptn(d, s);
+  return r ? r.addr : '';
+}
+// 일정표 현장 ↔ 검사접수 건 (건물명 + 검사일·동·종류로 가장 잘 맞는 것)
+function matchRecptn(d, s) {
+  if (!RECPTN || !RECPTN.length) return null;
   const n = normNm(s.name),
     day = d.iso.replace(/-/g, '');
   let best = null,
@@ -1582,13 +1686,29 @@ function realAddr(d, s) {
       best = r;
     }
   }
-  return best && bs >= 4 ? best.addr : '';
+  return best && bs >= 4 ? best : null;
+}
+function telHref(t) {
+  const m = String(t || '').match(/[\d-]{7,}/);
+  return m ? m[0].replace(/-/g, '') : '';
+}
+function infoHtml(r) {
+  if (!r || !(r.mnt || r.mfr || r.form)) return '';
+  const tel = String(r.tel || '').split(/[~,/]/)[0].trim();
+  const th = telHref(tel);
+  return `<div class="info">${r.mnt ? `<span>보수업체</span><b>${esc(r.mnt)}</b>` : ''}${tel ? `<span>전화</span><b class="mono">${esc(r.tel)}</b>` : ''}${r.mfr ? `<span>제조사</span><b>${esc(r.mfr)}</b>` : ''}${r.form ? `<span>형식</span><b>${esc(r.form)}</b>` : ''}</div>
+    ${th ? `<div class="maps"><a class="call" href="tel:${th}" target="_blank" rel="noopener">보수업체 전화</a><button type="button" class="copytel" data-tel="${esc(tel)}">번호 복사</button></div>` : ''}`;
 }
 async function dayExtras(d) {
   const iso = d.iso;
   try {
     await cfgReady;
     await loadRecptn();
+    if (sel === iso)
+      d.t.stops.forEach((s, i) => {
+        const el = $('info-' + i);
+        if (el) el.innerHTML = infoHtml(matchRecptn(d, s));
+      });
     const need = [];
     d.t.stops.forEach(s => {
       const addr = realAddr(d, s);
@@ -1937,6 +2057,7 @@ async function load(file) {
     };
     sel = null;
     msg.textContent = '';
+    saveLast();
     const fromTitle = branchFromText((t ? t.s : '') + ' ' + file.name);
     const saved = branchByName(store.get('sched.branch'));
     if (fromTitle) setBranch(fromTitle, 'title');
@@ -1954,6 +2075,45 @@ async function load(file) {
     msg.className = 'msg err';
     msg.textContent = e.message || '파일을 읽지 못했어요.';
   }
+}
+// 지난 일정표: 이 휴대폰에 저장해 두고 첫 화면에서 '이어서 보기'
+function saveLast() {
+  try {
+    store.set('sched.last', JSON.stringify({ data, at: Date.now() }));
+  } catch (e) {}
+}
+function resumeCard() {
+  const el = $('resume');
+  let last = null;
+  try {
+    last = JSON.parse(store.get('sched.last') || 'null');
+  } catch (e) {}
+  if (!last || !last.data || !last.data.days || !last.data.days.length) {
+    el.hidden = true;
+    return;
+  }
+  const ds = last.data.days;
+  const past = ds[ds.length - 1].iso < todayIso;
+  const at = new Date(last.at);
+  el.hidden = false;
+  el.classList.toggle('old', past);
+  el.innerHTML = `<small>${past ? '지난주 일정표예요 · 새 파일을 올려 주세요' : '지난번에 올린 일정표'}</small>
+    <b>${esc(last.data.source || '검사 일정표')}</b>
+    <small>${at.getMonth() + 1}/${at.getDate()} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}에 올림</small>
+    <div class="maps"><button type="button" class="${past ? '' : 'call'}" id="resumeGo">이어서 보기</button><button type="button" id="resumeDel">지우기</button></div>`;
+  $('resumeGo').onclick = () => {
+    data = last.data;
+    sel = null;
+    const fromTitle = branchFromText(data.source || '');
+    const saved = branchByName(store.get('sched.branch'));
+    setBranch(fromTitle || saved, fromTitle ? 'title' : saved ? 'saved' : '');
+    if (!fromTitle && !saved) guessBranch();
+    render();
+  };
+  $('resumeDel').onclick = () => {
+    store.set('sched.last', '');
+    resumeCard();
+  };
 }
 // 버튼은 <label for="file"> 라서 스크립트 없이도 파일 선택이 열림. 키보드(Enter·Space)만 처리
 ['pick', 'repick'].forEach(id =>

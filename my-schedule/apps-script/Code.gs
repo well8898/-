@@ -214,7 +214,7 @@ function recptnList(st, en, branch) {
   try {
     const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
     if (!key) return { ok: true, list: [], note: 'DATA_GO_KR_KEY 없음' };
-    const list = cached_('recptn:' + st + '-' + en + ':' + (branch || ''), () => {
+    const list = cached_('recptn2:' + st + '-' + en + ':' + (branch || ''), () => {
       const out = [];
       for (let page = 1; page <= 10; page++) {
         const url = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
@@ -228,7 +228,10 @@ function recptnList(st, en, branch) {
         items.forEach(it => {
           if (branch && String(it.inspctInsttNm || '') !== branch) return;
           out.push({ d: String(it.inspctDt), nm: String(it.buldNm || '').trim(),
-            addr: String(it.address || '').trim(), kind: String(it.inspctKindNm || '') });
+            addr: String(it.address || '').trim(), kind: String(it.inspctKindNm || ''),
+            mnt: String(it.ledgMntCompanyNm || '').trim(), tel: String(it.ledgMntHedofcTelno || '').trim(),
+            mfr: String(it.ledgMnfcturCompanyNm || '').trim(),
+            form: [it.ledgElvtrDiv, it.ledgElvtrForm].map(x => String(x || '').trim()).filter(Boolean).join(' · ') });
         });
         if (page * 1000 >= Number(body.totalCount || 0)) break;
       }
