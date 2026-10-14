@@ -1,136 +1,148 @@
 <title>내 검사 일정</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#1f5fbf">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: one narrow column — next-shift callout, week strip, then a day-by-day timeline of site cards */
+/* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
 :root{
-  --bg:#f3f5f7; --surface:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#dde3e9;
-  --accent:#1f5fbf; --accent-soft:#e6eefa;
+  --bg:#f1f4f7; --surface:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#dde3e9;
+  --accent:#1f5fbf; --accent-ink:#ffffff; --accent-soft:#e6eefa;
   --k-jeong:#2a3440; --k-mil:#1d7fc4; --k-su:#c27a0e; --k-wan:#c2392f;
   --off:#8a6d1e; --off-soft:#f8f0dc;
   --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#11161c; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
-  --accent:#6ea6f5; --accent-soft:#1d2d44;
+  --bg:#0f1419; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
+  --accent:#6ea6f5; --accent-ink:#0f1419; --accent-soft:#1d2d44;
   --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
   --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#11161c; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
-  --accent:#6ea6f5; --accent-soft:#1d2d44;
+  --bg:#0f1419; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
+  --accent:#6ea6f5; --accent-ink:#0f1419; --accent-soft:#1d2d44;
   --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
   --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
-.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-header{display:flex;flex-direction:column;gap:12px}
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
-.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500}
-h1{margin:2px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
-h1 em{font-style:normal;color:var(--accent)}
-.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.field{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 4px 4px 10px}
-.field label{font-size:12px;color:var(--muted)}
-.field input{border:0;background:transparent;color:var(--ink);font:600 15px var(--font-body);width:6.5em;padding:4px 2px;outline:none}
-.btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:var(--surface);font:600 14px var(--font-body);
-  border-radius:8px;padding:8px 14px;cursor:pointer}
-.btn:focus-visible,.field:focus-within,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.drop{border:1.5px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--muted);font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
-.drop b{color:var(--ink);font-weight:600}
-.msg{font-size:13px}
-.drop{cursor:pointer}
-body.empty .drop{min-height:220px;flex-direction:column;justify-content:center;text-align:center;font-size:15px;background:var(--surface);border-width:2px}
-body.empty .drop .dz-text{max-width:26em}
-.msg.err{color:var(--k-wan)}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.col{max-width:520px;margin:0 auto;width:100%}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-.next{background:var(--accent);color:var(--surface);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
-.next .eyebrow{color:inherit;opacity:.8}
-.next .big{font-size:19px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
-.next .sub{font-size:14px;opacity:.9}
+/* app bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid transparent}
+.bar.scrolled{border-bottom-color:var(--line)}
+.bar-in{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:12px 10px}
+.who{display:flex;flex-direction:column;min-width:0}
+.who small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who b{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.who b em{font-style:normal;color:var(--accent)}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;min-height:40px;white-space:nowrap}
 
-.week{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.stat{background:var(--surface);padding:10px 12px}
-.stat .v{font:600 20px var(--font-mono);font-variant-numeric:tabular-nums}
-.stat .k{font-size:12px;color:var(--muted)}
-@media (max-width:440px){.week{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* day tabs */
+.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-block:2px 12px;scroll-snap-type:x proximity}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 58px;scroll-snap-align:start;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:8px 4px 7px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;min-height:68px;cursor:pointer}
+.tab .dw{font-size:12px;color:var(--muted)}
+.tab .dd{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.tab .st{font-size:11px;font-weight:600;color:var(--accent)}
+.tab.off .st{color:var(--off)}
+.tab.none .st{color:var(--muted)}
+.tab.today{border-color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent)}
+.tab[aria-selected="true"] .dw,.tab[aria-selected="true"] .dd,.tab[aria-selected="true"] .st{color:var(--accent-ink)}
 
-.days{display:flex;flex-direction:column;gap:14px}
-.day{display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px}
-.date{text-align:center;padding-top:14px}
-.date .md{font:600 20px var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
-.date .dow{font-size:13px;color:var(--muted)}
-.date .today{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:var(--surface);background:var(--accent);border-radius:99px;padding:1px 8px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:10px}
-.day.is-today .card{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.day.past{opacity:.55}
-.head{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
-.pill{font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;background:var(--accent-soft);color:var(--accent)}
+main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
+.week{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.week b{color:var(--ink);font-family:var(--font-mono);font-weight:600}
+
+.dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dayhead h2{margin:0;font-size:22px;letter-spacing:-.02em}
+.dayhead h2 span{font-size:15px;color:var(--muted);font-weight:500;margin-left:6px}
+.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
 .pill.off{background:var(--off-soft);color:var(--off)}
-.pill.none{background:var(--bg);color:var(--muted)}
-.crew{font-size:13px;color:var(--muted)}
-.crew b{color:var(--ink);font-weight:600}
-.brief{margin:0;font-size:15px;text-wrap:pretty}
-.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
-.stop{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
-.stop:last-child{border-bottom:0;padding-bottom:0}
-.t{font:600 14px var(--font-mono);font-variant-numeric:tabular-nums}
-.nm{font-weight:600;overflow-wrap:anywhere}
-.meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:2px}
-.kind{font-style:normal;font-size:11.5px;font-weight:600;border:1px solid currentColor;border-radius:4px;padding:0 5px;line-height:1.5}
+.pill.none{background:var(--surface);color:var(--muted)}
+.brief{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.brief p{margin:0;text-wrap:pretty}
+.brief .crew{font-size:13.5px;color:var(--muted)}
+.brief .crew b{color:var(--ink)}
+
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:10px}
+.stop-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start}
+.t{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;padding-top:1px}
+.nm{font-weight:600;font-size:16.5px;line-height:1.35;overflow-wrap:anywhere}
+.meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:4px}
+.kind{font-style:normal;font-size:12px;font-weight:600;border:1px solid currentColor;border-radius:5px;padding:0 6px;line-height:1.5}
 .k-정{color:var(--k-jeong)}.k-밀{color:var(--k-mil)}.k-수{color:var(--k-su)}.k-완{color:var(--k-wan)}
-.u{font:600 13px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.u small{font:400 12px var(--font-body);color:var(--muted)}
-.map{color:var(--accent);text-decoration:none;font-weight:500}
-.map:hover{text-decoration:underline}
-.note{font-size:13px;color:var(--muted);margin:0}
-.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.legend span{display:inline-flex;gap:5px;align-items:center}
-footer{font-size:12px;color:var(--muted);text-align:center}
-@media (max-width:440px){.day{grid-template-columns:1fr;gap:6px}.date{text-align:left;padding-top:0;display:flex;gap:8px;align-items:baseline}.date .today{margin-top:0}}
-@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.u{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.u small{display:block;font:400 11.5px var(--font-body);color:var(--muted)}
+.maps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.maps a{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:10px;background:var(--bg);color:var(--ink);
+  text-decoration:none;font-size:14px;font-weight:600;border:1px solid var(--line)}
+.maps a:active{background:var(--accent-soft)}
+.note{margin:0;font-size:14px;color:var(--muted)}
+.empty-day{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 16px;text-align:center}
+.hint{font-size:12.5px;color:var(--muted);text-align:center;margin:6px 0 0}
+
+/* first screen */
+.start{padding-block:28px 40px;display:flex;flex-direction:column;gap:18px}
+.start h1{margin:0;font-size:26px;letter-spacing:-.02em;text-wrap:balance}
+.start h1 em{font-style:normal;color:var(--accent)}
+.start p{margin:0;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+.field input{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;font-size:17px;font-weight:600;width:100%}
+.big{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;min-height:56px;font-size:17px;font-weight:700;width:100%;cursor:pointer}
+.drop{border:1.5px dashed var(--line);border-radius:14px;padding:16px;text-align:center;font-size:13.5px;color:var(--muted)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.msg{font-size:14px;text-align:center;min-height:1.5em}
+.msg.err{color:var(--k-wan)}
+@media (hover:none){.drop{display:none}}
+@media (prefers-reduced-motion:no-preference){.panel{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateX(var(--dx,0))}to{opacity:1;transform:none}}}
 </style>
 
-<div class="wrap">
-  <header>
-    <div class="top">
-      <div>
-        <div class="eyebrow" id="src">검사 일정표</div>
-        <h1><em id="who">신기섭</em> 님 검사 일정</h1>
-      </div>
-      <div class="controls">
-        <div class="field"><label for="name">이름</label><input id="name" value="신기섭" autocomplete="off"></div>
-        <button class="btn" id="pick" type="button">일정표 올리기</button>
-        <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,.csv" hidden>
-      </div>
+<input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+
+<section class="gutter" id="startView">
+  <div class="col start">
+    <div>
+      <h1><em id="who0">신기섭</em> 님<br>이번 주 검사 현장</h1>
     </div>
-    <div class="drop" id="drop">
-      <span class="dz-text"><b>엑셀(.xlsx) 또는 PDF</b> 일정표를 여기에 끌어다 놓거나 눌러서 올리면 내 일정만 골라 보여 줘요.</span>
-      <span class="msg" id="msg"></span>
+    <p>지사 검사 일정표(엑셀 또는 PDF)를 올리면 내 조의 현장만 골라 날짜별로 보여 줘요.</p>
+    <div class="field"><label for="name">내 이름</label><input id="name" value="신기섭" autocomplete="off" enterkeyhint="done"></div>
+    <button class="big" id="pick" type="button">일정표 파일 고르기</button>
+    <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
+    <div class="msg" id="msg"></div>
+    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 화면에서만 읽고 어디에도 보내지 않아요.</p>
+  </div>
+</section>
+
+<div id="appView" hidden>
+  <header class="bar gutter" id="bar">
+    <div class="col">
+      <div class="bar-in">
+        <div class="who"><small id="src">검사 일정표</small><b><em id="who">신기섭</em> 님 일정</b></div>
+        <button class="ghost" id="repick" type="button">파일 바꾸기</button>
+      </div>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="날짜"></nav>
     </div>
   </header>
-
-  <section class="next" id="next" hidden></section>
-  <section class="week" id="week"></section>
-  <div class="legend" id="legend">
-    <span><i class="kind k-정">정</i>정기검사</span><span><i class="kind k-밀">밀</i>정밀안전검사</span>
-    <span><i class="kind k-수">수</i>수시검사</span><span><i class="kind k-완">완</i>완성검사</span>
-    <span>(괄호 숫자) = 승강기 대수</span>
-  </div>
-  <section class="days" id="days"></section>
-  <footer>올린 파일은 이 화면에서만 읽고 어디에도 보내지 않아요. 지도 링크는 시·구·동과 건물 이름으로 검색해서 열려요.</footer>
+  <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
+    <div class="week" id="week"></div>
+    <section class="panel" id="panel" role="tabpanel"></section>
+  </div></main>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-// Shared parser: positioned text items {x,y,w,s} (y grows downward) -> schedule
 function parseItems(items, yearHint){
   const Y=yearHint||new Date().getFullYear();
   // headers
@@ -225,49 +237,68 @@ function briefText(d,name){
   if(st.some(x=>!x.area))s+=' 주소가 표에 없는 현장이 있으니 미리 확인하세요.';
   return {s,mates};
 }
-function render(){
-  const name=$('name').value.trim()||'신기섭';
-  $('who').textContent=name;
-  const empty=!data;
-  document.body.classList.toggle('empty',empty);
-  ['week','days','legend'].forEach(id=>$(id).hidden=empty);
-  if(empty){$('next').hidden=true;$('src').textContent='검사 일정표';return;}
-  $('src').textContent=data.source||'검사 일정표';
-  const days=mine(name);
-  const work=days.filter(d=>d.t);
-  const allStops=work.flatMap(d=>d.t.stops);
-  const team=[...new Set(work.map(d=>d.t.team).filter(Boolean))].join('·')||'–';
-  $('week').innerHTML=[['근무',work.length+'일'],['현장',work.reduce((a,d)=>a+places(d.t.stops).length,0)+'곳'],['승강기',sumUnits(allStops)+'대'],['휴가',days.filter(d=>d.off).length+'일']]
-    .map(([k,v])=>`<div class="stat"><div class="v">${v}</div><div class="k">${k}${k==='근무'?' · '+esc(team):''}</div></div>`).join('');
 
-  const nx=days.find(d=>d.t&&d.iso>=todayIso);
-  if(nx){const {md,dow}=mdow(nx);const b=briefText(nx,name);const f=nx.t.stops[0];
-    $('next').hidden=false;
-    $('next').innerHTML=`<div class="eyebrow">${nx.iso===todayIso?'오늘 일정':'다음 출근'} · ${md} (${dow})</div>
-      <div class="big">${f?esc(f.time)+' '+esc(f.name):''}${f&&f.area?' <span style="font-weight:500">('+esc(f.area)+')</span>':''}</div>
-      <div class="sub">${esc(nx.t.team)}${b.mates.length?' · '+esc(b.mates.join(', '))+' 님과':''} · ${places(nx.t.stops).length}곳 ${sumUnits(nx.t.stops)}대</div>`;
-  }else $('next').hidden=true;
-
-  if(!days.some(d=>d.t||d.off)){
-    $('days').innerHTML=`<p class="note">이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요. 이름 철자를 확인하거나 다른 주 일정표를 올려 주세요.</p>`;return;
-  }
-  $('days').innerHTML=days.map(d=>{
-    const {md,dow}=mdow(d);const isT=d.iso===todayIso;const past=d.iso<todayIso;
-    let body;
-    if(d.t){const b=briefText(d,name);
-      body=`<div class="head"><span class="pill">${esc(d.t.team)} · ${d.t.sites}현장 · 환산 ${d.t.units}대</span>
-        <span class="crew">${b.mates.length?'동행 <b>'+esc(b.mates.join(', '))+'</b>':''}</span></div>
-        <p class="brief">${esc(b.s)}</p>
-        <ol class="stops">${d.t.stops.map(s=>`<li class="stop"><span class="t">${esc(s.time)}</span>
-          <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
-          <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc(s.area):'주소 미기재'}</span>·<a class="map" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a>·<a class="map" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div></div>
-          <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></li>`).join('')}</ol>`;
-    }else if(d.off){body=`<div class="head"><span class="pill off">휴가</span></div><p class="note">이날은 휴가로 잡혀 있어요.</p>`;}
-    else body=`<div class="head"><span class="pill none">배정 없음</span></div><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p>`;
-    if(d.sup.length)body+=`<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
-    return `<article class="day${isT?' is-today':''}${past?' past':''}" id="d-${d.iso}"><div class="date"><div class="md">${md}</div><div class="dow">${dow}요일</div>${isT?'<span class="today">오늘</span>':''}</div><div class="card">${body}</div></article>`;
-  }).join('');
+let sel=null;      // 선택한 날짜 iso
+let days=[];
+function curName(){return $('name').value.trim()||'신기섭'}
+function defaultDay(ds){
+  return (ds.find(d=>d.iso===todayIso&&d.t)||ds.find(d=>d.t&&d.iso>=todayIso)||ds.find(d=>d.iso===todayIso)||ds.find(d=>d.t)||ds[0]).iso;
 }
+function render(){
+  const name=curName();
+  $('who0').textContent=name;$('who').textContent=name;
+  const loaded=!!data;
+  $('startView').hidden=loaded;$('appView').hidden=!loaded;
+  if(!loaded)return;
+  $('src').textContent=data.source||'검사 일정표';
+  days=mine(name);
+  if(!days.some(d=>d.t||d.off)){
+    $('tabs').innerHTML='';$('week').innerHTML='';
+    $('panel').innerHTML=`<div class="empty-day"><p class="note">이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.</p>
+      <div class="field" style="margin-top:14px;text-align:left"><label for="name2">내 이름</label><input id="name2" value="${esc(name)}" autocomplete="off"></div></div>`;
+    $('name2').addEventListener('change',e=>{$('name').value=e.target.value;store.set('sched.name',e.target.value.trim());render()});
+    return;
+  }
+  if(!sel||!days.some(d=>d.iso===sel))sel=defaultDay(days);
+  const work=days.filter(d=>d.t);
+  $('week').innerHTML=`<span>이번 주 근무 <b>${work.length}</b>일</span><span>현장 <b>${work.reduce((a,d)=>a+places(d.t.stops).length,0)}</b>곳</span><span>승강기 <b>${sumUnits(work.flatMap(d=>d.t.stops))}</b>대</span>${days.some(d=>d.off)?`<span>휴가 <b>${days.filter(d=>d.off).length}</b>일</span>`:''}`;
+  $('tabs').innerHTML=days.map(d=>{const {md,dow}=mdow(d);
+    const cls=d.t?'':d.off?' off':' none';const st=d.t?places(d.t.stops).length+'곳':d.off?'휴가':'–';
+    return `<button class="tab${cls}${d.iso===todayIso?' today':''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso===sel}">
+      <span class="dw">${d.iso===todayIso?'오늘':dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`}).join('');
+  drawPanel();
+  const on=$('tabs').querySelector('[aria-selected="true"]');if(on)on.scrollIntoView({inline:'nearest',block:'nearest'});
+}
+function drawPanel(dx){
+  const d=days.find(x=>x.iso===sel);const name=curName();const {md,dow}=mdow(d);
+  let h=`<div class="dayhead"><h2>${md}<span>${dow}요일${d.iso===todayIso?' · 오늘':''}</span></h2>`;
+  if(d.t){const b=briefText(d,name);
+    h+=`<span class="pill">${esc(d.t.team)} · 환산 ${d.t.units}대</span></div>
+      <div class="brief"><p>${esc(b.s)}</p>${b.mates.length?`<span class="crew">동행 <b>${esc(b.mates.join(', '))}</b></span>`:''}</div>
+      <ol class="stops">${d.t.stops.map(s=>`<li class="stop">
+        <div class="stop-top"><span class="t">${esc(s.time)}</span>
+          <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
+            <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc((REGION[s.area]||'')+' '+s.area):'주소 미기재'}</span></div></div>
+          <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></div>
+        <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
+      </li>`).join('')}</ol>`;
+  }else if(d.off)h+=`<span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
+  else h+=`<span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
+  if(d.sup.length)h+=`<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+  const p=$('panel');p.style.setProperty('--dx',(dx||0)+'px');p.style.animation='none';p.offsetHeight;p.style.animation='';
+  p.innerHTML=h;
+}
+function go(iso,dx){if(!iso||iso===sel)return;sel=iso;
+  $('tabs').querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.iso===sel));
+  const on=$('tabs').querySelector('[aria-selected="true"]');if(on)on.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});
+  drawPanel(dx);window.scrollTo({top:0});}
+$('tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t)go(t.dataset.iso)});
+// 좌우로 밀어서 날짜 넘기기
+let sx=null,sy=0;
+$('panel').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+$('panel').addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;
+  if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx))return;const i=days.findIndex(d=>d.iso===sel);const n=days[i+(dx<0?1:-1)];if(n)go(n.iso,dx<0?40:-40);},{passive:true});
+addEventListener('scroll',()=>$('bar').classList.toggle('scrolled',scrollY>4),{passive:true});
 
 // ---------- file loading ----------
 async function pdfItems(buf){
@@ -295,28 +326,26 @@ function sheetItems(buf){
   }
   throw new Error('엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.');
 }
+
 async function load(file){
   const msg=$('msg');msg.className='msg';msg.textContent=file.name+' 읽는 중…';
   try{
     const buf=await file.arrayBuffer();const yr=(file.name.match(/20\d\d/)||[])[0];
-    let items,title='';
-    if(/\.pdf$/i.test(file.name)){items=await pdfItems(buf);}
-    else{const r=sheetItems(buf);items=r.items;}
-    const t=items.find(i=>/일정표/.test(i.s));if(t)title=t.s.replace(/^[\s-]+/,'').trim();
-    const days=parseItems(items,yr?+yr:undefined);
-    if(!days.some(d=>d.teams.length))throw new Error('조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.');
-    data={source:title||file.name,days};
-    msg.textContent=file.name+' 반영 완료';render();
-  }catch(e){msg.className='msg err';msg.textContent=e.message||'파일을 읽지 못했어요.';}
+    const isPdf=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
+    const items=isPdf?await pdfItems(buf):sheetItems(buf).items;
+    const t=items.find(i=>/일정표/.test(i.s));
+    const ds=parseItems(items,yr?+yr:undefined);
+    if(!ds.some(d=>d.teams.length))throw new Error('조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.');
+    data={source:t?t.s.replace(/^[\s-]+/,'').trim():file.name,days:ds};sel=null;msg.textContent='';
+    render();window.scrollTo({top:0});
+  }catch(e){if(data){data=null;render();}msg.className='msg err';msg.textContent=e.message||'파일을 읽지 못했어요.';}
 }
 $('pick').onclick=()=>$('file').click();
-$('drop').onclick=()=>$('file').click();
+$('repick').onclick=()=>$('file').click();
 $('file').onchange=e=>{if(e.target.files[0])load(e.target.files[0]);e.target.value='';};
-const dz=document.body;
-dz.addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over')});
-dz.addEventListener('dragleave',e=>{if(e.target===dz||!dz.contains(e.relatedTarget))$('drop').classList.remove('over')});
-dz.addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');const f=e.dataTransfer.files[0];if(f)load(f)});
+document.addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over')});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('drop').classList.remove('over')});
+document.addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');const f=e.dataTransfer.files[0];if(f)load(f)});
 $('name').addEventListener('input',()=>{store.set('sched.name',$('name').value.trim());render()});
 render();
-const td=document.getElementById('d-'+todayIso);if(td&&td.getBoundingClientRect().top>window.innerHeight)td.scrollIntoView({block:'start'});
 </script>
