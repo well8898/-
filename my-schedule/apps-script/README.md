@@ -11,7 +11,8 @@
 
 1. https://script.google.com → **새 프로젝트**. 이름은 `내 검사 일정`.
 2. 기본으로 있는 `Code.gs` 내용을 지우고 이 폴더의 `Code.gs`를 붙여 넣기.
-3. 파일 추가(＋) → **HTML** → 이름 `Index` → 이 폴더의 `Index.html` 내용을 붙여 넣기.
+3. 화면(`Index.html`)은 `Code.gs`가 GitHub에서 바로 읽어 오므로 붙여 넣지 않아도 됩니다.
+   (GitHub를 못 읽는 환경일 때만 파일 추가(＋) → HTML → 이름 `Index`로 만들어 붙여 넣기)
 4. ⚙ 프로젝트 설정 → **스크립트 속성**에 추가
    | 속성 | 값 |
    |---|---|
@@ -26,6 +27,8 @@
 카카오 앱에서 **카카오맵**(장소 검색)과 **카카오모빌리티 길찾기** API가 켜져 있어야 합니다.
 
 ## 화면 고치기
+
+화면은 GitHub의 `my-schedule/apps-script/Index.html`에서 읽어 오므로, 그 파일이 바뀌면 웹앱도 10분 안에 바뀝니다(재배포 불필요).
 
 `Index.html`은 `my-schedule/index.html`(claude.ai 링크 버전)과 같은 화면입니다.
 그 파일 `<style>` 끝까지를 `<head>`에, 나머지를 `<body>`에 넣어 만듭니다.

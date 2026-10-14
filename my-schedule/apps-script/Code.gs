@@ -1,7 +1,7 @@
 /**
  * 내 검사 일정 — 별도 Apps Script 웹앱 (여비 청구 웹앱과 무관한 새 프로젝트)
  *
- * ▶ 파일: Code.gs(이 파일) + Index.html
+ * ▶ 파일: Code.gs(이 파일)만 있으면 됨. 화면(Index.html)은 GitHub에서 읽어 옴 (PAGE_URL)
  * ▶ 스크립트 속성 (프로젝트 설정 → 스크립트 속성)
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도)
@@ -13,10 +13,34 @@
 const ORIGIN_DEFAULT = { name: '고양파주지사', address: '경기 고양시 일산서구 킨텍스로 217-59' };
 const CACHE_SEC = 21600; // 6시간
 
+// 화면(HTML)은 GitHub에서 바로 읽어 옴 → 긴 HTML을 붙여 넣을 필요 없음, 화면 수정도 자동 반영
+// (GitHub를 못 읽을 때만 이 프로젝트의 Index 파일을 씀. Index 파일은 없어도 됨)
+const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
+  + 'claude/nifty-sagan-s6rbvp/my-schedule/apps-script/Index.html';
+
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  return HtmlService.createHtmlOutput(pageHtml_())
     .setTitle('내 검사 일정')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+function pageHtml_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('page');
+  if (hit) return hit;
+  try {
+    const res = UrlFetchApp.fetch(PAGE_URL, { muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) {
+      const html = res.getContentText('UTF-8');
+      try { cache.put('page', html, 600); } catch (e) { /* 너무 크면 캐시 생략 */ }
+      return html;
+    }
+  } catch (e) { /* 아래 Index 파일로 */ }
+  try {
+    return HtmlService.createHtmlOutputFromFile('Index').getContent();
+  } catch (e) {
+    throw new Error('화면 파일을 GitHub에서 읽지 못했고 Index 파일도 없습니다: ' + PAGE_URL);
+  }
 }
 
 // 화면 시작 시: 지도 키 + 출발지 좌표

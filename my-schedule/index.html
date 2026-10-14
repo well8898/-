@@ -6,142 +6,700 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 /* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
-:root{
-  --bg:#f1f4f7; --surface:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#dde3e9;
-  --accent:#1f5fbf; --accent-ink:#ffffff; --accent-soft:#e6eefa;
-  --k-jeong:#2a3440; --k-mil:#1d7fc4; --k-su:#c27a0e; --k-wan:#c2392f;
-  --off:#8a6d1e; --off-soft:#f8f0dc;
-  --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
-  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+:root {
+  --bg: #f1f4f7;
+  --surface: #ffffff;
+  --ink: #18212b;
+  --muted: #5d6b78;
+  --line: #dde3e9;
+  --accent: #1f5fbf;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6eefa;
+  --k-jeong: #2a3440;
+  --k-mil: #1d7fc4;
+  --k-su: #c27a0e;
+  --k-wan: #c2392f;
+  --off: #8a6d1e;
+  --off-soft: #f8f0dc;
+  --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f1419; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
-  --accent:#6ea6f5; --accent-ink:#0f1419; --accent-soft:#1d2d44;
-  --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
-  --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0f1419; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
-  --accent:#6ea6f5; --accent-ink:#0f1419; --accent-soft:#1d2d44;
-  --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
-  --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-[hidden]{display:none!important}
-html,body{min-height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
-.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.col{max-width:520px;margin:0 auto;width:100%}
-button,input{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1419;
+    --surface: #19212a;
+    --ink: #e6ebf0;
+    --muted: #94a2b0;
+    --line: #2a3541;
+    --accent: #6ea6f5;
+    --accent-ink: #0f1419;
+    --accent-soft: #1d2d44;
+    --k-jeong: #c9d3dd;
+    --k-mil: #5fb4ec;
+    --k-su: #e7a84a;
+    --k-wan: #f07c72;
+    --off: #e2c06e;
+    --off-soft: #2e2818;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f1419;
+  --surface: #19212a;
+  --ink: #e6ebf0;
+  --muted: #94a2b0;
+  --line: #2a3541;
+  --accent: #6ea6f5;
+  --accent-ink: #0f1419;
+  --accent-soft: #1d2d44;
+  --k-jeong: #c9d3dd;
+  --k-mil: #5fb4ec;
+  --k-su: #e7a84a;
+  --k-wan: #f07c72;
+  --off: #e2c06e;
+  --off-soft: #2e2818;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  min-height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+.gutter {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.col {
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* app bar */
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid transparent}
-.bar.scrolled{border-bottom-color:var(--line)}
-.bar-in{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:12px 10px}
-.who{display:flex;flex-direction:column;min-width:0}
-.who small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.who b{font-size:20px;font-weight:700;letter-spacing:-.02em}
-.who b em{font-style:normal;color:var(--accent)}
-.ghost{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;min-height:40px;white-space:nowrap}
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+}
+.bar.scrolled {
+  border-bottom-color: var(--line);
+}
+.bar-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-block: 12px 10px;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.who small {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.who b {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.who b em {
+  font-style: normal;
+  color: var(--accent);
+}
+.ghost {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 40px;
+  white-space: nowrap;
+}
 
 /* day tabs */
-.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;padding-block:2px 12px}
-.tab{min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:7px 2px 6px;
-  display:flex;flex-direction:column;align-items:center;gap:1px;min-height:68px;cursor:pointer}
-.tab .dw{font-size:11.5px;color:var(--muted)}
-.tab .dd{font:600 clamp(13px,4.1vw,17px) var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
-.tab .st{font-size:11px;font-weight:600;color:var(--accent)}
-.tab.off .st{color:var(--off)}
-.tab.none .st{color:var(--muted)}
-.tab.today{border-color:var(--accent)}
-.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent)}
-.tab[aria-selected="true"] .dw,.tab[aria-selected="true"] .dd,.tab[aria-selected="true"] .st{color:var(--accent-ink)}
+.tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding-block: 2px 12px;
+}
+.tab {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 7px 2px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 68px;
+  cursor: pointer;
+}
+.tab .dw {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.tab .dd {
+  font: 600 clamp(13px, 4.1vw, 17px) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.tab .st {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.tab.off .st {
+  color: var(--off);
+}
+.tab.none .st {
+  color: var(--muted);
+}
+.tab.today {
+  border-color: var(--accent);
+}
+.tab[aria-selected='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tab[aria-selected='true'] .dw,
+.tab[aria-selected='true'] .dd,
+.tab[aria-selected='true'] .st {
+  color: var(--accent-ink);
+}
 
-main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
-.week{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
-.week b{color:var(--ink);font-family:var(--font-mono);font-weight:600}
+main {
+  padding-block: 4px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.week {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.week b {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
 
-.dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.dayhead h2{margin:0;font-size:22px;letter-spacing:-.02em}
-.dayhead h2 span{font-size:15px;color:var(--muted);font-weight:500;margin-left:6px}
-.pill{font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
-.pill.off{background:var(--off-soft);color:var(--off)}
-.pill.none{background:var(--surface);color:var(--muted)}
-.brief{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
-.brief p{margin:0;text-wrap:pretty}
-.brief .crew{font-size:13.5px;color:var(--muted)}
-.brief .crew b{color:var(--ink)}
+.dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dayhead h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.dayhead h2 span {
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 6px;
+}
+.pill {
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.pill.off {
+  background: var(--off-soft);
+  color: var(--off);
+}
+.pill.none {
+  background: var(--surface);
+  color: var(--muted);
+}
+.brief {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.brief p {
+  margin: 0;
+  text-wrap: pretty;
+}
+.brief .crew {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.brief .crew b {
+  color: var(--ink);
+}
 
-.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.stop{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px}
-.stop-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start}
-.t{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;padding-top:1px}
-.nm{font-weight:600;font-size:16.5px;line-height:1.35;overflow-wrap:anywhere}
-.meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:4px}
-.kind{font-style:normal;font-size:12px;font-weight:600;border:1px solid currentColor;border-radius:5px;padding:0 6px;line-height:1.5}
-.k-정{color:var(--k-jeong)}.k-밀{color:var(--k-mil)}.k-수{color:var(--k-su)}.k-완{color:var(--k-wan)}
-.u{font:600 17px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
-.u small{font:400 13px var(--font-body);color:var(--muted);margin-left:1px}
-.maps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.maps a{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:10px;background:var(--bg);color:var(--ink);
-  text-decoration:none;font-size:14px;font-weight:600;border:1px solid var(--line)}
-.maps a:active{background:var(--accent-soft)}
-.note{margin:0;font-size:14px;color:var(--muted)}
-.empty-day{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 16px;text-align:center}
-.others{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:2px}
-.others b{color:var(--ink);font-weight:600}
-.wday{display:flex;flex-direction:column;gap:8px}
-.wday-h{display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;background:none;padding:0;cursor:pointer;text-align:left}
-.wday-h strong{font-size:17px}
-.wday-h strong span{font-size:13.5px;color:var(--muted);font-weight:500;margin-left:5px}
-.wlist{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.wlist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:11px 14px;border-top:1px solid var(--line)}
-.wlist li:first-child{border-top:0}
-.wlist .t,.wlist .u{font-size:15px}
-.wlist .nm{font-size:15px}
-.wlist .others{border:0;padding:2px 0 0;font-size:12.5px}
-.wlist.flat{padding:12px 14px;color:var(--muted);font-size:14px}
-.kmap{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
-.pin{min-width:26px;height:26px;padding:0 7px;border-radius:13px;background:#1f5fbf;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);
-  display:grid;place-items:center;font:600 12px var(--font-mono);white-space:nowrap}
-.pin.home{background:#18212b}
-.legs{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
-.legs h3{margin:0;font-size:14px;color:var(--muted);font-weight:600}
-.leg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:baseline}
-.leg span:first-child{overflow-wrap:anywhere}
-.leg .km{font:600 15px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.leg.total{border-top:1px solid var(--line);padding-top:8px;font-weight:700}
-.legs .copy{justify-self:start;margin-top:4px}
-.legs .route{font-size:12.5px;color:var(--muted);user-select:all;overflow-wrap:anywhere}
-.hint{font-size:12.5px;color:var(--muted);text-align:center;margin:6px 0 0}
+.stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stop {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stop-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+.t {
+  font: 600 17px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+.nm {
+  font-weight: 600;
+  font-size: 16.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.kind {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 6px;
+  line-height: 1.5;
+}
+.k-정 {
+  color: var(--k-jeong);
+}
+.k-밀 {
+  color: var(--k-mil);
+}
+.k-수 {
+  color: var(--k-su);
+}
+.k-완 {
+  color: var(--k-wan);
+}
+.u {
+  font: 600 17px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.u small {
+  font: 400 13px var(--font-body);
+  color: var(--muted);
+  margin-left: 1px;
+}
+.maps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.maps a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+.maps a:active {
+  background: var(--accent-soft);
+}
+.note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.empty-day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+}
+.others {
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.others b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.wday {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wday-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.wday-h strong {
+  font-size: 17px;
+}
+.wday-h strong span {
+  font-size: 13.5px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 5px;
+}
+.wlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.wlist li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--line);
+}
+.wlist li:first-child {
+  border-top: 0;
+}
+.wlist .t,
+.wlist .u {
+  font-size: 15px;
+}
+.wlist .nm {
+  font-size: 15px;
+}
+.wlist .others {
+  border: 0;
+  padding: 2px 0 0;
+  font-size: 12.5px;
+}
+.wlist.flat {
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.kmap {
+  height: 260px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.pin {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 13px;
+  background: #1f5fbf;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  font: 600 12px var(--font-mono);
+  white-space: nowrap;
+}
+.pin.home {
+  background: #18212b;
+}
+.legs {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+.legs h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.leg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+.leg span:first-child {
+  overflow-wrap: anywhere;
+}
+.leg .km {
+  font: 600 15px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.leg.total {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  font-weight: 700;
+}
+.legs .copy {
+  justify-self: start;
+  margin-top: 4px;
+}
+.legs .route {
+  font-size: 12.5px;
+  color: var(--muted);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+  margin: 6px 0 0;
+}
 
 /* first screen */
-.start{padding-block:28px 40px;display:flex;flex-direction:column;gap:18px}
-.start h1{margin:0;font-size:26px;letter-spacing:-.02em;text-wrap:balance}
-.start h1 em{font-style:normal;color:var(--accent)}
-.start p{margin:0;color:var(--muted)}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:13px;color:var(--muted);font-weight:500}
-.field input{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;font-size:17px;font-weight:600;width:100%}
-.big{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;min-height:56px;font-size:17px;font-weight:700;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
-label.ghost{display:inline-flex;align-items:center;cursor:pointer;user-select:none}
-.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
-.vh:focus-visible+*{outline:2px solid var(--accent)}
-.err-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--k-wan);color:#fff;font-size:13px;
-  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.drop{border:1.5px dashed var(--line);border-radius:14px;padding:16px;text-align:center;font-size:13.5px;color:var(--muted)}
-.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
-.msg{font-size:14px;text-align:center;min-height:1.5em}
-.msg.err{color:var(--k-wan)}
-@media (hover:none){.drop{display:none}}
-@media (max-width:359px){body{font-size:15px}.t,.u{font-size:15px}.nm{font-size:15.5px}.tabs{gap:4px}}
-@media (prefers-reduced-motion:no-preference){.panel{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateX(var(--dx,0))}to{opacity:1;transform:none}}}
+.start {
+  padding-block: 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.start h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.start h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.start p {
+  margin: 0;
+  color: var(--muted);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.field input {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 17px;
+  font-weight: 600;
+  width: 100%;
+}
+.big {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 14px;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+label.ghost {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  pointer-events: none;
+}
+.vh:focus-visible + * {
+  outline: 2px solid var(--accent);
+}
+.err-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--k-wan);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px))
+    calc(10px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.drop {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.drop.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.msg {
+  font-size: 14px;
+  text-align: center;
+  min-height: 1.5em;
+}
+.msg.err {
+  color: var(--k-wan);
+}
+@media (hover: none) {
+  .drop {
+    display: none;
+  }
+}
+@media (max-width: 359px) {
+  body {
+    font-size: 15px;
+  }
+  .t,
+  .u {
+    font-size: 15px;
+  }
+  .nm {
+    font-size: 15.5px;
+  }
+  .tabs {
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: in 0.18s ease-out;
+  }
+  @keyframes in {
+    from {
+      opacity: 0.4;
+      transform: translateX(var(--dx, 0));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
 <div class="err-bar" id="errBar" hidden></div>
 <script>
 // 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시
-window.addEventListener('error',e=>{const b=document.getElementById('errBar');if(!b)return;b.hidden=false;b.textContent='화면 오류: '+(e.message||(e.target&&e.target.src?'불러오지 못함 '+e.target.src:'알 수 없음'));},true);
+window.addEventListener(
+  'error',
+  e => {
+    const b = document.getElementById('errBar');
+    if (!b) return;
+    b.hidden = false;
+    b.textContent =
+      '화면 오류: ' +
+      (e.message ||
+        (e.target && e.target.src
+          ? '불러오지 못함 ' + e.target.src
+          : '알 수 없음')) +
+      (e.lineno ? ' (' + e.lineno + '번째 줄)' : '');
+  },
+  true
+);
 </script>
 
 <section class="gutter" id="startView">
@@ -178,303 +736,828 @@ window.addEventListener('error',e=>{const b=document.getElementById('errBar');if
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-function parseItems(items, yearHint){
-  const Y=yearHint||new Date().getFullYear();
+function parseItems(items, yearHint) {
+  const Y = yearHint || new Date().getFullYear();
   // headers
-  const heads=items.filter(i=>/^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)&&!/~/.test(i.s));
-  if(heads.length<1) throw new Error('날짜 머리글(예: 10/12 (월))을 찾지 못했어요.');
-  const hy=Math.min(...heads.map(h=>h.y));
-  const cols=heads.filter(h=>Math.abs(h.y-hy)<6).map(h=>({c:h.x+h.w/2,s:h.s.trim()})).sort((a,b)=>a.c-b.c);
-  const sp=cols.length>1?(cols[cols.length-1].c-cols[0].c)/(cols.length-1):(cols[0].c);
-  cols.forEach((c,k)=>{c.l=k?(cols[k-1].c+c.c)/2:c.c-sp/2;c.r=k<cols.length-1?(c.c+cols[k+1].c)/2:c.c+sp/2;
-    const m=c.s.match(/(\d{1,2})\/(\d{1,2})/);const d=new Date(Y,+m[1]-1,+m[2]);c.date=d;});
-  const labels=items.filter(i=>/^\s*\d{1,2}\s*조\s*$/.test(i.s)&&i.x+i.w<=cols[0].l+2).map(i=>({y:i.y,t:i.s.replace(/\s/g,'')})).sort((a,b)=>a.y-b.y);
-  const rowLabels=items.filter(i=>/^\s*(행사|복무)\s*$/.test(i.s)&&i.x+i.w<=cols[0].l+2);
-  const firstMisc=rowLabels.length?Math.min(...rowLabels.map(i=>i.y)):Infinity;
-  const days=cols.map(c=>{
-    const its=items.filter(i=>i.y>hy+3&&i.x+i.w/2>=c.l&&i.x+i.w/2<c.r);
+  const heads = items.filter(
+    i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s) && !/~/.test(i.s)
+  );
+  if (heads.length < 1)
+    throw new Error('날짜 머리글(예: 10/12 (월))을 찾지 못했어요.');
+  const hy = Math.min(...heads.map(h => h.y));
+  const cols = heads
+    .filter(h => Math.abs(h.y - hy) < 6)
+    .map(h => ({ c: h.x + h.w / 2, s: h.s.trim() }))
+    .sort((a, b) => a.c - b.c);
+  const sp =
+    cols.length > 1
+      ? (cols[cols.length - 1].c - cols[0].c) / (cols.length - 1)
+      : cols[0].c;
+  cols.forEach((c, k) => {
+    c.l = k ? (cols[k - 1].c + c.c) / 2 : c.c - sp / 2;
+    c.r = k < cols.length - 1 ? (c.c + cols[k + 1].c) / 2 : c.c + sp / 2;
+    const m = c.s.match(/(\d{1,2})\/(\d{1,2})/);
+    const d = new Date(Y, +m[1] - 1, +m[2]);
+    c.date = d;
+  });
+  const labels = items
+    .filter(i => /^\s*\d{1,2}\s*조\s*$/.test(i.s) && i.x + i.w <= cols[0].l + 2)
+    .map(i => ({ y: i.y, t: i.s.replace(/\s/g, '') }))
+    .sort((a, b) => a.y - b.y);
+  const rowLabels = items.filter(
+    i => /^\s*(행사|복무)\s*$/.test(i.s) && i.x + i.w <= cols[0].l + 2
+  );
+  const firstMisc = rowLabels.length
+    ? Math.min(...rowLabels.map(i => i.y))
+    : Infinity;
+  const days = cols.map(c => {
+    const its = items.filter(
+      i => i.y > hy + 3 && i.x + i.w / 2 >= c.l && i.x + i.w / 2 < c.r
+    );
     // group lines by y
-    its.sort((a,b)=>a.y-b.y||a.x-b.x);
-    const lines=[];
-    for(const it of its){const L=lines[lines.length-1];
-      if(L&&Math.abs(L.y-it.y)<3){L.parts.push(it);}else lines.push({y:it.y,parts:[it]});}
-    lines.forEach(L=>{L.parts.sort((a,b)=>a.x-b.x);let s='',end=null;
-      for(const p of L.parts){if(end!==null&&p.x-end>2)s+=' ';s+=p.s;end=p.x+p.w;}L.s=s.trim();});
-    const teams=[];let buf='';let misc='';
-    for(const L of lines){
-      if(!L.s)continue;
-      if(L.y>=firstMisc-3||/^(휴가자|임피|검사지원|출장|교육)/.test(L.s)||/(휴가자|검사지원):/.test(L.s)){misc+=(/^\S+:/.test(L.s)?'\n':'')+L.s;continue;}
-      const sm=L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
-      if(sm){const lab=labels.filter(l=>l.y<=L.y+1).pop();
-        teams.push({team:lab?lab.t:'',sites:+sm[1],units:+sm[2],members:sm[3].split('/').map(x=>x.trim()).filter(Boolean),stops:parseStops(buf)});buf='';continue;}
-      if(/^\d{1,2}:\d{2}/.test(L.s))buf+='\n'+L.s;else buf+=L.s;
+    its.sort((a, b) => a.y - b.y || a.x - b.x);
+    const lines = [];
+    for (const it of its) {
+      const L = lines[lines.length - 1];
+      if (L && Math.abs(L.y - it.y) < 3) {
+        L.parts.push(it);
+      } else lines.push({ y: it.y, parts: [it] });
     }
-    const vac=(misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m)||[])[1]||'';
-    const supp=[...misc.matchAll(/검사지원:([^\n]*?)(?=휴가자:|임피:|$)/gm)].map(m=>m[1].trim());
-    return {label:c.s,iso:fmt(c.date),teams,vacation:vac.split(',').map(x=>x.trim()).filter(Boolean),support:supp};
+    lines.forEach(L => {
+      L.parts.sort((a, b) => a.x - b.x);
+      let s = '',
+        end = null;
+      for (const p of L.parts) {
+        if (end !== null && p.x - end > 2) s += ' ';
+        s += p.s;
+        end = p.x + p.w;
+      }
+      L.s = s.trim();
+    });
+    const teams = [];
+    let buf = '';
+    let misc = '';
+    for (const L of lines) {
+      if (!L.s) continue;
+      if (
+        L.y >= firstMisc - 3 ||
+        /^(휴가자|임피|검사지원|출장|교육)/.test(L.s) ||
+        /(휴가자|검사지원):/.test(L.s)
+      ) {
+        misc += (/^\S+:/.test(L.s) ? '\n' : '') + L.s;
+        continue;
+      }
+      const sm = L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
+      if (sm) {
+        const lab = labels.filter(l => l.y <= L.y + 1).pop();
+        teams.push({
+          team: lab ? lab.t : '',
+          sites: +sm[1],
+          units: +sm[2],
+          members: sm[3]
+            .split('/')
+            .map(x => x.trim())
+            .filter(Boolean),
+          stops: parseStops(buf)
+        });
+        buf = '';
+        continue;
+      }
+      if (/^\d{1,2}:\d{2}/.test(L.s)) buf += '\n' + L.s;
+      else buf += L.s;
+    }
+    const vac =
+      (misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m) || [])[1] || '';
+    const supp = [
+      ...misc.matchAll(/검사지원:([^\n]*?)(?=휴가자:|임피:|$)/gm)
+    ].map(m => m[1].trim());
+    return {
+      label: c.s,
+      iso: fmt(c.date),
+      teams,
+      vacation: vac
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean),
+      support: supp
+    };
   });
   return days;
 }
-function fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function parseStops(buf){
-  return buf.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>{
-    const m=s.match(/^(\d{1,2}:\d{2})\s*\[([^\]]+)\]\s*(?:\[([^\]]+)\])?\s*(?:\[(.*)\]|(.*?))\s*(?:\((\d+)\))?\s*$/);
-    if(!m)return {time:'',kind:'',area:'',name:s,units:null};
-    let name=(m[4]!==undefined?m[4]:m[5]||'').trim();
-    if(m[4]===undefined){const u=name.match(/^(.*)\((\d+)\)$/);if(u&&!m[6]){name=u[1];m[6]=u[2];}}
-    return {time:m[1],kind:m[2],area:m[3]&&m[3]!=='주소불명'?m[3]:'',name,units:m[6]?+m[6]:null};
-  });
+function fmt(d) {
+  return (
+    d.getFullYear() +
+    '-' +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(d.getDate()).padStart(2, '0')
+  );
+}
+function parseStops(buf) {
+  return buf
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      const m = s.match(
+        /^(\d{1,2}:\d{2})\s*\[([^\]]+)\]\s*(?:\[([^\]]+)\])?\s*(?:\[(.*)\]|(.*?))\s*(?:\((\d+)\))?\s*$/
+      );
+      if (!m) return { time: '', kind: '', area: '', name: s, units: null };
+      let name = (m[4] !== undefined ? m[4] : m[5] || '').trim();
+      if (m[4] === undefined) {
+        const u = name.match(/^(.*)\((\d+)\)$/);
+        if (u && !m[6]) {
+          name = u[1];
+          m[6] = u[2];
+        }
+      }
+      return {
+        time: m[1],
+        kind: m[2],
+        area: m[3] && m[3] !== '주소불명' ? m[3] : '',
+        name,
+        units: m[6] ? +m[6] : null
+      };
+    });
 }
 
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '완성' };
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, v);
+    } catch (e) {}
+  }
+};
+let data = null;
+$('name').value = store.get('sched.name') || '';
 
-const KIND={'정':'정기','밀':'정밀','수':'수시','완':'완성'};
-const DOW=['일','월','화','수','목','금','토'];
-const $=id=>document.getElementById(id);
-const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-let data=null;
-$('name').value=store.get('sched.name')||'';
-
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const bare=s=>s.replace(/\(.*?\)/g,'').trim();
-const todayIso=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+const esc = s =>
+  String(s).replace(
+    /[&<>"]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+  );
+const bare = s => s.replace(/\(.*?\)/g, '').trim();
+const todayIso = (() => {
+  const d = new Date();
+  return (
+    d.getFullYear() +
+    '-' +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(d.getDate()).padStart(2, '0')
+  );
+})();
 // 동·읍·면 → 시·구 (일정표에는 동 이름만 있어 검색이 엉뚱한 지역으로 가지 않게)
-const REGION=(()=>{const m={};const add=(r,l)=>l.split(' ').forEach(d=>m[d]=r);
-  add('고양시 덕양구','주교동 원당동 성사동 고양동 관산동 내유동 화정동 행신동 토당동 신원동 오금동 삼송동 동산동 지축동 원흥동 도내동 덕은동 향동동 현천동 대자동 벽제동 선유동 효자동 용두동 화전동 대장동 강매동 신평동 내곡동 북한동');
-  add('고양시 일산동구','장항동 백석동 마두동 식사동 풍동 중산동 정발산동 사리현동 설문동 지영동 문봉동 성석동 산황동');
-  add('고양시 일산서구','일산동 주엽동 대화동 탄현동 덕이동 가좌동 법곳동 구산동');
-  add('파주시','금촌동 아동동 야동동 검산동 맥금동 교하동 야당동 동패동 목동동 와동동 당하동 문발동 신촌동 상지석동 하지석동 서패동 다율동 산남동 연다산동 오도동 송촌동 문산읍 파주읍 법원읍 조리읍 탄현면 광탄면 적성면 파평면 월롱면 군내면 장단면 진동면 진서면');
-  return m;})();
-function placeName(n){return n.replace(/\(주\)|㈜/g,'').replace(/\([^)]*$/,'').replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/,'').replace(/\s+/g,' ').trim()||n}
-function mapQuery(st){let n=placeName(st.name);if(st.area&&n.startsWith(st.area+' '))n=n.slice(st.area.length+1);return [st.area?(REGION[st.area]||'')+' '+st.area:'',n].join(' ').replace(/\s+/g,' ').trim()}
-function mapUrl(st){return 'https://map.kakao.com/link/search/'+encodeURIComponent(mapQuery(st))}
-function naverUrl(st){return 'https://map.naver.com/p/search/'+encodeURIComponent(mapQuery(st))}
-function sumUnits(stops){return stops.reduce((a,s)=>a+(s.units||0),0)}
-function places(stops){const seen=[];stops.forEach(s=>{if(!seen.includes(s.name))seen.push(s.name)});return seen}
-function areas(stops){const a=[];stops.forEach(s=>{if(s.area&&!a.includes(s.area))a.push(s.area)});return a}
+const REGION = (() => {
+  const m = {};
+  const add = (r, l) => l.split(' ').forEach(d => (m[d] = r));
+  add(
+    '고양시 덕양구',
+    '주교동 원당동 성사동 고양동 관산동 내유동 화정동 행신동 토당동 신원동 오금동 삼송동 동산동 지축동 원흥동 도내동 덕은동 향동동 현천동 대자동 벽제동 선유동 효자동 용두동 화전동 대장동 강매동 신평동 내곡동 북한동'
+  );
+  add(
+    '고양시 일산동구',
+    '장항동 백석동 마두동 식사동 풍동 중산동 정발산동 사리현동 설문동 지영동 문봉동 성석동 산황동'
+  );
+  add(
+    '고양시 일산서구',
+    '일산동 주엽동 대화동 탄현동 덕이동 가좌동 법곳동 구산동'
+  );
+  add(
+    '파주시',
+    '금촌동 아동동 야동동 검산동 맥금동 교하동 야당동 동패동 목동동 와동동 당하동 문발동 신촌동 상지석동 하지석동 서패동 다율동 산남동 연다산동 오도동 송촌동 문산읍 파주읍 법원읍 조리읍 탄현면 광탄면 적성면 파평면 월롱면 군내면 장단면 진동면 진서면'
+  );
+  return m;
+})();
+function placeName(n) {
+  return (
+    n
+      .replace(/\(주\)|㈜/g, '')
+      .replace(/\([^)]*$/, '')
+      .replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim() || n
+  );
+}
+function mapQuery(st) {
+  let n = placeName(st.name);
+  if (st.area && n.startsWith(st.area + ' ')) n = n.slice(st.area.length + 1);
+  return [st.area ? (REGION[st.area] || '') + ' ' + st.area : '', n]
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function mapUrl(st) {
+  return (
+    'https://map.kakao.com/link/search/' + encodeURIComponent(mapQuery(st))
+  );
+}
+function naverUrl(st) {
+  return 'https://map.naver.com/p/search/' + encodeURIComponent(mapQuery(st));
+}
+function sumUnits(stops) {
+  return stops.reduce((a, s) => a + (s.units || 0), 0);
+}
+function places(stops) {
+  const seen = [];
+  stops.forEach(s => {
+    if (!seen.includes(s.name)) seen.push(s.name);
+  });
+  return seen;
+}
+function areas(stops) {
+  const a = [];
+  stops.forEach(s => {
+    if (s.area && !a.includes(s.area)) a.push(s.area);
+  });
+  return a;
+}
 
-function mine(name){
-  return data.days.map(d=>{
-    const t=d.teams.find(t=>t.members.some(m=>bare(m)===name));
-    const off=d.vacation.some(v=>bare(v)===name);
-    const sup=d.support.filter(s=>s.includes(name));
-    return {...d,t,off,sup};
+function mine(name) {
+  return data.days.map(d => {
+    const t = d.teams.find(t => t.members.some(m => bare(m) === name));
+    const off = d.vacation.some(v => bare(v) === name);
+    const sup = d.support.filter(s => s.includes(name));
+    return { ...d, t, off, sup };
   });
 }
-function mdow(d){const [y,m,dd]=d.iso.split('-').map(Number);const dt=new Date(y,m-1,dd);return {md:m+'/'+dd,dow:DOW[dt.getDay()]}}
-function briefText(d,name){
-  const t=d.t,st=t.stops,pl=places(st),ar=areas(st);
-  const mates=t.members.filter(m=>bare(m)!==name).map(bare);
-  const first=st[0],last=st[st.length-1];
-  let s=(ar.length?ar.join('·')+'에서 ':'')+pl.length+'곳, 승강기 '+sumUnits(st)+'대를 봐요. ';
-  if(first)s+=first.time+' '+first.name+'에서 시작';
-  if(last&&last!==first)s+='해 '+last.time+' '+last.name+'에서 마무리';
-  s+='합니다.';
-  if(st.some(x=>!x.area))s+=' 주소가 표에 없는 현장이 있으니 미리 확인하세요.';
-  return {s,mates};
+function mdow(d) {
+  const [y, m, dd] = d.iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, dd);
+  return { md: m + '/' + dd, dow: DOW[dt.getDay()] };
+}
+function briefText(d, name) {
+  const t = d.t,
+    st = t.stops,
+    pl = places(st),
+    ar = areas(st);
+  const mates = t.members.filter(m => bare(m) !== name).map(bare);
+  const first = st[0],
+    last = st[st.length - 1];
+  let s =
+    (ar.length ? ar.join('·') + '에서 ' : '') +
+    pl.length +
+    '곳, 승강기 ' +
+    sumUnits(st) +
+    '대를 봐요. ';
+  if (first) s += first.time + ' ' + first.name + '에서 시작';
+  if (last && last !== first)
+    s += '해 ' + last.time + ' ' + last.name + '에서 마무리';
+  s += '합니다.';
+  if (st.some(x => !x.area))
+    s += ' 주소가 표에 없는 현장이 있으니 미리 확인하세요.';
+  return { s, mates };
 }
 
-let sel=null;      // 선택한 날짜 iso, 또는 'week'
-const siteKey=x=>placeName(x.name).replace(/\s/g,'');
+let sel = null; // 선택한 날짜 iso, 또는 'week'
+const siteKey = x => placeName(x.name).replace(/\s/g, '');
 // 같은 날 같은 현장에 가는 다른 조
-function othersAt(d,s){const k=siteKey(s);const out=[];
-  d.teams.forEach(t=>{if(t===d.t)return;
-    const hit=t.stops.filter(x=>siteKey(x)===k&&(!x.area||!s.area||x.area===s.area));
-    if(hit.length)out.push({team:t.team,names:t.members.map(bare),times:[...new Set(hit.map(x=>x.time))]});});
-  return out;}
-function othersHtml(d,s){const o=othersAt(d,s);if(!o.length)return '';
-  return `<div class="others">${o.map(x=>`<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b>${x.times.join()!==s.time?' ('+esc(x.times.join(', '))+')':''}</span>`).join('')}</div>`;}
-let days=[];
-function curName(){return $('name').value.trim()}
-function defaultDay(ds){
-  return (ds.find(d=>d.iso===todayIso&&d.t)||ds.find(d=>d.t&&d.iso>=todayIso)||ds.find(d=>d.iso===todayIso)||ds.find(d=>d.t)||ds[0]).iso;
+function othersAt(d, s) {
+  const k = siteKey(s);
+  const out = [];
+  d.teams.forEach(t => {
+    if (t === d.t) return;
+    const hit = t.stops.filter(
+      x => siteKey(x) === k && (!x.area || !s.area || x.area === s.area)
+    );
+    if (hit.length)
+      out.push({
+        team: t.team,
+        names: t.members.map(bare),
+        times: [...new Set(hit.map(x => x.time))]
+      });
+  });
+  return out;
 }
-function render(){
-  const name=curName();
-  $('who0').innerHTML=name?`<em>${esc(name)}</em> 님<br>`:'';$('who').innerHTML=name?`<em>${esc(name)}</em> 님 일정`:'내 일정';
-  const loaded=!!data;
-  $('startView').hidden=loaded;$('appView').hidden=!loaded;
-  if(!loaded)return;
-  $('src').textContent=data.source||'검사 일정표';
-  days=mine(name);
-  if(!days.some(d=>d.t||d.off)){
-    $('tabs').innerHTML='';$('week').innerHTML='';
-    $('panel').innerHTML=`<div class="empty-day"><p class="note">${name?`이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.`:'이름을 입력하면 내 조의 일정만 골라 보여 줘요.'}</p>
+function othersHtml(d, s) {
+  const o = othersAt(d, s);
+  if (!o.length) return '';
+  return `<div class="others">${o.map(x => `<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`).join('')}</div>`;
+}
+let days = [];
+function curName() {
+  return $('name').value.trim();
+}
+function defaultDay(ds) {
+  return (
+    ds.find(d => d.iso === todayIso && d.t) ||
+    ds.find(d => d.t && d.iso >= todayIso) ||
+    ds.find(d => d.iso === todayIso) ||
+    ds.find(d => d.t) ||
+    ds[0]
+  ).iso;
+}
+function render() {
+  const name = curName();
+  $('who0').innerHTML = name ? `<em>${esc(name)}</em> 님<br>` : '';
+  $('who').innerHTML = name ? `<em>${esc(name)}</em> 님 일정` : '내 일정';
+  const loaded = !!data;
+  $('startView').hidden = loaded;
+  $('appView').hidden = !loaded;
+  if (!loaded) return;
+  $('src').textContent = data.source || '검사 일정표';
+  days = mine(name);
+  if (!days.some(d => d.t || d.off)) {
+    $('tabs').innerHTML = '';
+    $('week').innerHTML = '';
+    $('panel').innerHTML =
+      `<div class="empty-day"><p class="note">${name ? `이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.` : '이름을 입력하면 내 조의 일정만 골라 보여 줘요.'}</p>
       <div class="field" style="margin-top:14px;text-align:left"><label for="name2">내 이름</label><input id="name2" value="${esc(name)}" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div></div>`;
-    $('name2').addEventListener('change',e=>{$('name').value=e.target.value;store.set('sched.name',e.target.value.trim());render()});
+    $('name2').addEventListener('change', e => {
+      $('name').value = e.target.value;
+      store.set('sched.name', e.target.value.trim());
+      render();
+    });
     return;
   }
-  if(!sel||(sel!=='week'&&!days.some(d=>d.iso===sel)))sel=defaultDay(days);
-  const work=days.filter(d=>d.t);
-  $('week').innerHTML=`<span>이번 주 근무 <b>${work.length}</b>일</span><span>현장 <b>${work.reduce((a,d)=>a+places(d.t.stops).length,0)}</b>곳</span><span>승강기 <b>${sumUnits(work.flatMap(d=>d.t.stops))}</b>대</span>${days.some(d=>d.off)?`<span>휴가 <b>${days.filter(d=>d.off).length}</b>일</span>`:''}`;
-  $('tabs').innerHTML=`<button class="tab" role="tab" type="button" data-iso="week" aria-selected="${sel==='week'}"><span class="dw">이번 주</span><span class="dd">전체</span><span class="st">${work.reduce((a,d)=>a+places(d.t.stops).length,0)}곳</span></button>`+days.map(d=>{const {md,dow}=mdow(d);
-    const cls=d.t?'':d.off?' off':' none';const st=d.t?places(d.t.stops).length+'곳':d.off?'휴가':'–';
-    return `<button class="tab${cls}${d.iso===todayIso?' today':''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso===sel}">
-      <span class="dw">${d.iso===todayIso?'오늘':dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`}).join('');
+  if (!sel || (sel !== 'week' && !days.some(d => d.iso === sel)))
+    sel = defaultDay(days);
+  const work = days.filter(d => d.t);
+  $('week').innerHTML =
+    `<span>이번 주 근무 <b>${work.length}</b>일</span><span>현장 <b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>곳</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
+  $('tabs').innerHTML =
+    `<button class="tab" role="tab" type="button" data-iso="week" aria-selected="${sel === 'week'}"><span class="dw">이번 주</span><span class="dd">전체</span><span class="st">${work.reduce((a, d) => a + places(d.t.stops).length, 0)}곳</span></button>` +
+    days
+      .map(d => {
+        const { md, dow } = mdow(d);
+        const cls = d.t ? '' : d.off ? ' off' : ' none';
+        const st = d.t ? places(d.t.stops).length + '곳' : d.off ? '휴가' : '–';
+        return `<button class="tab${cls}${d.iso === todayIso ? ' today' : ''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso === sel}">
+      <span class="dw">${d.iso === todayIso ? '오늘' : dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`;
+      })
+      .join('');
   drawPanel();
-  }
-function drawWeek(){
-  let h=`<div class="dayhead"><h2>이번 주<span>날짜를 누르면 하루 일정으로</span></h2></div>`;
-  days.forEach(d=>{const {md,dow}=mdow(d);
-    const pill=d.t?`<span class="pill">${esc(d.t.team)} · ${places(d.t.stops).length}곳</span>`:d.off?'<span class="pill off">휴가</span>':'<span class="pill none">배정 없음</span>';
-    h+=`<section class="wday"><button class="wday-h" type="button" data-go="${d.iso}"><strong>${md}<span>${dow}요일${d.iso===todayIso?' · 오늘':''}</span></strong>${pill}</button>`;
-    if(d.t)h+=`<ul class="wlist">${d.t.stops.map(s=>`<li><span class="t">${esc(s.time)}</span>
+}
+function drawWeek() {
+  let h = `<div class="dayhead"><h2>이번 주<span>날짜를 누르면 하루 일정으로</span></h2></div>`;
+  days.forEach(d => {
+    const { md, dow } = mdow(d);
+    const pill = d.t
+      ? `<span class="pill">${esc(d.t.team)} · ${places(d.t.stops).length}곳</span>`
+      : d.off
+        ? '<span class="pill off">휴가</span>'
+        : '<span class="pill none">배정 없음</span>';
+    h += `<section class="wday"><button class="wday-h" type="button" data-go="${d.iso}"><strong>${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span></strong>${pill}</button>`;
+    if (d.t)
+      h += `<ul class="wlist">${d.t.stops
+        .map(
+          s => `<li><span class="t">${esc(s.time)}</span>
       <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
-        <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc(s.area):'주소 미기재'}</span></div>${othersHtml(d,s)}</div>
-      <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></li>`).join('')}</ul>`;
-    else h+=`<div class="wlist flat">${d.off?'휴가':'배정된 현장 없음'}</div>`;
-    if(d.sup.length)h+=`<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
-    h+='</section>';});
+        <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}</div>
+      <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></li>`
+        )
+        .join('')}</ul>`;
+    else
+      h += `<div class="wlist flat">${d.off ? '휴가' : '배정된 현장 없음'}</div>`;
+    if (d.sup.length)
+      h += `<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+    h += '</section>';
+  });
   return h;
 }
-function drawPanel(dx){
-  const p=$('panel');p.style.setProperty('--dx',(dx||0)+'px');p.style.animation='none';p.offsetHeight;p.style.animation='';
-  if(sel==='week'){p.innerHTML=drawWeek();return;}
-  const d=days.find(x=>x.iso===sel);const name=curName();const {md,dow}=mdow(d);
-  let h=`<div class="dayhead"><h2>${md}<span>${dow}요일${d.iso===todayIso?' · 오늘':''}</span></h2>`;
-  if(d.t){const b=briefText(d,name);
-    h+=`<span class="pill">${esc(d.t.team)} · 환산 ${d.t.units}대</span></div>
-      <div class="brief"><p>${esc(b.s)}</p>${b.mates.length?`<span class="crew">동행 <b>${esc(b.mates.join(', '))}</b></span>`:''}</div>
-      ${SERVER?'<div class="kmap" id="dmap" hidden></div><div class="legs" id="dlegs"><p class="note">현장 위치와 이동거리를 찾는 중…</p></div>':''}
-      <ol class="stops">${d.t.stops.map(s=>`<li class="stop">
+function drawPanel(dx) {
+  const p = $('panel');
+  p.style.setProperty('--dx', (dx || 0) + 'px');
+  p.style.animation = 'none';
+  p.offsetHeight;
+  p.style.animation = '';
+  if (sel === 'week') {
+    p.innerHTML = drawWeek();
+    return;
+  }
+  const d = days.find(x => x.iso === sel);
+  const name = curName();
+  const { md, dow } = mdow(d);
+  let h = `<div class="dayhead"><h2>${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span></h2>`;
+  if (d.t) {
+    const b = briefText(d, name);
+    h += `<span class="pill">${esc(d.t.team)} · 환산 ${d.t.units}대</span></div>
+      <div class="brief"><p>${esc(b.s)}</p>${b.mates.length ? `<span class="crew">동행 <b>${esc(b.mates.join(', '))}</b></span>` : ''}</div>
+      ${SERVER ? '<div class="kmap" id="dmap" hidden></div><div class="legs" id="dlegs"><p class="note">현장 위치와 이동거리를 찾는 중…</p></div>' : ''}
+      <ol class="stops">${d.t.stops
+        .map(
+          s => `<li class="stop">
         <div class="stop-top"><span class="t">${esc(s.time)}</span>
           <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
-            <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc((REGION[s.area]||'')+' '+s.area):'주소 미기재'}</span></div></div>
-          <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></div>
-        ${othersHtml(d,s)}
+            <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</span></div></div>
+          <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
+        ${othersHtml(d, s)}
         <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
-      </li>`).join('')}</ol>`;
-  }else if(d.off)h+=`<span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
-  else h+=`<span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
-  if(d.sup.length)h+=`<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
-  p.innerHTML=h;
-  if(SERVER&&d.t)dayExtras(d);
+      </li>`
+        )
+        .join('')}</ol>`;
+  } else if (d.off)
+    h += `<span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요.</p></div>`;
+  else
+    h += `<span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
+  if (d.sup.length)
+    h += `<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+  p.innerHTML = h;
+  if (SERVER && d.t) dayExtras(d);
 }
-function go(iso,dx){if(!iso||iso===sel)return;sel=iso;
-  $('tabs').querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.iso===sel));
-  drawPanel(dx);window.scrollTo({top:0});}
-$('tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t)go(t.dataset.iso)});
-$('panel').addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g)go(g.dataset.go);});
+function go(iso, dx) {
+  if (!iso || iso === sel) return;
+  sel = iso;
+  $('tabs')
+    .querySelectorAll('.tab')
+    .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
+  drawPanel(dx);
+  window.scrollTo({ top: 0 });
+}
+$('tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab');
+  if (t) go(t.dataset.iso);
+});
+$('panel').addEventListener('click', e => {
+  const g = e.target.closest('[data-go]');
+  if (g) go(g.dataset.go);
+});
 // ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
-const SERVER=typeof google!=='undefined'&&!!(google.script&&google.script.run);
-const GEO={},LEGS={};let ORIGIN=null,kakaoJsKey='',kakaoReady=null,kakaoError='';
-function run(fn,...a){return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...a))}
-const cfgReady=SERVER?run('getConfig').then(c=>{if(c&&c.ok){kakaoJsKey=c.kakaoJsKey||'';ORIGIN=c.origin||null;}}).catch(()=>{}):Promise.resolve();
-function loadKakao(){
-  if(!kakaoReady)kakaoReady=cfgReady.then(()=>{
-    if(!kakaoJsKey){kakaoError='스크립트 속성에 KAKAO_JS_KEY가 없어서 지도를 그릴 수 없어요.';return null;}
-    const load=new Promise((res,rej)=>{const sc=document.createElement('script');
-      sc.src='https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey='+encodeURIComponent(kakaoJsKey);
-      sc.onload=()=>kakao.maps.load(()=>res(kakao));sc.onerror=()=>rej(new Error('스크립트 로드 실패'));document.head.appendChild(sc);});
-    const to=new Promise((_,rej)=>setTimeout(()=>rej(new Error('시간 초과')),8000));
-    return Promise.race([load,to]).catch(e=>{kakaoError='카카오 지도를 불러오지 못했어요('+esc(e.message)+'). 카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 '+esc(location.origin)+' 를 등록하세요.';return null;});
-  });
+const SERVER =
+  typeof google !== 'undefined' && !!(google.script && google.script.run);
+const GEO = {},
+  LEGS = {};
+let ORIGIN = null,
+  kakaoJsKey = '',
+  kakaoReady = null,
+  kakaoError = '';
+function run(fn, ...a) {
+  return new Promise((res, rej) =>
+    google.script.run
+      .withSuccessHandler(res)
+      .withFailureHandler(rej)
+      [fn](...a)
+  );
+}
+const cfgReady = SERVER
+  ? run('getConfig')
+      .then(c => {
+        if (c && c.ok) {
+          kakaoJsKey = c.kakaoJsKey || '';
+          ORIGIN = c.origin || null;
+        }
+      })
+      .catch(() => {})
+  : Promise.resolve();
+function loadKakao() {
+  if (!kakaoReady)
+    kakaoReady = cfgReady.then(() => {
+      if (!kakaoJsKey) {
+        kakaoError =
+          '스크립트 속성에 KAKAO_JS_KEY가 없어서 지도를 그릴 수 없어요.';
+        return null;
+      }
+      const load = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src =
+          'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' +
+          encodeURIComponent(kakaoJsKey);
+        sc.onload = () => kakao.maps.load(() => res(kakao));
+        sc.onerror = () => rej(new Error('스크립트 로드 실패'));
+        document.head.appendChild(sc);
+      });
+      const to = new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('시간 초과')), 8000)
+      );
+      return Promise.race([load, to]).catch(e => {
+        kakaoError =
+          '카카오 지도를 불러오지 못했어요(' +
+          esc(e.message) +
+          '). 카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 ' +
+          esc(location.origin) +
+          ' 를 등록하세요.';
+        return null;
+      });
+    });
   return kakaoReady;
 }
-const ll=g=>(+g.lat).toFixed(5)+','+(+g.lng).toFixed(5);
-async function dayExtras(d){
-  const iso=d.iso;
-  try{
+const ll = g => (+g.lat).toFixed(5) + ',' + (+g.lng).toFixed(5);
+async function dayExtras(d) {
+  const iso = d.iso;
+  try {
     await cfgReady;
-    const need=[];d.t.stops.forEach(s=>{if(!s.area)return;const q=mapQuery(s);if(!(q in GEO)&&!need.some(x=>x.q===q))need.push({q,area:s.area,region:REGION[s.area]||'',name:placeName(s.name)});});
-    if(need.length){const r=await run('geocodeSites',need);if(!r.ok)throw new Error(r.message);need.forEach(x=>GEO[x.q]=r.places[x.q]||null);}
+    const need = [];
+    d.t.stops.forEach(s => {
+      if (!s.area) return;
+      const q = mapQuery(s);
+      if (!(q in GEO) && !need.some(x => x.q === q))
+        need.push({
+          q,
+          area: s.area,
+          region: REGION[s.area] || '',
+          name: placeName(s.name)
+        });
+    });
+    if (need.length) {
+      const r = await run('geocodeSites', need);
+      if (!r.ok) throw new Error(r.message);
+      need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
+    }
     // 방문 순서: 지사 → 현장들(같은 건물 연속은 하나로) → 지사
-    const stops=[];d.t.stops.forEach((s,i)=>{const g=GEO[mapQuery(s)];if(!g)return;const last=stops[stops.length-1];
-      if(last&&ll(last.g)===ll(g))last.nums.push(i+1);else stops.push({g,nums:[i+1],name:s.name});});
-    const pts=ORIGIN?[{g:ORIGIN,name:ORIGIN.name,home:1},...stops,{g:ORIGIN,name:ORIGIN.name,home:1}]:stops;
-    const pairs=[];for(let i=0;i+1<pts.length;i++){const k=ll(pts[i].g)+'>'+ll(pts[i+1].g);if(!(k in LEGS)&&!pairs.some(p=>p.k===k))pairs.push({k,a:pts[i].g,b:pts[i+1].g});}
-    if(pairs.length){const r=await run('routeLegs',pairs.map(p=>[+p.a.lat,+p.a.lng,+p.b.lat,+p.b.lng]));if(!r.ok)throw new Error(r.message);pairs.forEach((p,i)=>LEGS[p.k]=r.km[i]);}
-    if(sel!==iso)return;
-    drawLegs(d,pts);
+    const stops = [];
+    d.t.stops.forEach((s, i) => {
+      const g = GEO[mapQuery(s)];
+      if (!g) return;
+      const last = stops[stops.length - 1];
+      if (last && ll(last.g) === ll(g)) last.nums.push(i + 1);
+      else stops.push({ g, nums: [i + 1], name: s.name });
+    });
+    const pts = ORIGIN
+      ? [
+          { g: ORIGIN, name: ORIGIN.name, home: 1 },
+          ...stops,
+          { g: ORIGIN, name: ORIGIN.name, home: 1 }
+        ]
+      : stops;
+    const pairs = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const k = ll(pts[i].g) + '>' + ll(pts[i + 1].g);
+      if (!(k in LEGS) && !pairs.some(p => p.k === k))
+        pairs.push({ k, a: pts[i].g, b: pts[i + 1].g });
+    }
+    if (pairs.length) {
+      const r = await run(
+        'routeLegs',
+        pairs.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng])
+      );
+      if (!r.ok) throw new Error(r.message);
+      pairs.forEach((p, i) => (LEGS[p.k] = r.km[i]));
+    }
+    if (sel !== iso) return;
+    drawLegs(d, pts);
     drawDayMap(stops);
-  }catch(e){if(sel===iso&&$('dlegs'))$('dlegs').innerHTML=`<p class="note">위치·거리 계산 실패: ${esc(e.message||e)}</p>`;}
+  } catch (e) {
+    if (sel === iso && $('dlegs'))
+      $('dlegs').innerHTML =
+        `<p class="note">위치·거리 계산 실패: ${esc(e.message || e)}</p>`;
+  }
 }
-function drawLegs(d,pts){
-  const el=$('dlegs');if(!el)return;
-  if(pts.length<2){el.innerHTML='<p class="note">지도에 찍을 수 있는 현장이 없어요. 주소가 없는 현장은 지도와 거리 계산에서 빠져요.</p>';return;}
-  let tot=0,unknown=false;const rows=[];
-  for(let i=0;i+1<pts.length;i++){const km=LEGS[ll(pts[i].g)+'>'+ll(pts[i+1].g)];if(km==null)unknown=true;else tot+=km;
-    const nm=x=>x.home?x.name:x.nums.join('·')+'. '+x.name;
-    rows.push(`<div class="leg"><span>${esc(nm(pts[i]))} → ${esc(nm(pts[i+1]))}</span><span class="km">${km==null?'–':km.toFixed(1)+'km'}</span></div>`);}
-  const skipped=d.t.stops.filter(s=>!GEO[mapQuery(s)]).length;
-  const route=pts.map(x=>x.name).join(' → ');
-  el.innerHTML=`<h3>이동거리 (자동차 추천경로)</h3>${rows.join('')}
-    <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown?'+':''}</span></div>
+function drawLegs(d, pts) {
+  const el = $('dlegs');
+  if (!el) return;
+  if (pts.length < 2) {
+    el.innerHTML =
+      '<p class="note">지도에 찍을 수 있는 현장이 없어요. 주소가 없는 현장은 지도와 거리 계산에서 빠져요.</p>';
+    return;
+  }
+  let tot = 0,
+    unknown = false;
+  const rows = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const km = LEGS[ll(pts[i].g) + '>' + ll(pts[i + 1].g)];
+    if (km == null) unknown = true;
+    else tot += km;
+    const nm = x => (x.home ? x.name : x.nums.join('·') + '. ' + x.name);
+    rows.push(
+      `<div class="leg"><span>${esc(nm(pts[i]))} → ${esc(nm(pts[i + 1]))}</span><span class="km">${km == null ? '–' : km.toFixed(1) + 'km'}</span></div>`
+    );
+  }
+  const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
+  const route = pts.map(x => x.name).join(' → ');
+  el.innerHTML = `<h3>이동거리 (자동차 추천경로)</h3>${rows.join('')}
+    <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
-    ${skipped?`<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>`:''}`;
-  $('copyRoute').onclick=()=>{const t=$('routeText').textContent;const done=()=>{$('copyRoute').textContent='복사했어요'};
-    (navigator.clipboard?navigator.clipboard.writeText(t).then(done):Promise.reject()).catch(()=>{const r=document.createRange();r.selectNodeContents($('routeText'));const sl=getSelection();sl.removeAllRanges();sl.addRange(r);$('copyRoute').textContent='선택됨 · 길게 눌러 복사';});};
+    ${skipped ? `<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
+  $('copyRoute').onclick = () => {
+    const t = $('routeText').textContent;
+    const done = () => {
+      $('copyRoute').textContent = '복사했어요';
+    };
+    (navigator.clipboard
+      ? navigator.clipboard.writeText(t).then(done)
+      : Promise.reject()
+    ).catch(() => {
+      const r = document.createRange();
+      r.selectNodeContents($('routeText'));
+      const sl = getSelection();
+      sl.removeAllRanges();
+      sl.addRange(r);
+      $('copyRoute').textContent = '선택됨 · 길게 눌러 복사';
+    });
+  };
 }
-async function drawDayMap(stops){
-  const el=$('dmap');if(!el||!stops.length)return;
-  const k=await loadKakao();
-  if(!k){el.hidden=false;el.style.height='auto';el.innerHTML=`<p class="note" style="padding:12px">${kakaoError}</p>`;return;}
-  el.hidden=false;
-  const LL=g=>new k.maps.LatLng(+g.lat,+g.lng);
-  const map=new k.maps.Map(el,{center:LL(stops[0].g),level:5});
-  const b=new k.maps.LatLngBounds();
-  const add=(g,label,cls)=>{b.extend(LL(g));new k.maps.CustomOverlay({map,position:LL(g),yAnchor:.5,content:`<div class="pin${cls||''}">${label}</div>`});};
-  stops.forEach(x=>add(x.g,x.nums.join('·')));
-  if(ORIGIN)add(ORIGIN,'지사',' home');
-  const path=(ORIGIN?[ORIGIN]:[]).concat(stops.map(x=>x.g),ORIGIN?[ORIGIN]:[]);
-  if(path.length>1)new k.maps.Polyline({map,path:path.map(LL),strokeWeight:3,strokeColor:'#1f5fbf',strokeOpacity:.7,strokeStyle:'shortdash'});
-  if(stops.length+(ORIGIN?1:0)>1)map.setBounds(b,40,40,40,40);
+async function drawDayMap(stops) {
+  const el = $('dmap');
+  if (!el || !stops.length) return;
+  const k = await loadKakao();
+  if (!k) {
+    el.hidden = false;
+    el.style.height = 'auto';
+    el.innerHTML = `<p class="note" style="padding:12px">${kakaoError}</p>`;
+    return;
+  }
+  el.hidden = false;
+  const LL = g => new k.maps.LatLng(+g.lat, +g.lng);
+  const map = new k.maps.Map(el, { center: LL(stops[0].g), level: 5 });
+  const b = new k.maps.LatLngBounds();
+  const add = (g, label, cls) => {
+    b.extend(LL(g));
+    new k.maps.CustomOverlay({
+      map,
+      position: LL(g),
+      yAnchor: 0.5,
+      content: `<div class="pin${cls || ''}">${label}</div>`
+    });
+  };
+  stops.forEach(x => add(x.g, x.nums.join('·')));
+  if (ORIGIN) add(ORIGIN, '지사', ' home');
+  const path = (ORIGIN ? [ORIGIN] : []).concat(
+    stops.map(x => x.g),
+    ORIGIN ? [ORIGIN] : []
+  );
+  if (path.length > 1)
+    new k.maps.Polyline({
+      map,
+      path: path.map(LL),
+      strokeWeight: 3,
+      strokeColor: '#1f5fbf',
+      strokeOpacity: 0.7,
+      strokeStyle: 'shortdash'
+    });
+  if (stops.length + (ORIGIN ? 1 : 0) > 1) map.setBounds(b, 40, 40, 40, 40);
 }
 
 // 좌우로 밀어서 날짜 넘기기
-let sx=null,sy=0;
-$('panel').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
-$('panel').addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;
-  if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx))return;const order=['week',...days.map(d=>d.iso)];const i=order.indexOf(sel);const n=order[i+(dx<0?1:-1)];if(n)go(n,dx<0?40:-40);},{passive:true});
-addEventListener('scroll',()=>$('bar').classList.toggle('scrolled',scrollY>4),{passive:true});
+let sx = null,
+  sy = 0;
+$('panel').addEventListener(
+  'touchstart',
+  e => {
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  },
+  { passive: true }
+);
+$('panel').addEventListener(
+  'touchend',
+  e => {
+    if (sx == null) return;
+    const dx = e.changedTouches[0].clientX - sx,
+      dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    const order = ['week', ...days.map(d => d.iso)];
+    const i = order.indexOf(sel);
+    const n = order[i + (dx < 0 ? 1 : -1)];
+    if (n) go(n, dx < 0 ? 40 : -40);
+  },
+  { passive: true }
+);
+addEventListener(
+  'scroll',
+  () => $('bar').classList.toggle('scrolled', scrollY > 4),
+  { passive: true }
+);
 
 // ---------- file loading ----------
-async function pdfItems(buf){
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;const items=[];let off=0;
-  for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p);const vp=pg.getViewport({scale:1});const tc=await pg.getTextContent();
-    for(const it of tc.items){if(!it.str||!it.str.trim())continue;items.push({x:it.transform[4],y:vp.height-it.transform[5]+off,w:it.width,s:it.str});}
-    off+=vp.height;}
+async function pdfItems(buf) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const items = [];
+  let off = 0;
+  for (let p = 1; p <= doc.numPages; p++) {
+    const pg = await doc.getPage(p);
+    const vp = pg.getViewport({ scale: 1 });
+    const tc = await pg.getTextContent();
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      items.push({
+        x: it.transform[4],
+        y: vp.height - it.transform[5] + off,
+        w: it.width,
+        s: it.str
+      });
+    }
+    off += vp.height;
+  }
   return items;
 }
-function sheetItems(buf){
-  const wb=XLSX.read(buf,{type:'array',cellDates:false});
-  for(const sn of wb.SheetNames){
-    const ws=wb.Sheets[sn];if(!ws['!ref'])continue;const R=XLSX.utils.decode_range(ws['!ref']);
-    const merges=ws['!merges']||[];const items=[];
-    for(let r=R.s.r;r<=R.e.r;r++)for(let c=R.s.c;c<=R.e.c;c++){
-      const cell=ws[XLSX.utils.encode_cell({r,c})];if(!cell||cell.v==null||cell.v==='')continue;
-      let s=cell.w!=null?String(cell.w):String(cell.v);
-      if(cell.t==='n'&&cell.z&&XLSX.SSF.is_date(cell.z)){const dc=XLSX.SSF.parse_date_code(cell.v);s=dc.m+'/'+dc.d+' ('+DOW[new Date(dc.y,dc.m-1,dc.d).getDay()]+')';}
-      if(cell.t==='d'){const dt=new Date(cell.v);s=(dt.getMonth()+1)+'/'+dt.getDate()+' ('+DOW[dt.getDay()]+')';}
-      const mg=merges.find(m=>m.s.r===r&&m.s.c===c);const w=mg?(mg.e.c-mg.s.c+1)*100:100;
-      s.split(/\r?\n/).forEach((ln,i)=>{if(ln.trim())items.push({x:c*100,y:r*50+i*4,w,s:ln.trim()})});
-    }
-    if(items.some(i=>/^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)))return {items,sheet:sn};
+function sheetItems(buf) {
+  const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+  for (const sn of wb.SheetNames) {
+    const ws = wb.Sheets[sn];
+    if (!ws['!ref']) continue;
+    const R = XLSX.utils.decode_range(ws['!ref']);
+    const merges = ws['!merges'] || [];
+    const items = [];
+    for (let r = R.s.r; r <= R.e.r; r++)
+      for (let c = R.s.c; c <= R.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (!cell || cell.v == null || cell.v === '') continue;
+        let s = cell.w != null ? String(cell.w) : String(cell.v);
+        if (cell.t === 'n' && cell.z && XLSX.SSF.is_date(cell.z)) {
+          const dc = XLSX.SSF.parse_date_code(cell.v);
+          s =
+            dc.m +
+            '/' +
+            dc.d +
+            ' (' +
+            DOW[new Date(dc.y, dc.m - 1, dc.d).getDay()] +
+            ')';
+        }
+        if (cell.t === 'd') {
+          const dt = new Date(cell.v);
+          s =
+            dt.getMonth() +
+            1 +
+            '/' +
+            dt.getDate() +
+            ' (' +
+            DOW[dt.getDay()] +
+            ')';
+        }
+        const mg = merges.find(m => m.s.r === r && m.s.c === c);
+        const w = mg ? (mg.e.c - mg.s.c + 1) * 100 : 100;
+        s.split(/\r?\n/).forEach((ln, i) => {
+          if (ln.trim())
+            items.push({ x: c * 100, y: r * 50 + i * 4, w, s: ln.trim() });
+        });
+      }
+    if (items.some(i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)))
+      return { items, sheet: sn };
   }
-  throw new Error('엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.');
+  throw new Error(
+    '엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.'
+  );
 }
 
-async function load(file){
-  const msg=$('msg');msg.className='msg';msg.textContent=file.name+' 읽는 중…';
-  try{
-    if(typeof pdfjsLib==='undefined'||typeof XLSX==='undefined')throw new Error('파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.');
-    const buf=await file.arrayBuffer();const yr=(file.name.match(/20\d\d/)||[])[0];
-    const isPdf=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
-    const items=isPdf?await pdfItems(buf):sheetItems(buf).items;
-    const t=items.find(i=>/일정표/.test(i.s));
-    const ds=parseItems(items,yr?+yr:undefined);
-    if(!ds.some(d=>d.teams.length))throw new Error('조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.');
-    data={source:t?t.s.replace(/^[\s-]+/,'').trim():file.name,days:ds};sel=null;msg.textContent='';
-    render();window.scrollTo({top:0});
-  }catch(e){if(data){data=null;render();}msg.className='msg err';msg.textContent=e.message||'파일을 읽지 못했어요.';}
+async function load(file) {
+  const msg = $('msg');
+  msg.className = 'msg';
+  msg.textContent = file.name + ' 읽는 중…';
+  try {
+    if (typeof pdfjsLib === 'undefined' || typeof XLSX === 'undefined')
+      throw new Error(
+        '파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.'
+      );
+    const buf = await file.arrayBuffer();
+    const yr = (file.name.match(/20\d\d/) || [])[0];
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
+    const t = items.find(i => /일정표/.test(i.s));
+    const ds = parseItems(items, yr ? +yr : undefined);
+    if (!ds.some(d => d.teams.length))
+      throw new Error(
+        '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
+      );
+    data = {
+      source: t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
+      days: ds
+    };
+    sel = null;
+    msg.textContent = '';
+    render();
+    window.scrollTo({ top: 0 });
+  } catch (e) {
+    if (data) {
+      data = null;
+      render();
+    }
+    msg.className = 'msg err';
+    msg.textContent = e.message || '파일을 읽지 못했어요.';
+  }
 }
 // 버튼은 <label for="file"> 라서 스크립트 없이도 파일 선택이 열림. 키보드(Enter·Space)만 처리
-['pick','repick'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').click();}}));
-$('file').onchange=e=>{if(e.target.files[0])load(e.target.files[0]);e.target.value='';};
-document.addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over')});
-document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('drop').classList.remove('over')});
-document.addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');const f=e.dataTransfer.files[0];if(f)load(f)});
-$('name').addEventListener('input',()=>{store.set('sched.name',$('name').value.trim());render()});
+['pick', 'repick'].forEach(id =>
+  $(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      $('file').click();
+    }
+  })
+);
+$('file').onchange = e => {
+  if (e.target.files[0]) load(e.target.files[0]);
+  e.target.value = '';
+};
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  $('drop').classList.add('over');
+});
+document.addEventListener('dragleave', e => {
+  if (!e.relatedTarget) $('drop').classList.remove('over');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  $('drop').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) load(f);
+});
+$('name').addEventListener('input', () => {
+  store.set('sched.name', $('name').value.trim());
+  render();
+});
 render();
 </script>
