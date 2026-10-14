@@ -142,10 +142,10 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
 <section class="gutter" id="startView">
   <div class="col start">
     <div>
-      <h1><em id="who0">신기섭</em> 님<br>이번 주 검사 현장</h1>
+      <h1><span id="who0"></span>이번 주 검사 현장</h1>
     </div>
     <p>지사 검사 일정표(엑셀 또는 PDF)를 올리면 내 조의 현장만 골라 날짜별로 보여 줘요.</p>
-    <div class="field"><label for="name">내 이름</label><input id="name" value="신기섭" autocomplete="off" enterkeyhint="done"></div>
+    <div class="field"><label for="name">내 이름</label><input id="name" value="" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div>
     <button class="big" id="pick" type="button">일정표 파일 고르기</button>
     <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
     <div class="msg" id="msg"></div>
@@ -157,7 +157,7 @@ main{padding-block:4px 40px;display:flex;flex-direction:column;gap:14px}
   <header class="bar gutter" id="bar">
     <div class="col">
       <div class="bar-in">
-        <div class="who"><small id="src">검사 일정표</small><b><em id="who">신기섭</em> 님 일정</b></div>
+        <div class="who"><small id="src">검사 일정표</small><b id="who">내 일정</b></div>
         <button class="ghost" id="repick" type="button">파일 바꾸기</button>
       </div>
       <nav class="tabs" id="tabs" role="tablist" aria-label="날짜"></nav>
@@ -227,7 +227,7 @@ const DOW=['일','월','화','수','목','금','토'];
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 let data=null;
-$('name').value=store.get('sched.name')||'신기섭';
+$('name').value=store.get('sched.name')||'';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const bare=s=>s.replace(/\(.*?\)/g,'').trim();
@@ -279,13 +279,13 @@ function othersAt(d,s){const k=siteKey(s);const out=[];
 function othersHtml(d,s){const o=othersAt(d,s);if(!o.length)return '';
   return `<div class="others">${o.map(x=>`<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b>${x.times.join()!==s.time?' ('+esc(x.times.join(', '))+')':''}</span>`).join('')}</div>`;}
 let days=[];
-function curName(){return $('name').value.trim()||'신기섭'}
+function curName(){return $('name').value.trim()}
 function defaultDay(ds){
   return (ds.find(d=>d.iso===todayIso&&d.t)||ds.find(d=>d.t&&d.iso>=todayIso)||ds.find(d=>d.iso===todayIso)||ds.find(d=>d.t)||ds[0]).iso;
 }
 function render(){
   const name=curName();
-  $('who0').textContent=name;$('who').textContent=name;
+  $('who0').innerHTML=name?`<em>${esc(name)}</em> 님<br>`:'';$('who').innerHTML=name?`<em>${esc(name)}</em> 님 일정`:'내 일정';
   const loaded=!!data;
   $('startView').hidden=loaded;$('appView').hidden=!loaded;
   if(!loaded)return;
@@ -293,8 +293,8 @@ function render(){
   days=mine(name);
   if(!days.some(d=>d.t||d.off)){
     $('tabs').innerHTML='';$('week').innerHTML='';
-    $('panel').innerHTML=`<div class="empty-day"><p class="note">이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.</p>
-      <div class="field" style="margin-top:14px;text-align:left"><label for="name2">내 이름</label><input id="name2" value="${esc(name)}" autocomplete="off"></div></div>`;
+    $('panel').innerHTML=`<div class="empty-day"><p class="note">${name?`이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.`:'이름을 입력하면 내 조의 일정만 골라 보여 줘요.'}</p>
+      <div class="field" style="margin-top:14px;text-align:left"><label for="name2">내 이름</label><input id="name2" value="${esc(name)}" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div></div>`;
     $('name2').addEventListener('change',e=>{$('name').value=e.target.value;store.set('sched.name',e.target.value.trim());render()});
     return;
   }
