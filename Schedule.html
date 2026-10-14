@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>내 검사 일정</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one narrow column — next-shift callout, week strip, then a day-by-day timeline of site cards */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#dde3e9;
+  --accent:#1f5fbf; --accent-soft:#e6eefa;
+  --k-jeong:#2a3440; --k-mil:#1d7fc4; --k-su:#c27a0e; --k-wan:#c2392f;
+  --off:#8a6d1e; --off-soft:#f8f0dc;
+  --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
+  --accent:#6ea6f5; --accent-soft:#1d2d44;
+  --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
+  --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#19212a; --ink:#e6ebf0; --muted:#94a2b0; --line:#2a3541;
+  --accent:#6ea6f5; --accent-soft:#1d2d44;
+  --k-jeong:#c9d3dd; --k-mil:#5fb4ec; --k-su:#e7a84a; --k-wan:#f07c72;
+  --off:#e2c06e; --off-soft:#2e2818; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-direction:column;gap:12px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:500}
+h1{margin:2px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.field{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 4px 4px 10px}
+.field label{font-size:12px;color:var(--muted)}
+.field input{border:0;background:transparent;color:var(--ink);font:600 15px var(--font-body);width:6.5em;padding:4px 2px;outline:none}
+.btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:var(--surface);font:600 14px var(--font-body);
+  border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn:focus-visible,.field:focus-within,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:12px 14px;color:var(--muted);font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.drop b{color:var(--ink);font-weight:600}
+.msg{font-size:13px}
+.drop{cursor:pointer}
+body.empty .drop{min-height:220px;flex-direction:column;justify-content:center;text-align:center;font-size:15px;background:var(--surface);border-width:2px}
+body.empty .drop .dz-text{max-width:26em}
+.msg.err{color:var(--k-wan)}
+
+.next{background:var(--accent);color:var(--surface);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.next .eyebrow{color:inherit;opacity:.8}
+.next .big{font-size:19px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.next .sub{font-size:14px;opacity:.9}
+
+.week{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stat{background:var(--surface);padding:10px 12px}
+.stat .v{font:600 20px var(--font-mono);font-variant-numeric:tabular-nums}
+.stat .k{font-size:12px;color:var(--muted)}
+@media (max-width:440px){.week{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.days{display:flex;flex-direction:column;gap:14px}
+.day{display:grid;grid-template-columns:62px minmax(0,1fr);gap:14px}
+.date{text-align:center;padding-top:14px}
+.date .md{font:600 20px var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.date .dow{font-size:13px;color:var(--muted)}
+.date .today{display:inline-block;margin-top:4px;font-size:11px;font-weight:600;color:var(--surface);background:var(--accent);border-radius:99px;padding:1px 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.day.is-today .card{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.day.past{opacity:.55}
+.head{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;font-weight:600;border-radius:99px;padding:2px 10px;background:var(--accent-soft);color:var(--accent)}
+.pill.off{background:var(--off-soft);color:var(--off)}
+.pill.none{background:var(--bg);color:var(--muted)}
+.crew{font-size:13px;color:var(--muted)}
+.crew b{color:var(--ink);font-weight:600}
+.brief{margin:0;font-size:15px;text-wrap:pretty}
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.stop{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.stop:last-child{border-bottom:0;padding-bottom:0}
+.t{font:600 14px var(--font-mono);font-variant-numeric:tabular-nums}
+.nm{font-weight:600;overflow-wrap:anywhere}
+.meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:2px}
+.kind{font-style:normal;font-size:11.5px;font-weight:600;border:1px solid currentColor;border-radius:4px;padding:0 5px;line-height:1.5}
+.k-정{color:var(--k-jeong)}.k-밀{color:var(--k-mil)}.k-수{color:var(--k-su)}.k-완{color:var(--k-wan)}
+.u{font:600 13px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.u small{font:400 12px var(--font-body);color:var(--muted)}
+.map{color:var(--accent);text-decoration:none;font-weight:500}
+.map:hover{text-decoration:underline}
+.note{font-size:13px;color:var(--muted);margin:0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+footer{font-size:12px;color:var(--muted);text-align:center}
+@media (max-width:440px){.day{grid-template-columns:1fr;gap:6px}.date{text-align:left;padding-top:0;display:flex;gap:8px;align-items:baseline}.date .today{margin-top:0}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+/* 현장 지도 */
+.kmap{height:240px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.kmsg{font-size:12.5px;color:var(--muted);margin:0}
+.kmsg code{font-size:12px;overflow-wrap:anywhere}
+.no{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 11.5px var(--font-mono);margin-right:6px;vertical-align:1px}
+.pin{min-width:26px;height:26px;padding:0 7px;border-radius:13px;background:var(--accent);color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);
+  display:grid;place-items:center;font:600 12px var(--font-mono);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div>
+        <div class="eyebrow" id="src">검사 일정표</div>
+        <h1><em id="who">신기섭</em> 님 검사 일정</h1>
+      </div>
+      <div class="controls">
+        <div class="field"><label for="name">이름</label><input id="name" value="신기섭" autocomplete="off"></div>
+        <button class="btn" id="pick" type="button">일정표 올리기</button>
+        <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,.csv" hidden>
+      </div>
+    </div>
+    <div class="drop" id="drop">
+      <span class="dz-text"><b>엑셀(.xlsx) 또는 PDF</b> 일정표를 여기에 끌어다 놓거나 눌러서 올리면 내 일정만 골라 보여 줘요.</span>
+      <span class="msg" id="msg"></span>
+    </div>
+  </header>
+
+  <section class="next" id="next" hidden></section>
+  <section class="week" id="week"></section>
+  <div class="legend" id="legend">
+    <span><i class="kind k-정">정</i>정기검사</span><span><i class="kind k-밀">밀</i>정밀안전검사</span>
+    <span><i class="kind k-수">수</i>수시검사</span><span><i class="kind k-완">완</i>완성검사</span>
+    <span>(괄호 숫자) = 승강기 대수</span>
+  </div>
+  <section class="days" id="days"></section>
+  <footer>일정표 파일은 이 화면에서만 읽어요. 지도에 찍을 현장 이름과 동만 카카오 장소 검색에 보내요.<br>주소가 없거나 위치를 못 찾은 현장은 지도에 표시하지 않아요.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Shared parser: positioned text items {x,y,w,s} (y grows downward) -> schedule
+function parseItems(items, yearHint){
+  const Y=yearHint||new Date().getFullYear();
+  // headers
+  const heads=items.filter(i=>/^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)&&!/~/.test(i.s));
+  if(heads.length<1) throw new Error('날짜 머리글(예: 10/12 (월))을 찾지 못했어요.');
+  const hy=Math.min(...heads.map(h=>h.y));
+  const cols=heads.filter(h=>Math.abs(h.y-hy)<6).map(h=>({c:h.x+h.w/2,s:h.s.trim()})).sort((a,b)=>a.c-b.c);
+  const sp=cols.length>1?(cols[cols.length-1].c-cols[0].c)/(cols.length-1):(cols[0].c);
+  cols.forEach((c,k)=>{c.l=k?(cols[k-1].c+c.c)/2:c.c-sp/2;c.r=k<cols.length-1?(c.c+cols[k+1].c)/2:c.c+sp/2;
+    const m=c.s.match(/(\d{1,2})\/(\d{1,2})/);const d=new Date(Y,+m[1]-1,+m[2]);c.date=d;});
+  const labels=items.filter(i=>/^\s*\d{1,2}\s*조\s*$/.test(i.s)&&i.x+i.w<=cols[0].l+2).map(i=>({y:i.y,t:i.s.replace(/\s/g,'')})).sort((a,b)=>a.y-b.y);
+  const rowLabels=items.filter(i=>/^\s*(행사|복무)\s*$/.test(i.s)&&i.x+i.w<=cols[0].l+2);
+  const firstMisc=rowLabels.length?Math.min(...rowLabels.map(i=>i.y)):Infinity;
+  const days=cols.map(c=>{
+    const its=items.filter(i=>i.y>hy+3&&i.x+i.w/2>=c.l&&i.x+i.w/2<c.r);
+    // group lines by y
+    its.sort((a,b)=>a.y-b.y||a.x-b.x);
+    const lines=[];
+    for(const it of its){const L=lines[lines.length-1];
+      if(L&&Math.abs(L.y-it.y)<3){L.parts.push(it);}else lines.push({y:it.y,parts:[it]});}
+    lines.forEach(L=>{L.parts.sort((a,b)=>a.x-b.x);let s='',end=null;
+      for(const p of L.parts){if(end!==null&&p.x-end>2)s+=' ';s+=p.s;end=p.x+p.w;}L.s=s.trim();});
+    const teams=[];let buf='';let misc='';
+    for(const L of lines){
+      if(!L.s)continue;
+      if(L.y>=firstMisc-3||/^(휴가자|임피|검사지원|출장|교육)/.test(L.s)||/(휴가자|검사지원):/.test(L.s)){misc+=(/^\S+:/.test(L.s)?'\n':'')+L.s;continue;}
+      const sm=L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
+      if(sm){const lab=labels.filter(l=>l.y<=L.y+1).pop();
+        teams.push({team:lab?lab.t:'',sites:+sm[1],units:+sm[2],members:sm[3].split('/').map(x=>x.trim()).filter(Boolean),stops:parseStops(buf)});buf='';continue;}
+      if(/^\d{1,2}:\d{2}/.test(L.s))buf+='\n'+L.s;else buf+=L.s;
+    }
+    const vac=(misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m)||[])[1]||'';
+    const supp=[...misc.matchAll(/검사지원:([^\n]*?)(?=휴가자:|임피:|$)/gm)].map(m=>m[1].trim());
+    return {label:c.s,iso:fmt(c.date),teams,vacation:vac.split(',').map(x=>x.trim()).filter(Boolean),support:supp};
+  });
+  return days;
+}
+function fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parseStops(buf){
+  return buf.split('\n').map(s=>s.trim()).filter(Boolean).map(s=>{
+    const m=s.match(/^(\d{1,2}:\d{2})\s*\[([^\]]+)\]\s*(?:\[([^\]]+)\])?\s*(?:\[(.*)\]|(.*?))\s*(?:\((\d+)\))?\s*$/);
+    if(!m)return {time:'',kind:'',area:'',name:s,units:null};
+    let name=(m[4]!==undefined?m[4]:m[5]||'').trim();
+    if(m[4]===undefined){const u=name.match(/^(.*)\((\d+)\)$/);if(u&&!m[6]){name=u[1];m[6]=u[2];}}
+    return {time:m[1],kind:m[2],area:m[3]&&m[3]!=='주소불명'?m[3]:'',name,units:m[6]?+m[6]:null};
+  });
+}
+
+
+const KIND={'정':'정기','밀':'정밀','수':'수시','완':'완성'};
+const DOW=['일','월','화','수','목','금','토'];
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let data=null;
+$('name').value=store.get('sched.name')||'신기섭';
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bare=s=>s.replace(/\(.*?\)/g,'').trim();
+const todayIso=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+// 동·읍·면 → 시·구 (일정표에는 동 이름만 있어 검색이 엉뚱한 지역으로 가지 않게)
+const REGION=(()=>{const m={};const add=(r,l)=>l.split(' ').forEach(d=>m[d]=r);
+  add('고양시 덕양구','주교동 원당동 성사동 고양동 관산동 내유동 화정동 행신동 토당동 신원동 오금동 삼송동 동산동 지축동 원흥동 도내동 덕은동 향동동 현천동 대자동 벽제동 선유동 효자동 용두동 화전동 대장동 강매동 신평동 내곡동 북한동');
+  add('고양시 일산동구','장항동 백석동 마두동 식사동 풍동 중산동 정발산동 사리현동 설문동 지영동 문봉동 성석동 산황동');
+  add('고양시 일산서구','일산동 주엽동 대화동 탄현동 덕이동 가좌동 법곳동 구산동');
+  add('파주시','금촌동 아동동 야동동 검산동 맥금동 교하동 야당동 동패동 목동동 와동동 당하동 문발동 신촌동 상지석동 하지석동 서패동 다율동 산남동 연다산동 오도동 송촌동 문산읍 파주읍 법원읍 조리읍 탄현면 광탄면 적성면 파평면 월롱면 군내면 장단면 진동면 진서면');
+  return m;})();
+function placeName(n){return n.replace(/\(주\)|㈜/g,'').replace(/\([^)]*$/,'').replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/,'').replace(/\s+/g,' ').trim()||n}
+function mapQuery(st){let n=placeName(st.name);if(st.area&&n.startsWith(st.area+' '))n=n.slice(st.area.length+1);return [st.area?(REGION[st.area]||'')+' '+st.area:'',n].join(' ').replace(/\s+/g,' ').trim()}
+function mapUrl(st){return 'https://map.kakao.com/link/search/'+encodeURIComponent(mapQuery(st))}
+function naverUrl(st){return 'https://map.naver.com/p/search/'+encodeURIComponent(mapQuery(st))}
+function sumUnits(stops){return stops.reduce((a,s)=>a+(s.units||0),0)}
+function places(stops){const seen=[];stops.forEach(s=>{if(!seen.includes(s.name))seen.push(s.name)});return seen}
+function areas(stops){const a=[];stops.forEach(s=>{if(s.area&&!a.includes(s.area))a.push(s.area)});return a}
+
+function mine(name){
+  return data.days.map(d=>{
+    const t=d.teams.find(t=>t.members.some(m=>bare(m)===name));
+    const off=d.vacation.some(v=>bare(v)===name);
+    const sup=d.support.filter(s=>s.includes(name));
+    return {...d,t,off,sup};
+  });
+}
+function mdow(d){const [y,m,dd]=d.iso.split('-').map(Number);const dt=new Date(y,m-1,dd);return {md:m+'/'+dd,dow:DOW[dt.getDay()]}}
+function briefText(d,name){
+  const t=d.t,st=t.stops,pl=places(st),ar=areas(st);
+  const mates=t.members.filter(m=>bare(m)!==name).map(bare);
+  const first=st[0],last=st[st.length-1];
+  let s=(ar.length?ar.join('·')+'에서 ':'')+pl.length+'곳, 승강기 '+sumUnits(st)+'대를 봐요. ';
+  if(first)s+=first.time+' '+first.name+'에서 시작';
+  if(last&&last!==first)s+='해 '+last.time+' '+last.name+'에서 마무리';
+  s+='합니다.';
+  if(st.some(x=>!x.area))s+=' 주소가 표에 없는 현장이 있으니 미리 확인하세요.';
+  return {s,mates};
+}
+function render(){
+  const name=$('name').value.trim()||'신기섭';
+  $('who').textContent=name;
+  const empty=!data;
+  document.body.classList.toggle('empty',empty);
+  ['week','days','legend'].forEach(id=>$(id).hidden=empty);
+  if(empty){$('next').hidden=true;$('src').textContent='검사 일정표';return;}
+  $('src').textContent=data.source||'검사 일정표';
+  const days=mine(name);
+  const work=days.filter(d=>d.t);
+  const allStops=work.flatMap(d=>d.t.stops);
+  const team=[...new Set(work.map(d=>d.t.team).filter(Boolean))].join('·')||'–';
+  $('week').innerHTML=[['근무',work.length+'일'],['현장',work.reduce((a,d)=>a+places(d.t.stops).length,0)+'곳'],['승강기',sumUnits(allStops)+'대'],['휴가',days.filter(d=>d.off).length+'일']]
+    .map(([k,v])=>`<div class="stat"><div class="v">${v}</div><div class="k">${k}${k==='근무'?' · '+esc(team):''}</div></div>`).join('');
+
+  const nx=days.find(d=>d.t&&d.iso>=todayIso);
+  if(nx){const {md,dow}=mdow(nx);const b=briefText(nx,name);const f=nx.t.stops[0];
+    $('next').hidden=false;
+    $('next').innerHTML=`<div class="eyebrow">${nx.iso===todayIso?'오늘 일정':'다음 출근'} · ${md} (${dow})</div>
+      <div class="big">${f?esc(f.time)+' '+esc(f.name):''}${f&&f.area?' <span style="font-weight:500">('+esc(f.area)+')</span>':''}</div>
+      <div class="sub">${esc(nx.t.team)}${b.mates.length?' · '+esc(b.mates.join(', '))+' 님과':''} · ${places(nx.t.stops).length}곳 ${sumUnits(nx.t.stops)}대</div>`;
+  }else $('next').hidden=true;
+
+  if(!days.some(d=>d.t||d.off)){
+    $('days').innerHTML=`<p class="note">이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요. 이름 철자를 확인하거나 다른 주 일정표를 올려 주세요.</p>`;return;
+  }
+  $('days').innerHTML=days.map(d=>{
+    const {md,dow}=mdow(d);const isT=d.iso===todayIso;const past=d.iso<todayIso;
+    let body;
+    if(d.t){const b=briefText(d,name);
+      body=`<div class="head"><span class="pill">${esc(d.t.team)} · ${d.t.sites}현장 · 환산 ${d.t.units}대</span>
+        <span class="crew">${b.mates.length?'동행 <b>'+esc(b.mates.join(', '))+'</b>':''}</span></div>
+        <p class="brief">${esc(b.s)}</p>
+        <div class="kmap" data-iso="${d.iso}" hidden></div><p class="kmsg" data-iso="${d.iso}" hidden></p>
+        <ol class="stops">${d.t.stops.map((s,i)=>`<li class="stop"><span class="t"><b class="no">${i+1}</b>${esc(s.time)}</span>
+          <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
+          <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc(s.area):'주소 미기재'}</span>·${linksHtml(s)}</div></div>
+          <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></li>`).join('')}</ol>`;
+    }else if(d.off){body=`<div class="head"><span class="pill off">휴가</span></div><p class="note">이날은 휴가로 잡혀 있어요.</p>`;}
+    else body=`<div class="head"><span class="pill none">배정 없음</span></div><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p>`;
+    if(d.sup.length)body+=`<p class="note">행사: 검사지원 ${esc(d.sup.join(', '))}</p>`;
+    return `<article class="day${isT?' is-today':''}${past?' past':''}" id="d-${d.iso}"><div class="date"><div class="md">${md}</div><div class="dow">${dow}요일</div>${isT?'<span class="today">오늘</span>':''}</div><div class="card">${body}</div></article>`;
+  }).join('');
+  drawMaps(days);
+}
+
+// ---------- 현장 위치 (서버에서 카카오 장소 검색) ----------
+const GEO={};           // 검색어 → {lat,lng,name,address} | null(못 찾음)
+let kakaoJsKey='',kakaoReady=null,kakaoError='';
+function run(fn,...args){return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args))}
+const cfgReady=run('getScheduleConfig').then(c=>{kakaoJsKey=(c&&c.kakaoJsKey)||''}).catch(()=>{});
+function loadKakao(){
+  if(!kakaoReady)kakaoReady=cfgReady.then(()=>{
+    if(!kakaoJsKey){kakaoError='스크립트 속성에 KAKAO_JS_KEY가 없어서 지도를 그릴 수 없어요.';return null;}
+    const load=new Promise((res,rej)=>{const sc=document.createElement('script');
+      sc.src='https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey='+encodeURIComponent(kakaoJsKey);
+      sc.onload=()=>kakao.maps.load(()=>res(kakao));sc.onerror=()=>rej(new Error('스크립트 로드 실패'));document.head.appendChild(sc);});
+    const to=new Promise((_,rej)=>setTimeout(()=>rej(new Error('시간 초과')),8000));
+    return Promise.race([load,to]).catch(e=>{kakaoError='카카오 지도를 불러오지 못했어요('+esc(e.message)+'). 카카오 디벨로퍼스 → 플랫폼 → Web 사이트 도메인에 <code>'+esc(location.origin)+'</code> 를 등록하세요.';return null;});
+  });
+  return kakaoReady;
+}
+function linksHtml(s){
+  const g=GEO[mapQuery(s)];
+  if(g){const nm=encodeURIComponent((g.name||s.name).replace(/,/g,' '));
+    return `<a class="map" href="https://map.kakao.com/link/map/${nm},${g.lat},${g.lng}" target="_blank" rel="noopener">지도</a>·<a class="map" href="https://map.kakao.com/link/to/${nm},${g.lat},${g.lng}" target="_blank" rel="noopener">길찾기</a>`;}
+  return `<a class="map" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a>·<a class="map" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a>`;
+}
+// 주소(동)가 있는 현장만 위치를 찾음 — 주소가 없는 현장은 지도에 표시하지 않음
+async function locate(){
+  if(!data)return;
+  const name=$('name').value.trim()||'신기섭';const sites=[];
+  mine(name).forEach(d=>d.t&&d.t.stops.forEach(s=>{if(!s.area)return;const q=mapQuery(s);
+    if(!(q in GEO)&&!sites.some(x=>x.q===q))sites.push({q,area:s.area,region:REGION[s.area]||'',name:placeName(s.name)});}));
+  if(!sites.length)return;
+  const msg=$('msg');msg.className='msg';msg.textContent='현장 '+sites.length+'곳 위치를 찾는 중…';
+  try{const r=await run('geocodeSites',sites);if(!r||!r.ok)throw new Error(r&&r.message||'응답 없음');
+    sites.forEach(x=>{GEO[x.q]=r.places[x.q]||null});
+    msg.textContent='현장 위치를 지도에 표시했어요.';
+  }catch(e){msg.className='msg err';msg.textContent='위치 검색 실패: '+(e.message||e);}
+  render();
+}
+async function drawMaps(days){
+  const work=days.filter(d=>d.t&&d.t.stops.some(s=>GEO[mapQuery(s)]));
+  if(!work.length)return;
+  const k=await loadKakao();
+  const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#1f5fbf';
+  work.forEach(d=>{
+    const el=document.querySelector('.kmap[data-iso="'+d.iso+'"]'),note=document.querySelector('.kmsg[data-iso="'+d.iso+'"]');
+    if(!el)return;
+    if(!k){note.hidden=false;note.innerHTML=kakaoError;return;}
+    el.hidden=false;
+    const groups=[];   // 같은 건물은 핀 하나에 번호를 모아서
+    d.t.stops.forEach((s,i)=>{const g=GEO[mapQuery(s)];if(!g)return;const key=(+g.lat).toFixed(5)+','+(+g.lng).toFixed(5);
+      let gr=groups.find(x=>x.key===key);if(!gr)groups.push(gr={key,g,nums:[]});gr.nums.push(i+1);});
+    const LL=g=>new k.maps.LatLng(+g.lat,+g.lng);
+    const map=new k.maps.Map(el,{center:LL(groups[0].g),level:4});
+    const bounds=new k.maps.LatLngBounds();
+    groups.forEach(gr=>{bounds.extend(LL(gr.g));
+      new k.maps.CustomOverlay({map,position:LL(gr.g),yAnchor:.5,content:`<div class="pin" title="${esc(gr.g.name||'')}">${gr.nums.join('·')}</div>`});});
+    if(groups.length>1){new k.maps.Polyline({map,path:groups.map(gr=>LL(gr.g)),strokeWeight:3,strokeColor:accent,strokeOpacity:.7,strokeStyle:'shortdash'});
+      map.setBounds(bounds,40,40,40,40);}
+  });
+}
+
+// ---------- file loading ----------
+async function pdfItems(buf){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;const items=[];let off=0;
+  for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p);const vp=pg.getViewport({scale:1});const tc=await pg.getTextContent();
+    for(const it of tc.items){if(!it.str||!it.str.trim())continue;items.push({x:it.transform[4],y:vp.height-it.transform[5]+off,w:it.width,s:it.str});}
+    off+=vp.height;}
+  return items;
+}
+function sheetItems(buf){
+  const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  for(const sn of wb.SheetNames){
+    const ws=wb.Sheets[sn];if(!ws['!ref'])continue;const R=XLSX.utils.decode_range(ws['!ref']);
+    const merges=ws['!merges']||[];const items=[];
+    for(let r=R.s.r;r<=R.e.r;r++)for(let c=R.s.c;c<=R.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];if(!cell||cell.v==null||cell.v==='')continue;
+      let s=cell.w!=null?String(cell.w):String(cell.v);
+      if(cell.t==='n'&&cell.z&&XLSX.SSF.is_date(cell.z)){const dc=XLSX.SSF.parse_date_code(cell.v);s=dc.m+'/'+dc.d+' ('+DOW[new Date(dc.y,dc.m-1,dc.d).getDay()]+')';}
+      if(cell.t==='d'){const dt=new Date(cell.v);s=(dt.getMonth()+1)+'/'+dt.getDate()+' ('+DOW[dt.getDay()]+')';}
+      const mg=merges.find(m=>m.s.r===r&&m.s.c===c);const w=mg?(mg.e.c-mg.s.c+1)*100:100;
+      s.split(/\r?\n/).forEach((ln,i)=>{if(ln.trim())items.push({x:c*100,y:r*50+i*4,w,s:ln.trim()})});
+    }
+    if(items.some(i=>/^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)))return {items,sheet:sn};
+  }
+  throw new Error('엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.');
+}
+async function load(file){
+  const msg=$('msg');msg.className='msg';msg.textContent=file.name+' 읽는 중…';
+  try{
+    const buf=await file.arrayBuffer();const yr=(file.name.match(/20\d\d/)||[])[0];
+    let items,title='';
+    if(/\.pdf$/i.test(file.name)){items=await pdfItems(buf);}
+    else{const r=sheetItems(buf);items=r.items;}
+    const t=items.find(i=>/일정표/.test(i.s));if(t)title=t.s.replace(/^[\s-]+/,'').trim();
+    const days=parseItems(items,yr?+yr:undefined);
+    if(!days.some(d=>d.teams.length))throw new Error('조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.');
+    data={source:title||file.name,days};
+    msg.textContent=file.name+' 반영 완료';render();locate();
+  }catch(e){msg.className='msg err';msg.textContent=e.message||'파일을 읽지 못했어요.';}
+}
+$('pick').onclick=()=>$('file').click();
+$('drop').onclick=()=>$('file').click();
+$('file').onchange=e=>{if(e.target.files[0])load(e.target.files[0]);e.target.value='';};
+const dz=document.body;
+dz.addEventListener('dragover',e=>{e.preventDefault();$('drop').classList.add('over')});
+dz.addEventListener('dragleave',e=>{if(e.target===dz||!dz.contains(e.relatedTarget))$('drop').classList.remove('over')});
+dz.addEventListener('drop',e=>{e.preventDefault();$('drop').classList.remove('over');const f=e.dataTransfer.files[0];if(f)load(f)});
+let nameTimer;
+$('name').addEventListener('input',()=>{store.set('sched.name',$('name').value.trim());render();clearTimeout(nameTimer);nameTimer=setTimeout(locate,600)});
+render();
+const td=document.getElementById('d-'+todayIso);if(td&&td.getBoundingClientRect().top>window.innerHeight)td.scrollIntoView({block:'start'});
+</script>
+</body>
+</html>
