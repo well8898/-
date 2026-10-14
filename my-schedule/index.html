@@ -723,6 +723,16 @@ label.ghost {
 .tl-card .others{margin-top:2px}
 .tl-card .maps{margin-top:4px}
 .tl-card .maps a{min-height:36px;font-size:13.5px;border-radius:9px}
+.sum{gap:6px}
+.sum-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.sum-list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 0;
+  border-top:1px solid rgba(255,255,255,.13)}
+.sum-list li:first-child{border-top:0}
+.sum-list .st{font:600 15px var(--font-mono);font-variant-numeric:tabular-nums}
+.sum-list .sn{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum-list .sa{font-size:12.5px;font-weight:400;opacity:.72;margin-left:6px}
+.sum-list .sk{font-size:12.5px;font-weight:600;white-space:nowrap;background:rgba(255,255,255,.16);border-radius:6px;padding:1px 7px}
+.sum-foot{padding-top:8px;margin-top:2px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1224,10 +1234,15 @@ function drawPanel(dx) {
     h += `<section class="sum">
       <div class="sum-top"><span class="sum-date">${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>
         <span class="sum-team">${esc(d.t.team)}</span></div>
-      <div class="sum-main"><b>${esc(m.start)}</b><span>시작</span></div>
-      <div class="sum-areas">${m.areas.length ? esc(m.areas.join(' · ')) : '주소 미기재 현장'}</div>
-      <div class="sum-kinds">${m.kinds.map(([k, n]) => `<span>${esc(k)} <b>${n}</b>대</span>`).join('')}</div>
-      <div class="sum-foot">${m.sites}곳 · 환산 ${d.t.units}대${b.mates.length ? ' · 동행 ' + esc(b.mates.join(', ')) : ''}</div>
+      <ul class="sum-list">${d.t.stops
+        .map(
+          x =>
+            `<li><span class="st">${esc(x.time)}</span>` +
+            `<span class="sn">${esc(placeName(x.name))}<span class="sa">${esc(x.area || '')}</span></span>` +
+            `<span class="sk">${esc(KIND[x.kind] || x.kind || '')}${x.units != null ? ' ' + x.units : ''}</span></li>`
+        )
+        .join('')}</ul>
+      <div class="sum-foot">${m.sites}곳 · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대${b.mates.length ? ' · 동행 ' + esc(b.mates.join(', ')) : ''}</div>
     </section>
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
