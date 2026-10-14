@@ -214,7 +214,7 @@ function recptnList(st, en, branch) {
   try {
     const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
     if (!key) return { ok: true, list: [], note: 'DATA_GO_KR_KEY 없음' };
-    const list = cached_('recptn2:' + st + '-' + en + ':' + (branch || ''), () => {
+    const list = cached_('recptn3:' + st + '-' + en + ':' + (branch || ''), () => {
       const out = [];
       for (let page = 1; page <= 10; page++) {
         const url = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
@@ -229,6 +229,7 @@ function recptnList(st, en, branch) {
           if (branch && String(it.inspctInsttNm || '') !== branch) return;
           out.push({ d: String(it.inspctDt), nm: String(it.buldNm || '').trim(),
             addr: String(it.address || '').trim(), kind: String(it.inspctKindNm || ''),
+            inst: String(it.inspctInsttNm || '').trim(),
             mnt: String(it.ledgMntCompanyNm || '').trim(), tel: String(it.ledgMntHedofcTelno || '').trim(),
             mfr: String(it.ledgMnfcturCompanyNm || '').trim(),
             form: [it.ledgElvtrDiv, it.ledgElvtrForm].map(x => String(x || '').trim()).filter(Boolean).join(' · ') });
@@ -420,4 +421,17 @@ function testFindBuilding() {
   const kinds = {};
   r.list.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
   Logger.log('검사 종류별 건수: ' + JSON.stringify(kinds));
+}
+
+// 우리 지사 검사접수 건 확인: 지사 이름·기간을 바꿔 실행 → 실행 로그를 보내 주세요
+function testBranchRecptn() {
+  const branch = '고양파주지사', st = '20261012', en = '20261016';
+  const r = recptnList(st, en, branch);
+  if (!r.ok) { Logger.log('오류: ' + r.message); return; }
+  Logger.log(branch + ' ' + st + '~' + en + ' 접수 ' + r.list.length + '건');
+  r.list.slice(0, 40).forEach(x => Logger.log(x.d + ' · ' + x.kind + ' · ' + x.nm + ' · ' + x.addr + ' · 보수: ' + x.mnt + ' ' + x.tel));
+  const all = recptnList(st, en, '');
+  const inst = {};
+  (all.list || []).forEach(x => { if (/고양|파주/.test(x.addr)) inst[x.inst] = (inst[x.inst] || 0) + 1; });
+  Logger.log('주소가 고양·파주인 전체 접수의 검사 지사별 건수: ' + JSON.stringify(inst));
 }
