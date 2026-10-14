@@ -5,6 +5,7 @@
  * ▶ 스크립트 속성 (프로젝트 설정 → 스크립트 속성)
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도)
+ *   - DATA_GO_KR_KEY     : (선택) 공공데이터포털 인증키 — 승강기검사접수정보로 현장 실주소 찾기
  *                          카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 웹앱 도메인 등록
  * ▶ 출발 지사는 화면에서 정함 (일정표 제목 → 지난번 선택 → 현장 동네로 추측 → 직접 선택)
  */
@@ -147,7 +148,7 @@ function geocodeSites(sites, origin) {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
       let p = null;
-      const ck = 'site:' + q + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+      const ck = 'site:' + q + '|' + (s.addr || '') + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
       try { p = cached_(ck, () => findSite_(s, o)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
@@ -168,6 +169,15 @@ function findSite_(s, o) {
     if (area && a.indexOf(' ' + area) < 0) return false;
     return !o || km_(o.lat, o.lng, Number(d.y), Number(d.x)) <= REGION_KM;
   };
+  // 검사접수정보에서 찾은 실주소가 있으면 그 주소로 먼저
+  if (s.addr) {
+    const ad = kakaoGet_(base + 'address.json?size=3&query=' + encodeURIComponent(cleanAddr_(s.addr)));
+    const d = (ad.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+    if (d) return { lat: Number(d.y), lng: Number(d.x), name: name, addr: s.addr };
+    const kw = kakaoGet_(base + 'keyword.json?size=5&query=' + encodeURIComponent(cleanAddr_(s.addr)) + near);
+    const k = (kw.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+    if (k) return { lat: Number(k.y), lng: Number(k.x), name: name, addr: s.addr };
+  }
   const queries = [String(s.q || ''), area + ' ' + name, name].filter(Boolean);
   for (let i = 0; i < queries.length; i++) {
     const kw = kakaoGet_(base + 'keyword.json?size=15&query=' + encodeURIComponent(queries[i]) + near);
@@ -182,6 +192,45 @@ function findSite_(s, o) {
     if (d) return { lat: Number(d.y), lng: Number(d.x), name: name };
   }
   return null;
+}
+
+// ── 승강기검사접수정보 (공공데이터포털 ElevatorRecptnService) ──
+// 검사 예정일 기간의 접수 건 → 건물명·실주소 목록. 지사 이름을 주면 그 지사 건만
+// → { ok, list: [{ d: 'yyyyMMdd', nm: 건물명, addr: 주소, kind: 정기/정밀/수시/설치 }] }
+function recptnList(st, en, branch) {
+  try {
+    const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+    if (!key) return { ok: true, list: [], note: 'DATA_GO_KR_KEY 없음' };
+    const list = cached_('recptn:' + st + '-' + en + ':' + (branch || ''), () => {
+      const out = [];
+      for (let page = 1; page <= 10; page++) {
+        const url = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
+          + '?serviceKey=' + encodeURIComponent(key) + '&_type=json&numOfRows=1000&pageNo=' + page
+          + '&inspct_st_de=' + st + '&inspct_en_de=' + en;
+        const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+        if (res.getResponseCode() !== 200) throw new Error('검사접수정보 오류(' + res.getResponseCode() + ')');
+        const body = (JSON.parse(res.getContentText('UTF-8')).response || {}).body || {};
+        let items = (body.items && body.items.item) || [];
+        if (!Array.isArray(items)) items = [items];
+        items.forEach(it => {
+          if (branch && String(it.inspctInsttNm || '') !== branch) return;
+          out.push({ d: String(it.inspctDt), nm: String(it.buldNm || '').trim(),
+            addr: String(it.address || '').trim(), kind: String(it.inspctKindNm || '') });
+        });
+        if (page * 1000 >= Number(body.totalCount || 0)) break;
+      }
+      return out;
+    });
+    return { ok: true, list: list || [] };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 접수 주소 → 카카오 주소 검색용 ('(장전동)', '일원', 쉼표 뒤 등 정리)
+function cleanAddr_(a) {
+  return String(a || '').replace(/\([^)]*\)?/g, ' ').split(',')[0]
+    .replace(/일원|번지/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // 두 좌표 사이 직선거리 (km)
@@ -222,7 +271,9 @@ function cached_(key, fn) {
   const hit = cache.get(ck);
   if (hit) return JSON.parse(hit);
   const v = fn();
-  if (v !== null && v !== undefined) cache.put(ck, JSON.stringify(v), CACHE_SEC);
+  if (v !== null && v !== undefined) {
+    try { cache.put(ck, JSON.stringify(v), CACHE_SEC); } catch (e) { /* 100KB 넘으면 캐시 생략 */ }
+  }
   return v;
 }
 
@@ -244,40 +295,6 @@ function testSetup() {
   Logger.log(o);
   Logger.log(geocodeSites([{ q: '파주시 목동동 산내마을2단지센트럴리움아파트', region: '파주시',
     area: '목동동', name: '산내마을2단지센트럴리움아파트' }], o.origin));
-}
-
-// ── 승강기정보 API(공공데이터포털) 확인용: 편집기에서 실행 → 실행 로그를 복사해서 보내 주세요 ──
-// 스크립트 속성 DATA_GO_KR_KEY 에 공공데이터포털 '일반 인증키'를 넣고 실행
-function testElevatorApi() {
-  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
-  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
-  const base = 'https://apis.data.go.kr/B553664/BuldElevatorService/getBuldElvtrList'
-    + '?serviceKey=' + encodeURIComponent(key) + '&numOfRows=3&pageNo=1';
-  const tries = ['', '&buld_nm=' + encodeURIComponent('일신2조합빌딩'),
-    '&buldNm=' + encodeURIComponent('일신2조합빌딩'),
-    '&buld_address=' + encodeURIComponent('고양시 일산서구 일산동'),
-    '&_type=json'];
-  tries.forEach(t => {
-    const res = UrlFetchApp.fetch(base + t, { muteHttpExceptions: true });
-    Logger.log('▶ ' + (t || '(조건 없음)') + ' → ' + res.getResponseCode() + '\n'
-      + res.getContentText('UTF-8').slice(0, 1500));
-  });
-}
-
-// 새 서비스(ElevatorInspectsafeService) 기능 이름 찾기용: 실행 → 실행 로그를 보내 주세요
-function testInspectApi() {
-  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
-  if (!key) { Logger.log('스크립트 속성에 DATA_GO_KR_KEY가 없습니다.'); return; }
-  const base = 'https://apis.data.go.kr/B553664/ElevatorInspectsafeService/';
-  const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd');
-  const ops = ['getInspectsafeList', 'getElevatorInspectsafeList', 'getInspectSafeList',
-    'getElvtrInspectsafeList', 'getInspectsafeInfo', 'getInspectList', 'getInspectsafeHistList'];
-  ops.forEach(op => {
-    const url = base + op + '?serviceKey=' + encodeURIComponent(key) + '&numOfRows=2&pageNo=1';
-    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-    Logger.log('▶ ' + op + ' → ' + res.getResponseCode() + '\n' + res.getContentText('UTF-8').slice(0, 700));
-  });
-  Logger.log('오늘 날짜: ' + today);
 }
 
 // 검사접수정보(ElevatorRecptnService/getRecptnV1) 확인용: 실행 → 실행 로그를 보내 주세요

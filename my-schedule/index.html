@@ -738,6 +738,7 @@ label.ghost {
 .branch select{font:600 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:100%}
 .branch small{font-size:12px}
 .memo{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px}
+.real{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1210,6 +1211,7 @@ function setBranch(b, src) {
   if (changed) {
     for (const k in GEO) delete GEO[k];
     ORIGIN = null;
+    RECPTN_KEY = '';
   }
 }
 // 동네로 지사 추측 (웹앱에서만): 현장이 많은 동·읍·면 → 가장 가까운 지사
@@ -1427,9 +1429,9 @@ function drawPanel(dx) {
         <div class="tl-card">
           <div class="tl-head"><span class="t">${esc(s.time)}</span>${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="memo">${esc(s.memo)}</span>` : ''}</div>
-          <div class="addr">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
+          <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           ${othersHtml(d, s)}
-          <div class="maps"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
+          <div class="maps" id="maps-${i}"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div>
         </div></li>`
         )
         .join('')}</ol>`;
@@ -1518,17 +1520,61 @@ function loadKakao() {
   return kakaoReady;
 }
 const ll = g => (+g.lat).toFixed(5) + ',' + (+g.lng).toFixed(5);
+// 승강기검사접수정보(공공데이터)에서 현장 실주소 찾기 — 웹앱에 DATA_GO_KR_KEY가 있을 때
+let RECPTN = null,
+  RECPTN_KEY = '';
+async function loadRecptn() {
+  const ds = data.days.map(d => d.iso.replace(/-/g, '')).sort();
+  const k = ds[0] + ds[ds.length - 1] + (BRANCH ? BRANCH[0] : '');
+  if (RECPTN_KEY === k) return;
+  try {
+    const r = await run('recptnList', ds[0], ds[ds.length - 1], BRANCH ? BRANCH[0] : '');
+    RECPTN = r && r.ok ? r.list : [];
+  } catch (e) {
+    RECPTN = [];
+  }
+  RECPTN_KEY = k;
+}
+const normNm = x =>
+  placeName(String(x || ''))
+    .replace(/\(주\)|㈜|주식회사/g, '')
+    .replace(/[\s()·\-_.,]/g, '');
+function realAddr(d, s) {
+  if (!RECPTN || !RECPTN.length) return '';
+  const n = normNm(s.name),
+    day = d.iso.replace(/-/g, '');
+  let best = null,
+    bs = 0;
+  for (const r of RECPTN) {
+    const m = normNm(r.nm);
+    let sc;
+    if (m === n) sc = 4;
+    else if (m.length >= 3 && n.length >= 3 && (m.includes(n) || n.includes(m))) sc = 2;
+    else continue;
+    if (r.d === day) sc += 2;
+    if (s.area && r.addr.includes(s.area)) sc += 2;
+    if (KIND[s.kind] === r.kind) sc += 1;
+    if (sc > bs) {
+      bs = sc;
+      best = r;
+    }
+  }
+  return best && bs >= 4 ? best.addr : '';
+}
 async function dayExtras(d) {
   const iso = d.iso;
   try {
     await cfgReady;
+    await loadRecptn();
     const need = [];
     d.t.stops.forEach(s => {
-      if (!s.area) return;
+      const addr = realAddr(d, s);
+      if (!s.area && !addr) return;
       const q = mapQuery(s);
       if (!(q in GEO) && !need.some(x => x.q === q))
         need.push({
           q,
+          addr,
           area: s.area,
           region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
           name: placeName(s.name)
@@ -1543,6 +1589,20 @@ async function dayExtras(d) {
       if (!r.ok) throw new Error(r.message);
       need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
     }
+    if (sel !== iso) return;
+    d.t.stops.forEach((s, i) => {
+      const g = GEO[mapQuery(s)];
+      if (!g || !g.addr) return;
+      const el = $('addr-' + i),
+        mp = $('maps-' + i);
+      if (el) el.innerHTML = esc(g.addr) + ' <span class="real">실주소</span>';
+      if (mp) {
+        const q = encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim());
+        mp.innerHTML =
+          `<a href="https:\/\/map.kakao.com/link/search/${q}" target="_blank" rel="noopener">카카오맵</a>` +
+          `<a href="https:\/\/map.naver.com/p/search/${q}" target="_blank" rel="noopener">네이버지도</a>`;
+      }
+    });
     // 방문 순서: 지사 → 현장들(같은 건물 연속은 하나로) → 지사
     const stops = [];
     d.t.stops.forEach((s, i) => {
