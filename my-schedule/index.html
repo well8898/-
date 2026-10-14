@@ -741,6 +741,10 @@ label.ghost {
 .real{white-space:nowrap;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
 .maps.three{grid-template-columns:1fr 1fr 1fr}
 .leg .km small{font:400 12px var(--font-body);color:var(--muted)}
+.dayroute{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.dayroute b{font-size:14px}
+.dayroute small{font-size:12.5px;color:var(--muted)}
+.dayroute .maps a{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1464,12 +1468,21 @@ $('panel').addEventListener('click', e => {
   if (g) go(g.dataset.go);
 });
 // ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
+// 휴대폰인지 (앱 길안내 버튼은 휴대폰에서만)
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+// 티맵 길안내: 티맵 앱키가 있으면 공식 앱 실행 링크(https, 앱 없으면 설치 안내), 없으면 앱 주소
+function tmapUrl(de, g) {
+  return tmapKey
+    ? `https:\/\/apis.openapi.sk.com/tmap/app/routes?appKey=${encodeURIComponent(tmapKey)}&name=${de}&lon=${g.lng}&lat=${g.lat}`
+    : `tmap:\/\/route?goalname=${de}&goalx=${g.lng}&goaly=${g.lat}`;
+}
 const SERVER =
   typeof google !== 'undefined' && !!(google.script && google.script.run);
 const GEO = {},
   LEGS = {},
   MINS = {};
-let ROUTE_SRC = '';
+let ROUTE_SRC = '',
+  tmapKey = '';
 let ORIGIN = null,
   kakaoJsKey = '',
   kakaoReady = null,
@@ -1487,6 +1500,7 @@ const cfgReady = SERVER
       .then(c => {
         if (c && c.ok) {
           kakaoJsKey = c.kakaoJsKey || '';
+          tmapKey = c.tmapKey || '';
         }
       })
       .catch(() => {})
@@ -1605,14 +1619,22 @@ async function dayExtras(d) {
           ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
           : encodeURIComponent(mapQuery(s));
         const nm = encodeURIComponent(placeName(s.name));
-        // 좌표를 아는 현장: 세 앱 모두 그 위치로 바로 길찾기 (현재 위치 → 현장)
-        // 카카오맵은 웹 주소라 앱이 없어도 열림, 네이버·티맵은 앱이 깔린 휴대폰에서 열림
-        const nmc = encodeURIComponent(placeName(s.name).replace(/,/g, ' '));
-        mp.innerHTML =
-          `<a href="https:\/\/map.kakao.com/link/to/${nmc},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오 길찾기</a>` +
-          `<a href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${nm}&appname=elevator.schedule" target="_blank" rel="noopener">네이버 길찾기</a>` +
-          `<a href="tmap:\/\/route?rGoName=${nm}&rGoX=${g.lng}&rGoY=${g.lat}" target="_blank" rel="noopener">티맵 길안내</a>`;
-        mp.classList.add('three');
+        // 좌표를 아는 현장: 실주소(없으면 현장명)를 도착지로 길찾기
+        // 휴대폰: 카카오맵(웹 주소, 앱 있으면 앱) · 네이버지도 앱 · 티맵 앱
+        // PC: 카카오맵 웹 길찾기 · 네이버지도 웹 검색 (티맵은 PC용이 없어 숨김)
+        const dest = g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : placeName(s.name);
+        const de = encodeURIComponent(dest.replace(/,/g, ' '));
+        if (IS_MOBILE) {
+          mp.innerHTML =
+            `<a href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오 길찾기</a>` +
+            `<a href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule" target="_blank" rel="noopener">네이버 길찾기</a>` +
+            `<a href="${tmapUrl(de, g)}" target="_blank" rel="noopener">티맵 길안내</a>`;
+          mp.classList.add('three');
+        } else {
+          mp.innerHTML =
+            `<a href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오 길찾기</a>` +
+            `<a href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버지도</a>`;
+        }
       }
     });
     // 방문 순서: 지사 → 현장들(같은 건물 연속은 하나로) → 지사
@@ -1663,6 +1685,27 @@ async function dayExtras(d) {
     }
   }
 }
+// 하루 경로 내비: 지사 출발 → 현장 경유 → 마지막 현장 도착 (경유지는 앱 한도 5곳까지)
+function dayRouteHtml(pts) {
+  const sites = pts.filter(x => !x.home);
+  if (!sites.length) return '';
+  const start = pts[0] && pts[0].home ? pts[0] : null;
+  const end = sites[sites.length - 1];
+  const via = sites.slice(0, -1).slice(0, 5);
+  const cut = sites.length - 1 > 5;
+  const lab = x => encodeURIComponent(String(x.home ? x.name : placeName(x.name)).replace(/[,/]/g, ' '));
+  // 카카오맵: /link/by/car/이름,위도,경도/... (휴대폰은 앱, PC는 웹으로 열림)
+  const kakao =
+    'https:\/\/map.kakao.com/link/by/car/' +
+    (start ? [start] : []).concat(via, [end]).map(x => `${lab(x)},${x.g.lat},${x.g.lng}`).join('/');
+  // 네이버지도 앱: 출발(s)·경유(v1~v5)·도착(d)
+  let naver = `nmap:\/\/route/car?dlat=${end.g.lat}&dlng=${end.g.lng}&dname=${lab(end)}`;
+  if (start) naver += `&slat=${start.g.lat}&slng=${start.g.lng}&sname=${lab(start)}`;
+  via.forEach((x, i) => (naver += `&v${i + 1}lat=${x.g.lat}&v${i + 1}lng=${x.g.lng}&v${i + 1}name=${lab(x)}`));
+  naver += '&appname=elevator.schedule';
+  return `<div class="dayroute"><b>하루 경로 내비</b><small>${start ? esc(start.name) + ' 출발 → ' : ''}경유 ${via.length}곳 → ${esc(placeName(end.name))} 도착${cut ? ' · 경유지는 앞의 5곳까지만' : ''}</small>
+    <div class="maps"><a href="${kakao}" target="_blank" rel="noopener">카카오 하루 경로</a>${IS_MOBILE ? `<a href="${naver}" target="_blank" rel="noopener">네이버 하루 경로</a>` : ''}</div></div>`;
+}
 function drawLegs(d, pts) {
   const el = $('dlegs');
   if (!el) return;
@@ -1689,7 +1732,7 @@ function drawLegs(d, pts) {
   }
   const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
   const route = pts.map(x => x.name).join(' → ');
-  el.innerHTML = `<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
+  el.innerHTML = `${dayRouteHtml(pts)}<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
     <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>

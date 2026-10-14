@@ -46,8 +46,10 @@ function pageHtml_() {
 // 화면 시작 시: 지도 키
 function getConfig() {
   try {
-    const key = PropertiesService.getScriptProperties().getProperty('KAKAO_JS_KEY') || '';
-    return { ok: true, kakaoJsKey: key.trim() };
+    const props = PropertiesService.getScriptProperties();
+    const key = props.getProperty('KAKAO_JS_KEY') || '';
+    // 티맵 앱키는 '티맵 길안내' 버튼(티맵 앱 실행 링크)에도 씀
+    return { ok: true, kakaoJsKey: key.trim(), tmapKey: (props.getProperty('TMAP_APP_KEY') || '').trim() };
   } catch (e) {
     return { ok: false, message: e.message };
   }
