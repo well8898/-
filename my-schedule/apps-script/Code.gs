@@ -16,10 +16,10 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 
 // 화면(HTML): 이 프로젝트에 Index 파일이 있으면 그것을 쓰고, 없으면 GitHub에서 읽어 옴
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
-  + 'claude/nifty-sagan-s6rbvp/my-schedule/apps-script/Index.html';
+  + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
-  + 'claude/nifty-sagan-s6rbvp/my-schedule/data/bld/';
+  + 'my-schedule/my-schedule/data/bld/';
 
 function doGet() {
   return HtmlService.createHtmlOutput(pageHtml_())

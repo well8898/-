@@ -41,3 +41,8 @@
 2. 건물 주소록 `my-schedule/data/bld/*.json` (승강기 설치 현황 CSV에서 건물명→주소, 정기 포함 전체)
    - 새 CSV가 나오면 `python3 my-schedule/tools/build_bld.py 파일1.csv 파일2.csv my-schedule/data/bld` 로 다시 만들어 올리면 됨 (건물명·건물주소 열)
 3. 카카오 장소 검색 (동 + 건물명, 지사 50km 안)
+
+## 브랜치
+
+웹앱(Code.gs)은 화면(Index.html, Index 파일이 없을 때)과 건물 주소록을 GitHub **`my-schedule` 브랜치**에서 읽습니다.
+이 브랜치는 지우거나 이름을 바꾸지 마세요. 일정 페이지를 고치면 이 브랜치에도 같이 올립니다.
