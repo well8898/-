@@ -123,7 +123,7 @@ footer{font-size:12px;color:var(--muted);text-align:center}
     <span>(괄호 숫자) = 승강기 대수</span>
   </div>
   <section class="days" id="days"></section>
-  <footer>올린 파일은 이 화면에서만 읽고 어디에도 보내지 않아요. 지도 링크는 카카오맵 검색으로 열립니다.</footer>
+  <footer>올린 파일은 이 화면에서만 읽고 어디에도 보내지 않아요. 지도 링크는 시·구·동과 건물 이름으로 검색해서 열려요.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -190,7 +190,17 @@ $('name').value=store.get('sched.name')||'신기섭';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const bare=s=>s.replace(/\(.*?\)/g,'').trim();
 const todayIso=(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
-function mapUrl(st){return 'https://map.kakao.com/?q='+encodeURIComponent(['고양시',st.area,st.name].filter(Boolean).join(' '))}
+// 동·읍·면 → 시·구 (일정표에는 동 이름만 있어 검색이 엉뚱한 지역으로 가지 않게)
+const REGION=(()=>{const m={};const add=(r,l)=>l.split(' ').forEach(d=>m[d]=r);
+  add('고양시 덕양구','주교동 원당동 성사동 고양동 관산동 내유동 화정동 행신동 토당동 신원동 오금동 삼송동 동산동 지축동 원흥동 도내동 덕은동 향동동 현천동 대자동 벽제동 선유동 효자동 용두동 화전동 대장동 강매동 신평동 내곡동 북한동');
+  add('고양시 일산동구','장항동 백석동 마두동 식사동 풍동 중산동 정발산동 사리현동 설문동 지영동 문봉동 성석동 산황동');
+  add('고양시 일산서구','일산동 주엽동 대화동 탄현동 덕이동 가좌동 법곳동 구산동');
+  add('파주시','금촌동 아동동 야동동 검산동 맥금동 교하동 야당동 동패동 목동동 와동동 당하동 문발동 신촌동 상지석동 하지석동 서패동 다율동 산남동 연다산동 오도동 송촌동 문산읍 파주읍 법원읍 조리읍 탄현면 광탄면 적성면 파평면 월롱면 군내면 장단면 진동면 진서면');
+  return m;})();
+function placeName(n){return n.replace(/\(주\)|㈜/g,'').replace(/\([^)]*$/,'').replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/,'').replace(/\s+/g,' ').trim()||n}
+function mapQuery(st){let n=placeName(st.name);if(st.area&&n.startsWith(st.area+' '))n=n.slice(st.area.length+1);return [st.area?(REGION[st.area]||'')+' '+st.area:'',n].join(' ').replace(/\s+/g,' ').trim()}
+function mapUrl(st){return 'https://map.kakao.com/link/search/'+encodeURIComponent(mapQuery(st))}
+function naverUrl(st){return 'https://map.naver.com/p/search/'+encodeURIComponent(mapQuery(st))}
 function sumUnits(stops){return stops.reduce((a,s)=>a+(s.units||0),0)}
 function places(stops){const seen=[];stops.forEach(s=>{if(!seen.includes(s.name))seen.push(s.name)});return seen}
 function areas(stops){const a=[];stops.forEach(s=>{if(s.area&&!a.includes(s.area))a.push(s.area)});return a}
@@ -250,7 +260,7 @@ function render(){
         <p class="brief">${esc(b.s)}</p>
         <ol class="stops">${d.t.stops.map(s=>`<li class="stop"><span class="t">${esc(s.time)}</span>
           <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
-          <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc(s.area):'주소 미기재'}</span>·<a class="map" href="${mapUrl(s)}" target="_blank" rel="noopener">지도</a></div></div>
+          <div class="meta">${s.kind?`<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind]||s.kind)}</i>`:''}<span>${s.area?esc(s.area):'주소 미기재'}</span>·<a class="map" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오맵</a>·<a class="map" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버지도</a></div></div>
           <span class="u">${s.units!=null?s.units+'<small>대</small>':''}</span></li>`).join('')}</ol>`;
     }else if(d.off){body=`<div class="head"><span class="pill off">휴가</span></div><p class="note">이날은 휴가로 잡혀 있어요.</p>`;}
     else body=`<div class="head"><span class="pill none">배정 없음</span></div><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p>`;
