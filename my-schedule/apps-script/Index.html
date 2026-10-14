@@ -742,7 +742,9 @@ label.ghost {
 .branch select{font:600 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:100%}
 .branch small{font-size:12px}
 .memo{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px}
-.real{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
+.real{white-space:nowrap;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
+.maps.three{grid-template-columns:1fr 1fr 1fr}
+.leg .km small{font:400 12px var(--font-body);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -1470,7 +1472,9 @@ $('panel').addEventListener('click', e => {
 const SERVER =
   typeof google !== 'undefined' && !!(google.script && google.script.run);
 const GEO = {},
-  LEGS = {};
+  LEGS = {},
+  MINS = {};
+let ROUTE_SRC = '';
 let ORIGIN = null,
   kakaoJsKey = '',
   kakaoReady = null,
@@ -1597,15 +1601,21 @@ async function dayExtras(d) {
     if (sel !== iso) return;
     d.t.stops.forEach((s, i) => {
       const g = GEO[mapQuery(s)];
-      if (!g || !g.addr) return;
+      if (!g) return;
       const el = $('addr-' + i),
         mp = $('maps-' + i);
-      if (el) el.innerHTML = esc(g.addr) + ' <span class="real">실주소</span>';
+      if (el && g.addr) el.innerHTML = esc(g.addr) + ' <span class="real">실주소</span>';
       if (mp) {
-        const q = encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim());
+        const q = g.addr
+          ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
+          : encodeURIComponent(mapQuery(s));
+        const nm = encodeURIComponent(placeName(s.name));
+        // 티맵 앱 길안내 (설치된 휴대폰에서만 열림)
         mp.innerHTML =
           `<a href="https:\/\/map.kakao.com/link/search/${q}" target="_blank" rel="noopener">카카오맵</a>` +
-          `<a href="https:\/\/map.naver.com/p/search/${q}" target="_blank" rel="noopener">네이버지도</a>`;
+          `<a href="https:\/\/map.naver.com/p/search/${q}" target="_blank" rel="noopener">네이버지도</a>` +
+          `<a href="tmap:\/\/route?rGoName=${nm}&rGoX=${g.lng}&rGoY=${g.lat}" target="_top">티맵 길안내</a>`;
+        mp.classList.add('three');
       }
     });
     // 방문 순서: 지사 → 현장들(같은 건물 연속은 하나로) → 지사
@@ -1636,7 +1646,11 @@ async function dayExtras(d) {
         pairs.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng])
       );
       if (!r.ok) throw new Error(r.message);
-      pairs.forEach((p, i) => (LEGS[p.k] = r.km[i]));
+      pairs.forEach((p, i) => {
+        LEGS[p.k] = r.km[i];
+        MINS[p.k] = r.min ? r.min[i] : null;
+      });
+      if (r.src) ROUTE_SRC = r.src;
     }
     if (sel !== iso) return;
     drawLegs(d, pts);
@@ -1661,21 +1675,25 @@ function drawLegs(d, pts) {
     return;
   }
   let tot = 0,
+    totMin = 0,
     unknown = false;
   const rows = [];
   for (let i = 0; i + 1 < pts.length; i++) {
-    const km = LEGS[ll(pts[i].g) + '>' + ll(pts[i + 1].g)];
+    const lk = ll(pts[i].g) + '>' + ll(pts[i + 1].g);
+    const km = LEGS[lk],
+      mn = MINS[lk];
     if (km == null) unknown = true;
     else tot += km;
+    if (mn != null) totMin += mn;
     const nm = x => (x.home ? x.name : x.nums.join('·') + '. ' + x.name);
     rows.push(
-      `<div class="leg"><span>${esc(nm(pts[i]))} → ${esc(nm(pts[i + 1]))}</span><span class="km">${km == null ? '–' : km.toFixed(1) + 'km'}</span></div>`
+      `<div class="leg"><span>${esc(nm(pts[i]))} → ${esc(nm(pts[i + 1]))}</span><span class="km">${km == null ? '–' : km.toFixed(1) + 'km'}${mn != null ? `<small> · ${mn}분</small>` : ''}</span></div>`
     );
   }
   const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
   const route = pts.map(x => x.name).join(' → ');
-  el.innerHTML = `<h3>이동거리 (자동차 추천경로)</h3>${rows.join('')}
-    <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}</span></div>
+  el.innerHTML = `<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
+    <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
     ${skipped ? `<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;

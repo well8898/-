@@ -5,6 +5,7 @@
  * ▶ 스크립트 속성 (프로젝트 설정 → 스크립트 속성)
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도)
+ *   - TMAP_APP_KEY       : (선택) SK open API 티맵 앱키 — 있으면 구간 거리·시간을 티맵 추천경로로
  *   - DATA_GO_KR_KEY     : (선택) 공공데이터포털 인증키 — 승강기검사접수정보로 현장 실주소 찾기
  *                          카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 웹앱 도메인 등록
  * ▶ 출발 지사는 화면에서 정함 (일정표 제목 → 지난번 선택 → 현장 동네로 추측 → 직접 선택)
@@ -286,28 +287,68 @@ function km_(a, b, c, d) {
   return Math.sqrt(x * x + y * y) * 6371;
 }
 
-// pairs: [[출발 위도, 경도, 도착 위도, 경도], ...] → { ok, km: [구간별 km(소수 1자리) | null] }  자동차 추천경로
+// pairs: [[출발 위도, 경도, 도착 위도, 경도], ...]
+// → { ok, km: [구간 km(소수 1자리) | null], min: [구간 분 | null], src: 'TMAP' | '카카오' }  자동차 추천경로
+// 스크립트 속성 TMAP_APP_KEY 가 있으면 티맵, 없거나 실패하면 카카오내비
 function routeLegs(pairs) {
   try {
-    const km = (Array.isArray(pairs) ? pairs : []).slice(0, 30).map(p => {
-      try {
-        return cached_('leg:' + p.map(v => Number(v).toFixed(5)).join(','), () => {
-          const url = 'https://apis-navi.kakaomobility.com/v1/directions'
-            + '?origin=' + p[1] + ',' + p[0] + '&destination=' + p[3] + ',' + p[2] + '&priority=RECOMMEND';
-          const route = (kakaoGet_(url).routes || [])[0];
-          if (!route) return null;
-          if (route.result_code === 104) return 0; // 출발지 = 도착지
-          if (route.result_code !== 0) return null;
-          return Math.round(route.summary.distance / 100) / 10;
-        });
-      } catch (e) {
-        return null;
+    const tmapKey = (PropertiesService.getScriptProperties().getProperty('TMAP_APP_KEY') || '').trim();
+    let src = tmapKey ? 'TMAP' : '카카오';
+    const res = (Array.isArray(pairs) ? pairs : []).slice(0, 30).map(p => {
+      const id = p.map(v => Number(v).toFixed(5)).join(',');
+      let r = null;
+      if (tmapKey) {
+        try { r = cached_('tleg:' + id, () => tmapLeg_(p, tmapKey)); } catch (e) { r = null; }
       }
+      if (!r) {
+        try { r = cached_('leg2:' + id, () => kakaoLeg_(p)); } catch (e) { r = null; }
+        if (r && tmapKey) src = 'TMAP·카카오';
+      }
+      return r || { km: null, min: null };
     });
-    return { ok: true, km: km };
+    return { ok: true, km: res.map(r => r.km), min: res.map(r => r.min), src: src };
   } catch (e) {
     return { ok: false, message: e.message };
   }
+}
+
+// 티맵 자동차 경로 (추천)
+function tmapLeg_(p, key) {
+  if (Math.abs(p[0] - p[2]) < 1e-5 && Math.abs(p[1] - p[3]) < 1e-5) return { km: 0, min: 0 };
+  const res = UrlFetchApp.fetch('https://apis.openapi.sk.com/tmap/routes?version=1&format=json', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { appKey: key },
+    payload: JSON.stringify({ startX: String(p[1]), startY: String(p[0]), endX: String(p[3]), endY: String(p[2]),
+      reqCoordType: 'WGS84GEO', resCoordType: 'WGS84GEO', searchOption: '0' }),
+  });
+  if (res.getResponseCode() !== 200) return null;
+  const f = (JSON.parse(res.getContentText()).features || [])[0];
+  const pr = f && f.properties;
+  if (!pr || pr.totalDistance == null) return null;
+  return { km: Math.round(pr.totalDistance / 100) / 10, min: Math.round((pr.totalTime || 0) / 60) };
+}
+
+// 카카오내비 자동차 경로 (추천)
+function kakaoLeg_(p) {
+  const url = 'https://apis-navi.kakaomobility.com/v1/directions'
+    + '?origin=' + p[1] + ',' + p[0] + '&destination=' + p[3] + ',' + p[2] + '&priority=RECOMMEND';
+  const route = (kakaoGet_(url).routes || [])[0];
+  if (!route) return null;
+  if (route.result_code === 104) return { km: 0, min: 0 }; // 출발지 = 도착지
+  if (route.result_code !== 0) return null;
+  return { km: Math.round(route.summary.distance / 100) / 10, min: Math.round(route.summary.duration / 60) };
+}
+
+// 티맵 키 확인용: 실행 → 실행 로그에 고양파주지사→일신2조합빌딩 거리가 나오면 정상
+function testTmap() {
+  const key = (PropertiesService.getScriptProperties().getProperty('TMAP_APP_KEY') || '').trim();
+  if (!key) { Logger.log('스크립트 속성에 TMAP_APP_KEY가 없습니다.'); return; }
+  const res = UrlFetchApp.fetch('https://apis.openapi.sk.com/tmap/routes?version=1&format=json', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true, headers: { appKey: key },
+    payload: JSON.stringify({ startX: '126.7448', startY: '37.6684', endX: '126.7694', endY: '37.6826',
+      reqCoordType: 'WGS84GEO', resCoordType: 'WGS84GEO', searchOption: '0' }),
+  });
+  Logger.log(res.getResponseCode() + ' ' + res.getContentText().slice(0, 600));
 }
 
 // 결과(값이 있을 때만)를 6시간 캐시
