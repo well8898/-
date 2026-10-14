@@ -973,11 +973,11 @@ function mapQuery(st) {
 }
 function mapUrl(st) {
   return (
-    'https://map.kakao.com/link/search/' + encodeURIComponent(mapQuery(st))
+    'https:\/\/map.kakao.com/link/search/' + encodeURIComponent(mapQuery(st))
   );
 }
 function naverUrl(st) {
-  return 'https://map.naver.com/p/search/' + encodeURIComponent(mapQuery(st));
+  return 'https:\/\/map.naver.com/p/search/' + encodeURIComponent(mapQuery(st));
 }
 function sumUnits(stops) {
   return stops.reduce((a, s) => a + (s.units || 0), 0);
@@ -1234,7 +1234,7 @@ function loadKakao() {
       const load = new Promise((res, rej) => {
         const sc = document.createElement('script');
         sc.src =
-          'https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' +
+          'https:\/\/dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' +
           encodeURIComponent(kakaoJsKey);
         sc.onload = () => kakao.maps.load(() => res(kakao));
         sc.onerror = () => rej(new Error('스크립트 로드 실패'));
@@ -1437,7 +1437,7 @@ addEventListener(
 // ---------- file loading ----------
 async function pdfItems(buf) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    'https:\/\/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
   const items = [];
   let off = 0;
