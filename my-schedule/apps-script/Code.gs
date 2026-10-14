@@ -314,3 +314,17 @@ function testRecptnApi() {
     Logger.log('▶ ' + t + ' → ' + res.getResponseCode() + '\n' + res.getContentText('UTF-8').slice(0, 2500));
   });
 }
+
+// 건물명으로 실주소 확인: 아래 세 값을 바꿔 실행 → 실행 로그에 그 기간 검사 접수 건 중 이름이 맞는 건이 나옴
+function testFindBuilding() {
+  const name = '일신2조합빌딩', st = '20261012', en = '20261016';
+  const r = recptnList(st, en, '');
+  if (!r.ok) { Logger.log('오류: ' + r.message); return; }
+  const key = x => String(x).replace(/\(주\)|㈜|주식회사|[\s()·\-_.,]/g, '');
+  const hit = r.list.filter(x => key(x.nm).indexOf(key(name)) >= 0 || key(name).indexOf(key(x.nm)) >= 0);
+  Logger.log(st + '~' + en + ' 전국 검사 접수 ' + r.list.length + '건 중 "' + name + '" ' + hit.length + '건');
+  hit.forEach(x => Logger.log(x.d + ' · ' + x.kind + ' · ' + x.nm + ' · ' + x.addr));
+  const kinds = {};
+  r.list.forEach(x => { kinds[x.kind] = (kinds[x.kind] || 0) + 1; });
+  Logger.log('검사 종류별 건수: ' + JSON.stringify(kinds));
+}
