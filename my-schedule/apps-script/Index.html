@@ -688,7 +688,17 @@ label.ghost {
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
 <div class="err-bar" id="errBar" hidden></div>
 <script>
-// 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시
+// 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시 (문제 줄의 실제 내용도 같이)
+function errLine(n) {
+  if (!n) return '';
+  const pick = t => ((t || '').split('\n')[n - 1] || '').trim().slice(0, 90);
+  const own = [...document.scripts]
+    .filter(x => !x.src)
+    .sort((a, b) => b.text.length - a.text.length)[0];
+  const a = pick(own && own.text);
+  const b = pick(document.documentElement.outerHTML);
+  return (a ? ' · 스크립트 줄: ' + a : '') + (b ? ' · 문서 줄: ' + b : '');
+}
 window.addEventListener(
   'error',
   e => {
@@ -704,7 +714,8 @@ window.addEventListener(
       (e.lineno ? ' (' + e.lineno + '번째 줄)' : '') +
       (e.filename
         ? ' · 파일: ' + (e.filename.split('?')[0].split('/').pop() || '화면')
-        : '');
+        : '') +
+      errLine(e.lineno);
   },
   true
 );
