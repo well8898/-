@@ -86,7 +86,7 @@ final class Data {
     }
 
     static final class Row {
-        String time, name, info, link;
+        String time, name, info, link, kakao, naver;
         boolean done;
     }
 
@@ -109,10 +109,14 @@ final class Data {
             String kind = (l.optString("kind") + " " + l.optString("units")).trim();
             r.info = area.isEmpty() ? kind : kind.isEmpty() ? area : area + " · " + kind;
             JSONObject nav = l.optJSONObject("nav");
+            // 좌표를 못 찾은 현장은 이름으로 검색
+            String q = Uri.encode((area + " " + r.name).trim());
             r.link = nav != null ? nav.optString("tmap") : "";
-            if (r.link.isEmpty()) {
-                r.link = "https://map.kakao.com/?eName=" + Uri.encode((area + " " + r.name).trim());
-            }
+            r.kakao = nav != null ? nav.optString("kakao") : "";
+            r.naver = nav != null ? nav.optString("naver") : "";
+            if (r.kakao.isEmpty()) r.kakao = "https://map.kakao.com/?eName=" + q;
+            if (r.naver.isEmpty()) r.naver = "https://map.naver.com/p/search/" + q;
+            if (r.link.isEmpty()) r.link = r.kakao;
             r.done = today && !r.time.isEmpty() && r.time.compareTo(now) < 0;
             list.add(r);
         }

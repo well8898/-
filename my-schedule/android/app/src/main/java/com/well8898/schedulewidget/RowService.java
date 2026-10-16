@@ -43,11 +43,12 @@ public class RowService extends RemoteViewsService {
             v.setTextColor(R.id.time, fg);
             v.setTextColor(R.id.name, fg);
             v.setTextColor(R.id.info, r.done ? 0x558B95A5 : 0xFF8B95A5);
-            v.setTextColor(R.id.go, fg);
-            v.setInt(R.id.go, "setBackgroundResource", r.done ? R.drawable.pill_dim : R.drawable.pill);
-            Intent fill = new Intent().setData(Uri.parse(r.link));
-            v.setOnClickFillInIntent(R.id.row, fill);
-            v.setOnClickFillInIntent(R.id.go, fill);
+            // 줄 전체와 「티맵」은 티맵, 「카카오」「네이버」는 각 앱으로
+            Intent tmap = new Intent().setData(Uri.parse(r.link));
+            v.setOnClickFillInIntent(R.id.row, tmap);
+            v.setOnClickFillInIntent(R.id.go, tmap);
+            v.setOnClickFillInIntent(R.id.kakao, new Intent().setData(Uri.parse(r.kakao)));
+            v.setOnClickFillInIntent(R.id.naver, new Intent().setData(Uri.parse(r.naver)));
             return v;
         }
     }
