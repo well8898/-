@@ -18,6 +18,7 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
+const ELV_URL = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
 
@@ -424,6 +425,77 @@ function dayBundle(need, origin, branch, order) {
   }
 }
 
+// ── 현장 승강기 정보 (기계실 MR/MRL, 형식, 인승, 층수, 설치연도) ──
+// list: [{ q, name, area, addr, nos: [검사접수에서 찾은 고유번호] }]  branch: 지사 이름(관할 확인용)
+// 고유번호: 검사접수 번호 + 설치현황 CSV(data/elv)에서 건물명·주소로 찾은 번호
+// → { ok, info: { q: { n, mr, mrl, forms, kinds, caps, floors, years, list: [{ no, ho, mr, form, cap, year }] } } }
+function siteElevators(list, branch) {
+  try {
+    const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+    if (!key) return { ok: true, info: {}, note: 'DATA_GO_KR_KEY 없음' };
+    const J = juris_(branch);
+    list = (Array.isArray(list) ? list : []).slice(0, 25);
+    // 1) 설치현황 조각 파일을 한꺼번에 받기
+    const files = [];
+    list.forEach(s => { const f = bookFile_(bookKey_(s.name || '')); if (f && files.indexOf(f) < 0) files.push(f); });
+    const shards = {};
+    const res = UrlFetchApp.fetchAll(files.map(f => ({ url: ELV_URL + f, muteHttpExceptions: true })));
+    res.forEach((r, i) => { try { if (r.getResponseCode() === 200) shards[files[i]] = JSON.parse(r.getContentText('UTF-8')); } catch (e) {} });
+    const norm = a => cleanAddr_(a).replace(/\s/g, '');
+    const want = {}; // q → [번호]
+    list.forEach(s => {
+      const k = bookKey_(s.name || '');
+      const m = (shards[bookFile_(k)] || {})[k] || {};
+      let addrs = Object.keys(m).filter(a => inJuris_(a, J));
+      if (s.addr) {
+        const hit = addrs.filter(a => norm(a) === norm(s.addr) || norm(a).indexOf(norm(s.addr)) === 0 || norm(s.addr).indexOf(norm(a)) === 0);
+        if (hit.length) addrs = hit;
+        else if (s.area) addrs = addrs.filter(a => a.indexOf(s.area) >= 0);
+      } else if (s.area) addrs = addrs.filter(a => a.indexOf(s.area) >= 0);
+      // 같은 이름 건물이 여러 곳이면 틀릴 수 있어 한 곳일 때만
+      const nos = (addrs.length === 1 ? m[addrs[0]] : []).concat(s.nos || []);
+      want[s.q] = nos.filter((x, i) => x && nos.indexOf(x) === i).slice(0, 30);
+    });
+    // 2) 번호마다 승강기 정보 (6시간 캐시, 없는 것만 한꺼번에)
+    const all = [];
+    Object.keys(want).forEach(q => want[q].forEach(n => { if (all.indexOf(n) < 0) all.push(n); }));
+    const cache = CacheService.getScriptCache();
+    const hit = all.length ? cache.getAll(all.map(n => 'elv1:' + n)) : {};
+    const info = {};
+    const miss = all.filter(n => { const h = hit['elv1:' + n]; if (h) info[n] = JSON.parse(h); return !h; }).slice(0, 80);
+    const base = 'https://apis.data.go.kr/B553664/ElevatorInformationService/getElevatorViewM?serviceKey=' + encodeURIComponent(key) + '&elevator_no=';
+    const rs = miss.length ? UrlFetchApp.fetchAll(miss.map(n => ({ url: base + n, muteHttpExceptions: true }))) : [];
+    const put = {};
+    rs.forEach((r, i) => {
+      const t = r.getContentText();
+      if (!/<item>/.test(t)) return;
+      const g = tag => ((t.match(new RegExp('<' + tag + '>([^<]*)</' + tag + '>')) || [])[1] || '').trim();
+      const v = { no: miss[i], ho: g('elvtrAsignNo'), mr: g('mrYn'), form: g('elvtrFormNm'), kind: g('elvtrKindNm'),
+        cap: g('ratedCap').replace(/\s+/g, ''), load: g('liveLoad').replace(/\s+/g, ''), floors: g('shuttleFloorCnt'),
+        year: g('installationDe').slice(0, 4), model: g('elvtrModel'), stts: g('elvtrStts') };
+      info[miss[i]] = v;
+      put['elv1:' + miss[i]] = JSON.stringify(v);
+    });
+    try { if (Object.keys(put).length) cache.putAll(put, CACHE_SEC); } catch (e) {}
+    // 3) 현장별로 묶기
+    const out = {};
+    Object.keys(want).forEach(q => {
+      const L = want[q].map(n => info[n]).filter(Boolean).filter(v => v.stts !== '철거' && v.stts !== '말소');
+      if (!L.length) return;
+      const uniq = f => L.map(f).filter((x, i, a) => x && a.indexOf(x) === i);
+      out[q] = {
+        n: L.length, mr: L.filter(v => v.mr === 'Y').length, mrl: L.filter(v => v.mr === 'N').length,
+        forms: uniq(v => v.form), kinds: uniq(v => v.kind), caps: uniq(v => v.cap),
+        floors: uniq(v => v.floors), years: uniq(v => v.year).sort(),
+        list: L.map(v => ({ no: v.no, ho: v.ho, mr: v.mr, form: v.form, cap: v.cap, year: v.year }))
+      };
+    });
+    return { ok: true, info: out };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
 // 상호 검색 결과 중 일정표의 동·읍·면에 있고, 지사 관할구역 안인 곳 (관할 정보가 없으면 REGION_KM 안)
 function findSite_(s, o, J) {
   const base = 'https://dapi.kakao.com/v2/local/search/';
@@ -476,7 +548,7 @@ function recptnList(st, en, branch) {
   try {
     const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
     if (!key) return { ok: true, list: [], note: 'DATA_GO_KR_KEY 없음' };
-    const list = cached_('recptn4:' + st + '-' + en + ':' + (branch || ''), () => {
+    const list = cached_('recptn5:' + st + '-' + en + ':' + (branch || ''), () => {
       const out = [];
       for (let page = 1; page <= 10; page++) {
         const url = 'https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1'
@@ -495,7 +567,8 @@ function recptnList(st, en, branch) {
             mnt: String(it.ledgMntCompanyNm || '').trim(), tel: String(it.ledgMntHedofcTelno || '').trim(),
             mfr: String(it.ledgMnfcturCompanyNm || '').trim(),
             mfrTel: String(it.ledgMnfcturHedofcTelno || it.reqstMnfcturCompanyTelno || '').trim(),
-            form: [it.ledgElvtrDiv, it.ledgElvtrForm].map(x => String(x || '').trim()).filter(Boolean).join(' · ') });
+            form: [it.ledgElvtrDiv, it.ledgElvtrForm].map(x => String(x || '').trim()).filter(Boolean).join(' · '),
+            no: String(it.elvtrUniqueNo || '') });
         });
         if (page * 1000 >= Number(body.totalCount || 0)) break;
       }
