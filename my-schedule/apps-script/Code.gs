@@ -458,11 +458,53 @@ function deleteWidget(key) {
 function widgetOutput_(e) {
   const key = String(e.parameter.w || '');
   const raw = W_KEY_RE.test(key) ? PropertiesService.getScriptProperties().getProperty('W_' + key) : null;
-  const out = raw ? widgetView_(JSON.parse(raw)) : { ok: false, title: '위젯 주소가 올바르지 않아요', text: '웹앱에서 일정표를 올린 뒤 위젯 주소를 다시 복사하세요.' };
+  const out = raw ? widgetView_(withCoords_(key, JSON.parse(raw))) : { ok: false, title: '위젯 주소가 올바르지 않아요', text: '웹앱에서 일정표를 올린 뒤 위젯 주소를 다시 복사하세요.' };
   if (e.parameter.fmt === 'text') {
     return ContentService.createTextOutput(out.text || out.title).setMimeType(ContentService.MimeType.TEXT);
   }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 위젯에 보여 줄 날(오늘·다음 근무일)의 현장 좌표가 없으면 찾아서 저장 (길안내 링크용, 처음 한 번만)
+function withCoords_(key, data) {
+  try {
+    const tz = 'Asia/Seoul', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+    const targets = (data.days || []).filter(d => d.iso >= today && d.stops && d.stops.length).slice(0, 2);
+    const need = [];
+    targets.forEach(d => d.stops.forEach(s => {
+      if (s.lat == null && s.name && !need.some(x => x.q === s.name + '|' + (s.area || ''))) {
+        need.push({ q: s.name + '|' + (s.area || ''), area: s.area || '', name: s.name, region: '' });
+      }
+    }));
+    if (!need.length) return data;
+    let origin = null;
+    if (data.branch && data.branch[0]) {
+      const o = getOrigin(data.branch[0], data.branch[1] || '');
+      if (o.ok) origin = o.origin;
+    }
+    if (origin) data.origin = origin;
+    const r = geocodeSites(need, origin);
+    if (!r.ok) return data;
+    targets.forEach(d => d.stops.forEach(s => {
+      const p = r.places[s.name + '|' + (s.area || '')];
+      if (p) { s.lat = p.lat; s.lng = p.lng; if (p.addr) s.addr = p.addr; } else if (s.lat == null) s.lat = false;
+    }));
+    PropertiesService.getScriptProperties().setProperty('W_' + key, JSON.stringify(data));
+  } catch (e) { /* 좌표 없이 보여 줌 */ }
+  return data;
+}
+
+// 길안내 링크: 카카오맵(앱/웹) · 티맵(앱 실행 링크, 앱키 있을 때) · 네이버지도 앱
+function navLinks_(dest, lat, lng) {
+  const de = encodeURIComponent(String(dest).replace(/[,/]/g, ' '));
+  const tk = (PropertiesService.getScriptProperties().getProperty('TMAP_APP_KEY') || '').trim();
+  return {
+    kakao: 'https://map.kakao.com/link/to/' + de + ',' + lat + ',' + lng,
+    tmap: tk ? 'https://apis.openapi.sk.com/tmap/app/routes?appKey=' + encodeURIComponent(tk)
+      + '&name=' + de + '&lon=' + lng + '&lat=' + lat
+      : 'tmap://route?goalname=' + de + '&goalx=' + lng + '&goaly=' + lat,
+    naver: 'nmap://route/car?dlat=' + lat + '&dlng=' + lng + '&dname=' + de + '&appname=elevator.schedule',
+  };
 }
 
 // 저장된 주간 일정 → 지금 보여 줄 하루 (오후 6시 이후거나 오늘 근무가 없으면 다음 근무일)
@@ -484,10 +526,13 @@ function widgetView_(data) {
     return { ok: true, name: data.name, title: title, sub: '새 일정표를 올려 주세요', lines: [], text: title };
   }
   const kindNm = { '정': '정기', '밀': '정밀', '수': '수시', '완': '설치', '설': '설치' };
-  const lines = main.stops.map((s, i) => ({
-    no: i + 1, time: s.time || '', name: s.name, area: s.area || '',
-    kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units,
-  }));
+  const lines = main.stops.map((s, i) => {
+    const nav = s.lat ? navLinks_(s.addr ? s.addr.replace(/\([^)]*\)/g, ' ').trim() : s.name, s.lat, s.lng) : null;
+    return {
+      no: i + 1, time: s.time || '', name: s.name, area: s.area || '', addr: s.addr || '',
+      kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units, nav: nav,
+    };
+  });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
   const places = new Set(main.stops.map(s => s.name)).size;
   const title = (off ? '오늘 휴가 · ' : '') + when + ' ' + main.label + (main.team ? ' · ' + main.team : '');
@@ -498,7 +543,27 @@ function widgetView_(data) {
   // 위젯 앱에서 줄마다 따로 쓰기 쉽게 l1~l8 (현장 한 줄씩), all (전체를 한 덩어리로)
   const rows = text.split('\n').slice(1, -1);
   const per = {};
-  for (let i = 0; i < 8; i++) per['l' + (i + 1)] = rows[i] || '';
+  // 줄마다 길안내 링크: k1~k8 카카오, t1~t8 티맵, v1~v8 네이버 (좌표를 못 찾은 현장은 카카오 검색)
+  for (let i = 0; i < 8; i++) {
+    per['l' + (i + 1)] = rows[i] || '';
+    const l = lines[i];
+    const q = l ? encodeURIComponent(((l.area || '') + ' ' + l.name).trim()) : '';
+    per['k' + (i + 1)] = l ? (l.nav ? l.nav.kakao : 'https://map.kakao.com/?eName=' + q) : '';
+    per['t' + (i + 1)] = l ? (l.nav ? l.nav.tmap : 'https://map.kakao.com/?eName=' + q) : '';
+    per['v' + (i + 1)] = l ? (l.nav ? l.nav.naver : 'https://map.naver.com/p/search/' + q) : '';
+  }
+  // 하루 경로 (지사 출발 → 현장들 → 마지막 현장): 카카오 rk, 네이버 rv
+  const pts = lines.filter(l => l.nav).map(l => ({ n: l.name, lat: main.stops[l.no - 1].lat, lng: main.stops[l.no - 1].lng }));
+  if (pts.length) {
+    const lab = x => encodeURIComponent(String(x).replace(/[,/]/g, ' '));
+    const o = data.origin, end = pts[pts.length - 1], via = pts.slice(0, -1).slice(0, 5);
+    per.rk = 'https://map.kakao.com/link/by/car/' + (o ? [{ n: data.branch[0], lat: o.lat, lng: o.lng }] : [])
+      .concat(via, [end]).map(x => lab(x.n) + ',' + x.lat + ',' + x.lng).join('/');
+    let v = 'nmap://route/car?dlat=' + end.lat + '&dlng=' + end.lng + '&dname=' + lab(end.n);
+    if (o) v += '&slat=' + o.lat + '&slng=' + o.lng + '&sname=' + lab(data.branch[0]);
+    via.forEach((x, i) => { v += '&v' + (i + 1) + 'lat=' + x.lat + '&v' + (i + 1) + 'lng=' + x.lng + '&v' + (i + 1) + 'name=' + lab(x.n); });
+    per.rv = v + '&appname=elevator.schedule';
+  }
   if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '곳 더';
   return Object.assign(per, { all: rows.join(' / ') }, { ok: true, name: data.name, title: title, sub: sub, start: lines[0] ? lines[0].time : '',
     lines: lines, count: lines.length, text: text,

@@ -1885,7 +1885,7 @@ function syncWidget() {
   widgetTimer = setTimeout(async () => {
     const payload = {
       name,
-      branch: BRANCH ? BRANCH[0] : '',
+      branch: BRANCH ? [BRANCH[0], BRANCH[1]] : null,
       days: mine(name).map(d => {
         const { md, dow } = mdow(d);
         return {
