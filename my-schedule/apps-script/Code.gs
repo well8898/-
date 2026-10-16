@@ -495,9 +495,14 @@ function widgetView_(data) {
     + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
   const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
     + ' ' + l.kind + ' ' + l.units), sub].join('\n');
-  return { ok: true, name: data.name, title: title, sub: sub, start: lines[0] ? lines[0].time : '',
+  // 위젯 앱에서 줄마다 따로 쓰기 쉽게 l1~l8 (현장 한 줄씩), all (전체를 한 덩어리로)
+  const rows = text.split('\n').slice(1, -1);
+  const per = {};
+  for (let i = 0; i < 8; i++) per['l' + (i + 1)] = rows[i] || '';
+  if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '곳 더';
+  return Object.assign(per, { all: rows.join(' / ') }, { ok: true, name: data.name, title: title, sub: sub, start: lines[0] ? lines[0].time : '',
     lines: lines, count: lines.length, text: text,
-    l1: lines[0] ? text.split('\n')[1] : '', updated: Utilities.formatDate(new Date(data.savedAt || now), tz, 'M/d HH:mm') };
+    updated: Utilities.formatDate(new Date(data.savedAt || now), tz, 'M/d HH:mm') });
 }
 
 function tomorrow_(iso) {
