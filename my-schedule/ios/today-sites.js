@@ -48,6 +48,8 @@ async function load(u) {
 }
 
 // 길안내 주소: 좌표가 있으면 앱을 바로 열고, 없으면 이름으로 검색
+// 네이버 출발지: 잘 열리는 「하루경로 네이버」 주소에서 지사(출발) 좌표를 가져와 같은 모양으로 맞춤
+let NAVER_START = '';
 function navs(l) {
   const q = encodeURIComponent(((l.area || '') + ' ' + l.name).trim());
   const nav = l.nav || {};
@@ -61,7 +63,7 @@ function navs(l) {
     return {
       tmap: `tmap://route?goalname=${nm}&goalx=${lng}&goaly=${lat}`,
       kakao: `kakaomap://route?ep=${lat},${lng}&by=CAR`,
-      naver: nav.naver || `nmap://route/car?dlat=${lat}&dlng=${lng}&dname=${nm}&appname=elevator.schedule`,
+      naver: `nmap://route/car?dlat=${lat}&dlng=${lng}&dname=${encodeURIComponent(l.name)}${NAVER_START}&appname=elevator.schedule`,
     };
   }
   return {
@@ -90,6 +92,7 @@ function pill(st, label, url, bg, fg) {
   t.textColor = new Color(fg);
   t.lineLimit = 1;
   t.minimumScaleFactor = 0.7;
+  return p;
 }
 
 async function build() {
@@ -113,6 +116,8 @@ async function build() {
     return w;
   }
   const app = u.split('?')[0];
+  const sm = (o.rv || '').match(/[?&](slat=[\d.]+&slng=[\d.]+&sname=[^&]*)/);
+  NAVER_START = sm ? '&' + sm[1] : '';
   const big = config.widgetFamily !== 'medium' && config.widgetFamily !== 'small';
   const max = big ? 6 : 2;
   // 머리글
@@ -141,7 +146,8 @@ async function build() {
     txt(tm, l.time || '', 12, fg, true);
     const mid = r.addStack();
     mid.layoutVertically();
-    txt(mid, l.name, 13, fg, true);
+    const nm = String(l.name || '');
+    txt(mid, nm.length > 10 ? nm.slice(0, 9) + '…' : nm, 13, fg, true);
     txt(mid, [l.area, ((l.kind || '') + ' ' + (l.units || '')).trim()].filter(Boolean).join(' · '), 10, C.dim);
     r.addSpacer();
     const n = navs(l);
