@@ -1,9 +1,8 @@
 <title>내 검사 일정</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#1f5fbf">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" media="print" onload="this.media='all'">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" media="print" onload="this.media='all'">
 <style>
 /* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
 :root {
@@ -23,9 +22,13 @@
   --off-soft: #f8f0dc;
   --hero: #1f5fbf;
   --hero-ink: #ffffff;
-  --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic',
     system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-mono: var(--font-body);
+  --tmap: #3d5afe;
+  --kakao: #fee500;
+  --naver: #03c75a;
+  --line-b: #2563eb;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -785,10 +788,64 @@ label.ghost {
 .maps .call{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .maps>:only-child{grid-column:1/-1}
 /* 쉬운 화면: 글씨 크게, 꼭 필요한 것만 */
-body.easy #panel{zoom:1.15}
 body.linkmode #startView .start>p,body.linkmode #startView .field,body.linkmode #pick,body.linkmode #drop,body.linkmode #resume{display:none!important}
-body.easy #repick,body.easy #branchRow,body.easy #widgetBox,body.easy #shareBox,body.easy .fixaddr,body.easy #srvVer{display:none!important}
-body.easy .homecard{zoom:1}
+body.easy #branchRow,body.easy #widgetBox,body.easy .fixaddr,body.easy #srvVer{display:none!important}
+
+/* ── 시안 B: 하루 경로 ── */
+body{font-variant-numeric:tabular-nums}
+.mode{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
+.mode button{font:600 14px var(--font-body);border:0;background:none;color:var(--muted);padding:7px 12px;border-radius:9px;cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.bar-sub{display:flex;justify-content:flex-end;margin-top:-2px}
+body.easy .bar-sub,body.easy #tabs,body.easy #week,body.easy #branchRow,body.easy #widgetBox,body.easy .who{visibility:hidden}
+body.easy .bar-sub,body.easy #tabs,body.easy #week,body.easy #branchRow,body.easy #widgetBox{display:none!important}
+body.linkmode #startView h1{display:none}
+body.inapp #widgetBox{display:none!important}
+body.easy #homeCard,body.easy #shareBox{order:5}
+body.easy #bar{background:var(--surface);box-shadow:none}
+body.easy main{background:var(--surface)}
+body.easy{background:var(--surface)}
+.ez-date{font-size:15px;color:var(--muted);font-weight:600;margin-top:4px}
+.ez-title{font-size:27px;line-height:1.28;font-weight:800;letter-spacing:-.7px;margin:6px 0 4px}
+.ez-sum{font-size:15px;color:var(--muted)}
+.ez-days{display:flex;border-bottom:1px solid var(--line);margin:14px 0 6px}
+.ez-days button{flex:1;font:600 15px var(--font-body);background:none;border:0;color:var(--muted);padding:10px 0 12px;cursor:pointer}
+.ez-days button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.ez-days button.off{color:#e11d48}
+.ez-tl{padding:8px 0 4px}
+.ez-r{display:grid;grid-template-columns:52px 20px 1fr;column-gap:10px}
+.ez-tm{font-weight:700;font-size:16px;text-align:right;padding-top:1px}
+.ez-rail{position:relative;display:flex;justify-content:center}
+.ez-dot{width:15px;height:15px;border-radius:50%;border:3px solid var(--line-b);background:var(--surface);margin-top:4px;z-index:1;box-sizing:border-box}
+.ez-dot.home{border-color:var(--ink);background:var(--ink);border-radius:4px}
+.ez-ln{position:absolute;top:10px;bottom:-10px;width:3px;background:var(--line-b)}
+.ez-ln.dash{background:repeating-linear-gradient(var(--line) 0 5px,transparent 5px 9px)}
+.ez-past .ez-dot{border-color:#c7d2fe;background:#c7d2fe}.ez-past .ez-ln{background:#c7d2fe}
+.ez-past .ez-tm,.ez-past .ez-nm,.ez-past .ez-in{color:#9ca3af}
+.ez-bd{padding-bottom:16px;min-width:0}
+.ez-head{display:block;width:100%;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
+.ez-nm{font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.3}
+.ez-in{font-size:14.5px;color:var(--muted);margin-top:2px}
+.ez-mv{font-size:14px;color:var(--muted);padding-top:10px}
+.ez-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.ez-nav.two{grid-template-columns:1fr 1fr}
+.ez-nav a{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none}
+.ez-nav .t{background:var(--tmap);color:#fff}.ez-nav .k{background:var(--kakao);color:#191919}.ez-nav .n{background:var(--naver);color:#fff}
+.ez-kv{margin-top:10px;border-radius:12px;background:var(--bg);padding:2px 14px}
+.ez-kv div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;font-size:14.5px;border-bottom:1px solid var(--line)}
+.ez-kv div:last-child{border:0}.ez-kv span{color:var(--muted);white-space:nowrap}.ez-kv b{text-align:right;font-weight:600}
+.ez-more{font:600 14px var(--font-body);color:var(--line-b);background:none;border:0;padding:8px 0 0;cursor:pointer}
+.ez-route{margin-top:6px}
+.ez-route .ez-nav a{font-size:15px}
+.ez-rest{text-align:center;padding:36px 0 10px}.ez-rest p{color:var(--muted);font-size:15px;margin:6px 0 16px}
+.ez-btn{display:block;width:100%;font:700 17px var(--font-body);border:0;border-radius:14px;padding:15px;background:var(--ink);color:var(--surface);cursor:pointer}
+.pick{display:flex;flex-direction:column;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-top:12px}
+.pick button{display:flex;align-items:center;gap:12px;font:700 19px var(--font-body);background:none;border:0;border-bottom:1px solid var(--line);padding:15px 16px;color:var(--ink);cursor:pointer;text-align:left}
+.pick button:last-child{border-bottom:0}
+.pick i{font-style:normal;width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:15px;flex:none}
+.pick-q{font:500 16px var(--font-body);width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;background:var(--surface);color:var(--ink)}
+.pick-h{font-size:27px;font-weight:800;letter-spacing:-.7px;line-height:1.28;margin:6px 0 0}
+#namePick{display:block}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -839,7 +896,7 @@ window.addEventListener(
     <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
     <div class="msg" id="msg"></div>
     <div class="namepick" id="namePick" hidden></div>
-    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 휴대폰에서 읽어요. '지사에 공유하기'를 누를 때만 일정 내용이 서버에 저장돼요.</p>
+    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 휴대폰에서 읽고, 지사 사람들도 볼 수 있게 일정 내용(조·현장·이름)을 서버에 저장해요.</p>
   </div>
 </section>
 
@@ -848,8 +905,9 @@ window.addEventListener(
     <div class="col">
       <div class="bar-in">
         <div class="who"><small id="src">검사 일정표</small><b id="who">내 일정</b></div>
-        <label class="ghost" id="repick" for="file" role="button" tabindex="0">파일 바꾸기</label>
+        <div class="mode" id="modeSeg" role="group" aria-label="화면"><button type="button" data-m="easy">쉬운 화면</button><button type="button" data-m="full">자세히</button></div>
       </div>
+      <div class="bar-sub"><label class="ghost" id="repick" for="file" role="button" tabindex="0">일정표 바꾸기</label></div>
       <nav class="tabs" id="tabs" role="tablist" aria-label="날짜"></nav>
     </div>
   </header>
@@ -860,7 +918,7 @@ window.addEventListener(
     <section class="share" id="shareBox" hidden></section>
     <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
-    <p class="ver"><button type="button" class="linkbtn" id="easyTg" hidden></button>화면 버전 10.18 · <span id="srvVer">서버 확인 중</span></p>
+    <p class="ver">화면 버전 2.0 · <span id="srvVer">서버 확인 중</span></p>
   </div></main>
 </div>
 
@@ -1644,6 +1702,7 @@ function daySum(d) {
   };
 }
 function drawPanel(dx) {
+  if (document.body.classList.contains('easy')) return drawEasy();
   const p = $('panel');
   p.style.setProperty('--dx', (dx || 0) + 'px');
   p.style.animation = 'none';
@@ -1698,6 +1757,188 @@ function drawPanel(dx) {
   p.innerHTML = h;
   if (SERVER && d.t) dayExtras(d);
 }
+// ════ 쉬운 화면 (시안 B: 하루 경로) ════
+let ezOpen = {}; // iso → 펼친 현장 번호
+const EZ_LOADED = {};
+const nowHm = () => {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+};
+// 현장마다 앞 지점(지사 또는 앞 현장)에서 온 거리, 마지막 → 지사 복귀, 합계
+function ezLegs(d) {
+  const out = [];
+  let prev = ORIGIN && ORIGIN.lat ? ORIGIN : null,
+    tot = 0,
+    unk = false;
+  d.t.stops.forEach((s, i) => {
+    const g = GEO[mapQuery(s)];
+    if (!g) return (out[i] = null);
+    if (prev && ll(prev) === ll(g)) return (out[i] = { same: 1 });
+    if (!prev) {
+      prev = g;
+      return (out[i] = null);
+    }
+    const k = ll(prev) + '>' + ll(g);
+    out[i] = LEGS[k] == null ? null : { km: LEGS[k], mn: MINS[k] };
+    if (LEGS[k] == null) unk = true;
+    else tot += LEGS[k];
+    prev = g;
+  });
+  let back = null;
+  if (ORIGIN && ORIGIN.lat && prev && prev !== ORIGIN) {
+    const k = ll(prev) + '>' + ll(ORIGIN);
+    if (LEGS[k] != null) {
+      back = { km: LEGS[k], mn: MINS[k] };
+      tot += LEGS[k];
+    } else unk = true;
+  }
+  return { out, back, tot, unk };
+}
+const legTxt = x => (!x ? '' : x.same ? '같은 곳' : x.km.toFixed(1) + 'km' + (x.mn != null ? ' · ' + x.mn + '분' : ''));
+function ezNav(s) {
+  const g = GEO[mapQuery(s)];
+  const dest = g && g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : placeName(s.name);
+  const de = encodeURIComponent(dest.replace(/,/g, ' '));
+  if (!IS_MOBILE)
+    return `<div class="ez-nav two"><a class="k" href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오맵</a><a class="n" href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버지도</a></div>`;
+  if (!g)
+    return `<div class="ez-nav"><a class="t" href="tmap:\/\/search?name=${encodeURIComponent(mapQuery(s))}">티맵</a><a class="k" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오</a><a class="n" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버</a></div>`;
+  return `<div class="ez-nav"><a class="t" href="${tmapUrl(de, g)}">티맵</a><a class="k" href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오</a><a class="n" href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule">네이버</a></div>`;
+}
+function ezDetail(d, s, i) {
+  const g = GEO[mapQuery(s)];
+  const v = ELV[mapQuery(s)];
+  const rows = [];
+  rows.push(['주소', g && g.addr ? g.addr : s.area ? (REGION[s.area] || '') + ' ' + s.area : '주소 미기재']);
+  if (v && v.list && v.list.length) {
+    const L = elvToday(v, d, s) || v.list;
+    const mr = L.filter(x => x.mr === 'Y').length,
+      mrl = L.filter(x => x.mr === 'N').length;
+    const uniq = f => L.map(f).filter((x, k, a) => x && a.indexOf(x) === k);
+    const models = uniq(x => x.model).filter(m => !/확인불가|^-+$/.test(m));
+    const floors = uniq(x => x.floors).map(Number).filter(Boolean);
+    rows.push(['기계실', [mr ? 'MR ' + mr + '대' : '', mrl ? 'MRL ' + mrl + '대' : ''].filter(Boolean).join(' · ') || '–']);
+    if (models.length) rows.push(['모델', models.slice(0, 3).join(', ')]);
+    const cap = uniq(x => x.cap).join(', ');
+    if (cap || floors.length) rows.push(['정원·층수', [cap, floors.length ? Math.max(...floors) + '층' : ''].filter(Boolean).join(' · ')]);
+  }
+  othersAt(d, s).forEach(o => rows.push(['같은 현장', o.team + ' ' + o.names.join('·') + ' ' + o.times.join(', ')]));
+  return `<div class="ez-kv">${rows.map(r => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
+    <button type="button" class="ez-more" data-full="${i}">위치 고치기 · 호기별 보기는 자세히에서</button>`;
+}
+function drawEasy() {
+  const p = $('panel');
+  if (!days.length) return;
+  if (sel === 'week' || !days.some(x => x.iso === sel)) sel = defaultDay(days);
+  const d = days.find(x => x.iso === sel);
+  const name = curName();
+  const { md, dow } = mdow(d);
+  const isToday = d.iso === todayIso;
+  const when = isToday ? '오늘' : md + ' ' + dow + '요일';
+  let h = `<div class="ez-date">${md} ${dow}요일${isToday ? ' · 오늘' : ''}${d.t ? ' · ' + esc(d.t.team) : ''}</div>`;
+  if (d.t) {
+    const mates = d.t.members.map(bare).filter(x => x !== name);
+    const L = ezLegs(d);
+    h += `<h2 class="ez-title">${esc(name)} 님,<br>${when} ${places(d.t.stops).length}곳을 가요</h2>
+      <div class="ez-sum">${mates.length ? esc(mates.join(', ')) + ' 님과 · ' : ''}승강기 ${sumUnits(d.t.stops)}대${L.tot ? ' · 총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''}</div>`;
+    h += ezDays(d);
+    const hm = nowHm();
+    const past = i => isToday && d.t.stops[i].time && d.t.stops[i].time < hm && i < d.t.stops.length - 1 && d.t.stops[i + 1].time && d.t.stops[i + 1].time <= hm;
+    let next = d.t.stops.findIndex((s, i) => !past(i));
+    if (next < 0) next = 0;
+    const open = d.iso in ezOpen ? ezOpen[d.iso] : next;
+    h += `<div class="ez-tl">`;
+    if (ORIGIN && ORIGIN.lat)
+      h += `<div class="ez-r${past(0) ? ' ez-past' : ''}"><div class="ez-tm" style="font-size:13.5px;color:var(--muted)">출발</div><div class="ez-rail"><span class="ez-dot home"></span><span class="ez-ln"></span></div>
+        <div class="ez-bd"><div class="ez-nm" style="font-size:16px">${esc(BRANCH ? BRANCH[0] : ORIGIN.name)}</div>${L.out[0] ? `<div class="ez-mv">${legTxt(L.out[0])}</div>` : ''}</div></div>`;
+    d.t.stops.forEach((s, i) => {
+      const last = i === d.t.stops.length - 1;
+      const pz = past(i);
+      h += `<div class="ez-r${pz ? ' ez-past' : ''}"><div class="ez-tm">${esc(s.time || '')}</div><div class="ez-rail"><span class="ez-dot"></span><span class="ez-ln${last ? ' dash' : ''}"></span></div>
+        <div class="ez-bd"><button type="button" class="ez-head" data-open="${i}" aria-expanded="${open === i}"><div class="ez-nm">${esc(placeName(s.name))}</div>
+        <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div></button>
+        ${open === i ? ezNav(s) + ezDetail(d, s, i) : ''}
+        ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">지사로 복귀 ${legTxt(L.back)}</div>` : ''}</div></div>`;
+    });
+    h += `</div>`;
+    const pts = [];
+    d.t.stops.forEach(s => {
+      const g = GEO[mapQuery(s)];
+      if (g && !(pts.length && ll(pts[pts.length - 1].g) === ll(g))) pts.push({ g, name: s.name });
+    });
+    if (pts.length > 1) {
+      const all = ORIGIN && ORIGIN.lat ? [{ g: ORIGIN, name: BRANCH ? BRANCH[0] : ORIGIN.name, home: 1 }].concat(pts) : pts;
+      h += `<div class="ez-route">${dayRouteHtml(all)}</div>`;
+    }
+  } else {
+    h += `<h2 class="ez-title">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
+    h += ezDays(d);
+    const nx = days.find(x => x.t && x.iso > d.iso);
+    h += `<div class="ez-rest">${nx ? `<p>다음 근무 · ${mdow(nx).md} (${mdow(nx).dow}) ${places(nx.t.stops).length}곳</p><button type="button" class="ez-btn" data-go="${nx.iso}">다음 근무일 보기</button>` : '<p>이 일정표에 남은 근무가 없어요</p>'}</div>`;
+  }
+  p.innerHTML = h;
+  p.querySelectorAll('[data-day]').forEach(b => (b.onclick = () => go(b.dataset.day)));
+  p.querySelectorAll('[data-go]').forEach(b => (b.onclick = () => go(b.dataset.go)));
+  p.querySelectorAll('[data-open]').forEach(
+    b =>
+      (b.onclick = () => {
+        const i = +b.dataset.open;
+        ezOpen[d.iso] = ezOpen[d.iso] === i ? -1 : i;
+        drawEasy();
+      })
+  );
+  p.querySelectorAll('[data-full]').forEach(b => (b.onclick = () => setMode('full')));
+  if (SERVER && d.t && !EZ_LOADED[d.iso]) {
+    EZ_LOADED[d.iso] = true;
+    easyLoad(d).then(() => {
+      if (sel === d.iso && document.body.classList.contains('easy')) drawEasy();
+    });
+  }
+}
+function ezDays(d) {
+  const list = days.filter(x => x.t || x.off);
+  if (list.length < 2) return '';
+  return `<div class="ez-days" role="tablist">${list
+    .map(x => `<button type="button" role="tab" data-day="${x.iso}" aria-selected="${x.iso === d.iso}" class="${x.t ? '' : 'off'}">${x.iso === todayIso ? '오늘' : mdow(x).dow}</button>`)
+    .join('')}</div>`;
+}
+// 쉬운 화면용: 위치·구간 거리·승강기 정보를 불러옴 (다 되면 다시 그림)
+async function easyLoad(d) {
+  try {
+    await cfgReady;
+    await Promise.all([loadRecptn(), ensureOrigin()]);
+    await fetchDay(d);
+    const pairs = [];
+    let prev = ORIGIN && ORIGIN.lat ? ORIGIN : null;
+    d.t.stops.forEach(s => {
+      const g = GEO[mapQuery(s)];
+      if (!g) return;
+      if (prev && ll(prev) !== ll(g)) {
+        const k = ll(prev) + '>' + ll(g);
+        if (!(k in LEGS) && !pairs.some(p => p.k === k)) pairs.push({ k, a: prev, b: g });
+      }
+      prev = g;
+    });
+    if (ORIGIN && ORIGIN.lat && prev && prev !== ORIGIN) {
+      const k = ll(prev) + '>' + ll(ORIGIN);
+      if (!(k in LEGS)) pairs.push({ k, a: prev, b: ORIGIN });
+    }
+    if (pairs.length) {
+      const r = await run('routeLegs', pairs.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng]));
+      if (r && r.ok)
+        pairs.forEach((p, i) => {
+          LEGS[p.k] = r.km[i];
+          MINS[p.k] = r.min ? r.min[i] : null;
+        });
+    }
+    if (sel === d.iso && document.body.classList.contains('easy')) drawEasy();
+    await loadElv(d);
+    setTimeout(prefetchDays, 300);
+  } catch (e) {
+    /* 위치를 못 찾아도 일정과 검색 길안내는 그대로 */
+  }
+}
+
 function go(iso, dx) {
   if (!iso || iso === sel) return;
   sel = iso;
@@ -2402,7 +2643,11 @@ function widgetBox() {
 const QS = new URLSearchParams(API ? location.search : '');
 if (API && QS.get('b')) window.LINK = { b: QS.get('b').trim(), n: (QS.get('n') || '').trim().slice(0, 20), easy: QS.get('easy') !== '0' };
 if (API && /^\d{4}-\d{2}-\d{2}$/.test(QS.get('d') || '')) window.START_DAY = QS.get('d');
-const LINK = window.LINK || null;
+let LINK = window.LINK || null;
+// 위젯 앱 안에서 열림 (앱이 화면을 띄울 때 User-Agent 에 ScheduleWidgetApp, 또는 ?app=1)
+const APP = /ScheduleWidgetApp/.test(navigator.userAgent) || QS.get('app') === '1';
+if (APP) document.body.classList.add('inapp');
+const appBridge = () => (window.AndroidApp && typeof window.AndroidApp.setUser === 'function' ? window.AndroidApp : null);
 let shared = null; // { at } 공유한 뒤
 function allNames() {
   const s = new Set();
@@ -2474,11 +2719,27 @@ async function doShare(force) {
   }
 }
 // 이름 링크로 열었는데 이름이 없으면: 큰 이름 버튼으로 고르기
+function branchPick(list, done) {
+  const el = $('namePick');
+  document.body.classList.add('linkmode');
+  el.hidden = false;
+  el.innerHTML =
+    `<div class="pick-h">어느 지사인가요?</div><div class="pick">${list
+      .map((x, i) => `<button type="button" data-i="${i}"><i>${esc(x.branch[0])}</i>${esc(x.branch)}</button>`)
+      .join('')}</div>`;
+  el.querySelectorAll('button').forEach(b => (b.onclick = () => ((el.hidden = true), done(list[+b.dataset.i]))));
+}
 function namePick(names, wk) {
   const el = $('namePick');
   el.hidden = false;
-  el.innerHTML = `<h3>내 이름을 눌러 주세요</h3>` + names.map(n => `<button type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('');
-  el.querySelectorAll('button').forEach(b => {
+  el.innerHTML =
+    `<div class="pick-h">누구의 일정을<br>볼까요?</div>` +
+    (names.length > 8 ? `<input class="pick-q" id="pickQ" placeholder="이름 찾기" autocomplete="off">` : '') +
+    `<div class="pick">${names.map(n => `<button type="button" data-n="${esc(n)}"><i>${esc(n[0])}</i>${esc(n)}</button>`).join('')}</div>`;
+  if ($('pickQ'))
+    $('pickQ').oninput = e =>
+      el.querySelectorAll('.pick button').forEach(b => (b.hidden = !b.dataset.n.includes(e.target.value.trim())));
+  el.querySelectorAll('.pick button').forEach(b => {
     b.onclick = () => {
       $('name').value = b.dataset.n;
       store.set('sched.name', b.dataset.n);
@@ -2493,11 +2754,38 @@ function startShared() {
   sel = null;
   render();
   if (data && !curName()) return;
+  const ab = appBridge();
+  if (ab) {
+    try {
+      ab.setUser(LINK.b, curName());
+    } catch (e) {}
+  }
   homeCard();
 }
 // 홈 화면 아이콘 만들기 안내 (처음 한 번)
 function homeCard() {
   const el = $('homeCard');
+  if (APP) {
+    // 앱 안: 홈 화면에 위젯 추가 (한 번 묻고, 나중에도 아래 버튼으로)
+    const ab = appBridge();
+    if (!el || !ab || store.get('sched.widgetAsked')) return;
+    el.hidden = false;
+    el.innerHTML = `<h3>홈 화면에 위젯을 둘까요?</h3>
+      <p>휴대폰 첫 화면에서 오늘 갈 현장과 티맵·카카오·네이버 길안내를 바로 눌러요.</p>
+      <div class="maps"><button type="button" class="call" id="wAdd">위젯 추가</button><button type="button" id="wLater">나중에</button></div>`;
+    $('wAdd').onclick = () => {
+      try {
+        ab.addWidget();
+      } catch (e) {}
+      store.set('sched.widgetAsked', '1');
+      el.hidden = true;
+    };
+    $('wLater').onclick = () => {
+      store.set('sched.widgetAsked', '1');
+      el.hidden = true;
+    };
+    return;
+  }
   if (!el || !LINK || store.get('sched.homeDone')) return;
   const ua = navigator.userAgent;
   const ios = /iPhone|iPad|iPod/.test(ua);
@@ -2515,18 +2803,21 @@ function homeCard() {
     el.hidden = true;
   };
 }
+// 맨 위 「쉬운 화면 | 자세히」 (항상 보임)
+function syncMode() {
+  const easy = document.body.classList.contains('easy');
+  document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.m === 'easy') === easy)));
+}
+function setMode(m) {
+  document.body.classList.toggle('easy', m === 'easy');
+  store.set('sched.easy', m === 'easy' ? '1' : '0');
+  syncMode();
+  if (data) render();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('#modeSeg button').forEach(b => (b.onclick = () => setMode(b.dataset.m)));
 function easyToggle() {
-  const b = $('easyTg');
-  if (!b) return;
-  const on = document.body.classList.contains('easy');
-  b.hidden = false;
-  b.textContent = on ? '자세히 보기' : '쉬운 화면';
-  b.onclick = () => {
-    const nx = !document.body.classList.contains('easy');
-    document.body.classList.toggle('easy', nx);
-    store.set('sched.easy', nx ? '1' : '0');
-    easyToggle();
-  };
+  syncMode();
 }
 
 // 좌우로 밀어서 날짜 넘기기
@@ -2746,6 +3037,8 @@ async function load(file) {
     }
     render();
     window.scrollTo({ top: 0 });
+    // 올리면 바로 지사에 공유 (지사를 알 때만. 더 최근 일정표가 있으면 묻고)
+    if (SERVER && BRANCH && !LINK) doShare(false);
   } catch (e) {
     if (data) {
       data = null;
@@ -2825,12 +3118,33 @@ $('name').addEventListener('input', () => {
   render();
 });
 (async () => {
+  // 처음 화면 모드: 지난번 고른 것, 없으면 링크·앱은 쉬운 화면
+  const ez0 = store.get('sched.easy');
+  document.body.classList.toggle('easy', ez0 ? ez0 === '1' : !!(LINK || APP));
+  syncMode();
+  // 앱 안에서 지사 정보가 없으면: 일정이 공유된 지사 중에서 고르기 (하나면 바로)
+  if ((APP || QS.get('pick') === '1') && !LINK && API) {
+    try {
+      const r = await run('listWeeks');
+      const list = (r && r.ok && r.list) || [];
+      const saved = store.get('sched.appBranch');
+      let b = list.find(x => x.branch === saved) || (list.length === 1 ? list[0] : null);
+      if (!b && list.length) b = await new Promise(res => branchPick(list, res));
+      if (b) {
+        store.set('sched.appBranch', b.branch);
+        LINK = { b: b.branch, n: '', easy: true };
+      } else {
+        $('msg').className = 'msg err';
+        $('msg').textContent = '아직 일정표가 공유된 지사가 없어요. 지사에서 누군가 일정표를 올리면 여기에 나와요.';
+      }
+    } catch (e) {}
+  }
   if (LINK) {
     // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
     document.body.classList.add('linkmode');
     document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
-    const ez = store.get('sched.easy');
-    document.body.classList.toggle('easy', ez ? ez === '1' : LINK.easy !== false);
+    if (!ez0) document.body.classList.toggle('easy', LINK.easy !== false);
+    syncMode();
     if (LINK.n) {
       $('name').value = LINK.n;
       store.set('sched.name', LINK.n);

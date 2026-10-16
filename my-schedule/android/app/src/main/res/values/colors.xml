@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 위젯 색 (어두운 화면은 values-night) — 시안 B -->
+<resources>
+    <color name="w_bg">#FFFFFFFF</color>
+    <color name="w_ink">#FF17191C</color>
+    <color name="w_sub">#FF6B7280</color>
+    <color name="w_btn">#FFF1F3F5</color>
+    <color name="w_btn_ink">#FF374151</color>
+    <color name="w_line">#FF2563EB</color>
+    <color name="w_past">#FFC7D2FE</color>
+    <color name="w_dim">#FF9CA3AF</color>
+</resources>

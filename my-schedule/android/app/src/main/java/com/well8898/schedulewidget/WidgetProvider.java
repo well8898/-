@@ -80,9 +80,11 @@ public class WidgetProvider extends AppWidgetProvider {
         for (int id : ids) {
             RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget);
             JSONObject d = Data.day(c, o);
+            int sub = c.getColor(R.color.w_sub);
+            v.setTextColor(R.id.sub, sub);
             if (!hasUrl) {
                 v.setTextViewText(R.id.title, "오늘 현장");
-                v.setTextViewText(R.id.sub, "앱을 열어 주소를 넣어 주세요");
+                v.setTextViewText(R.id.sub, "앱을 열어 이름을 골라 주세요");
             } else if (o == null) {
                 v.setTextViewText(R.id.title, "일정 불러오는 중…");
                 v.setTextViewText(R.id.sub, note == null ? "" : note);
@@ -91,21 +93,20 @@ public class WidgetProvider extends AppWidgetProvider {
                 String up = o.optString("updated");
                 String nv = Update.available(c);
                 // 새 버전 안내는 초록색으로 눈에 띄게
-                v.setTextColor(R.id.sub, note == null && nv != null ? 0xFF7CE0A3 : 0xFF8B95A5);
+                v.setTextColor(R.id.sub, note == null && nv != null ? 0xFF16A34A : sub);
                 v.setTextViewText(R.id.sub, note != null ? note
                         : nv != null ? "⬆ 앱 새 버전 " + nv + " · 앱을 열어 업데이트하세요"
                         : d.optString("sub") + (up.isEmpty() ? "" : " · " + up + " 저장"));
             }
-            v.setTextViewText(R.id.empty, hasUrl ? "표시할 현장이 없어요" : "앱을 열어 내 위젯 주소를 넣어 주세요");
+            v.setTextViewText(R.id.empty, hasUrl ? "이날은 검사 현장이 없어요" : "앱을 열어 이름을 골라 주세요");
 
-            // 제목·↻ 누르면 기본 날로 돌아가며 새로고침 (주소가 없으면 앱 열기)
-            PendingIntent head = hasUrl
+            // 제목 누르면 앱(그날), ↻ 는 기본 날로 돌아가며 새로고침
+            String iso = d == null ? "" : d.optString("iso", o == null ? "" : o.optString("main"));
+            v.setOnClickPendingIntent(R.id.header, view(c, 2, "schedapp://day" + (iso.isEmpty() ? "" : "?d=" + iso)));
+            v.setOnClickPendingIntent(R.id.refresh, hasUrl
                     ? PendingIntent.getBroadcast(c, 1, new Intent(c, WidgetProvider.class).setAction(REFRESH),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
-                    : PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class),
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            v.setOnClickPendingIntent(R.id.header, head);
-            v.setOnClickPendingIntent(R.id.refresh, head);
+                    : view(c, 1, "schedapp://day"));
             v.setOnClickPendingIntent(R.id.prev, PendingIntent.getBroadcast(c, 7,
                     new Intent(c, WidgetProvider.class).setAction(PREV), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
             v.setOnClickPendingIntent(R.id.next, PendingIntent.getBroadcast(c, 8,
@@ -119,8 +120,6 @@ public class WidgetProvider extends AppWidgetProvider {
             v.setViewVisibility(R.id.route_naver, rv.isEmpty() ? View.GONE : View.VISIBLE);
             if (!rk.isEmpty()) v.setOnClickPendingIntent(R.id.route, view(c, 3, rk));
             if (!rv.isEmpty()) v.setOnClickPendingIntent(R.id.route_naver, view(c, 6, rv));
-            if (hasUrl) v.setOnClickPendingIntent(R.id.app, view(c, 4, Data.appUrl(c)));
-            else v.setOnClickPendingIntent(R.id.app, head);
 
             // 현장 목록: 줄을 누르면 그 줄의 길안내 주소를 연다
             Intent svc = new Intent(c, RowService.class).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);

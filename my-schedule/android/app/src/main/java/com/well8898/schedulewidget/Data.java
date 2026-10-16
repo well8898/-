@@ -21,6 +21,17 @@ import java.util.TimeZone;
 /** 위젯 주소 저장, 일정 JSON 받기/보관, 현장 줄 만들기. */
 final class Data {
     static final String PREFS = "widget";
+    // 웹앱·서버 주소 (Vercel)
+    static final String HOST = "my-schedule-henna.vercel.app";
+    static final String BASE = "https://" + HOST + "/";
+
+    /** 앱에서 지사·이름을 고르면: 위젯은 그 사람 일정을 서버에서 바로 받음 */
+    static void setUser(Context c, String branch, String name) {
+        String u = BASE + "api/w?b=" + Uri.encode(branch) + "&n=" + Uri.encode(name);
+        SharedPreferences.Editor e = prefs(c).edit().putString("branch", branch).putString("name", name);
+        if (!u.equals(url(c))) e.putString("url", u).remove("json").remove("sel");
+        e.apply();
+    }
 
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -120,7 +131,7 @@ final class Data {
     }
 
     static final class Row {
-        String time, name, info, link, kakao, naver;
+        String time, name, info, leg, link, kakao, naver;
         boolean done;
     }
 
@@ -142,9 +153,8 @@ final class Data {
             String area = l.optString("area");
             String kind = (l.optString("kind") + " " + l.optString("units")).trim();
             r.info = area.isEmpty() ? kind : kind.isEmpty() ? area : area + " · " + kind;
-            // 구간 거리 (지사→12.3km / ↑4.0km) — 한 줄이라 잘리지 않게 맨 앞에
-            String leg = l.optString("leg");
-            if (!leg.isEmpty()) r.info = r.info.isEmpty() ? leg : leg + " · " + r.info;
+            // 구간 거리 (지사→12.3km / ↑4.0km / 같은 곳)
+            r.leg = l.optString("leg");
             JSONObject nav = l.optJSONObject("nav");
             // 좌표를 못 찾은 현장은 이름으로 검색
             String q = Uri.encode((area + " " + r.name).trim());

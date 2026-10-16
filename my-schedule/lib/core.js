@@ -13,7 +13,7 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v1.0'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.0'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -893,6 +893,8 @@ async function shareWeek(branch, data, force) {
     if (json.length > 400000) throw new Error('일정표가 너무 커서 공유하지 못했어요.');
     const at = Date.now();
     await redis_([['SET', 'p:' + k, json], ['SET', 'p:' + k + ':meta', JSON.stringify({ branch, at, source: data.source || '', last })]]);
+    const all = JSON.parse((await props.get('WEEKS')) || '[]');
+    if (all.indexOf(branch) < 0) { all.push(branch); await props.set('WEEKS', JSON.stringify(all)); }
     return { ok: true, at };
   } catch (e) {
     return { ok: false, message: e.message };
@@ -1012,6 +1014,122 @@ async function addLegs_(data, targets) {
   return changed;
 }
 
+
+// ════════ 앱용: 지사 목록 · 이름으로 위젯 데이터 ════════
+// 지사 이름·주소 (index.html 의 BRANCHES 와 같게)
+const BRANCHES = [
+  ['서울남서지사', '서울 구로구 디지털로31길 53'],
+  ['서울동부지사', '서울 성동구 천호대로 376'],
+  ['서울서부지사', '서울 마포구 토정로 318'],
+  ['서울북부지사', '서울 도봉구 삼양로 538-5'],
+  ['서울강남지사', '서울 강남구 영동대로 316'],
+  ['서울강동지사', '서울 강동구 양재대로 1473'],
+  ['서울서초지사', '서울 서초구 서초대로 67'],
+  ['서울강서지사', '서울 강서구 공항대로 287'],
+  ['부산서부지사', '부산 부산진구 황령대로 24'],
+  ['부산동부지사', '부산 해운대구 센텀중앙로 90'],
+  ['부산북부지사', '부산 금정구 금정로 252'],
+  ['울산지사', '울산 중구 종가로 362-11'],
+  ['경남동부지사', '경남 창원시 성산구 원이대로 362'],
+  ['경남서부지사', '경남 창원시 마산회원구 3·15대로 685'],
+  ['진주출장소', '경남 진주시 신안로 94'],
+  ['대구서부지사', '대구 달서구 계대동문로 124'],
+  ['대구동부지사', '대구 동구 동대구로 471'],
+  ['경북동부지사', '경북 포항시 북구 삼흥로 95'],
+  ['경북서부지사', '경북 구미시 이계북로 7'],
+  ['인천남부지사', '인천 남동구 논현로46번길 23'],
+  ['경기북부지사', '경기 구리시 산마루로 19'],
+  ['양주출장소', '경기 양주시 옥정동로7가길 30'],
+  ['고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59'],
+  ['인천동부지사', '인천 부평구 무네미로 478'],
+  ['안산지사', '경기 안산시 상록구 해안로 705'],
+  ['인천서부지사', '인천 서구 원당대로 676'],
+  ['수원지사', '경기 수원시 영통구 광교로 146'],
+  ['성남지사', '경기 성남시 분당구 백현로 97'],
+  ['안양지사', '경기 안양시 만안구 안양로 119'],
+  ['용인지사', '경기 용인시 기흥구 관곡로64번길 18'],
+  ['평택안성지사', '경기 평택시 경기대로 1377'],
+  ['화성오산지사', '경기 화성시 병점2로 12'],
+  ['강원지사', '강원 원주시 호저로 47'],
+  ['강릉출장소', '강원 강릉시 강릉대로 317'],
+  ['춘천출장소', '강원 춘천시 안마산로 99'],
+  ['대전지사', '대전 유성구 도안북로 57'],
+  ['세종지사', '세종특별자치시 한누리대로 169'],
+  ['충북지사', '충북 청주시 상당구 중흥로 16'],
+  ['충남지사', '충남 아산시 배방읍 희망로46번길 45-31'],
+  ['천안지사', '충남 천안시 동남구 신촌2길 5-4'],
+  ['광주지사', '광주 서구 죽봉대로 52'],
+  ['전북동부지사', '전북특별자치도 전주시 덕진구 팔과정로 164'],
+  ['전북서부지사', '전북 익산시 익산대로16길 39'],
+  ['전남동부지사', '전남 순천시 중앙로 260'],
+  ['전남서부지사', '광주 광산구 무진대로 282'],
+  ['제주지사', '제주 제주시 연삼로 473']
+];
+
+// 일정이 공유된 지사들 → [{ branch, source, last, at }] (최신 순)
+async function listWeeks() {
+  try {
+    const list = JSON.parse((await props.get('WEEKS')) || '[]');
+    const metas = list.length ? (await redis_([['MGET', ...list.map(b => 'p:WEEK:' + b + ':meta')]]))[0] : [];
+    const out = list.map((b, i) => Object.assign({ branch: b }, JSON.parse(metas[i] || '{}'))).filter(x => x.last);
+    out.sort((a, b) => (b.at || 0) - (a.at || 0));
+    return { ok: true, list: out };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 화면(index.html)의 mine()·mdow() 와 같은 규칙으로 한 사람의 주간 일정 → 위젯 저장 형식
+const bare_ = s => String(s || '').replace(/\(.*?\)/g, '').trim();
+const placeName_ = n => {
+  n = String(n || '');
+  return n.replace(/\(주\)|㈜/g, '').replace(/\([^)]*$/, '').replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/, '')
+    .replace(/\s+/g, ' ').trim() || n;
+};
+function personWeek_(week, branch, name) {
+  const dows = '일월화수목금토';
+  const b = BRANCHES.find(x => x[0] === branch) || [branch, ''];
+  return {
+    name, branch: [b[0], b[1]], src: 'week:' + (week.at || ''),
+    days: (week.days || []).map(d => {
+      const t = (d.teams || []).find(t => (t.members || []).some(m => bare_(m) === name));
+      const [y, m, dd] = d.iso.split('-').map(Number);
+      return {
+        iso: d.iso, label: m + '/' + dd + '(' + dows[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()] + ')',
+        off: (d.vacation || []).some(v => bare_(v) === name),
+        team: t ? t.team : '', mates: t ? t.members.map(bare_).filter(x => x !== name) : [],
+        stops: t ? t.stops.map(s => ({ time: s.time, kind: s.kind, area: s.area, name: placeName_(s.name), units: s.units })) : [],
+      };
+    }),
+  };
+}
+function nameKey_(branch, name) {
+  return 'n' + require('crypto').createHash('sha1').update(branch + '|' + name).digest('hex').slice(0, 24);
+}
+// GET /api/w?b=지사&n=이름 → 공유된 일정표에서 그 사람 일정으로 위젯 (좌표·거리는 처음 한 번 찾아 저장)
+async function widgetByName(branch, name, fmt) {
+  const wk = await getWeek(branch);
+  name = String(name || '').trim().slice(0, 20);
+  if (!wk.ok || !name) return { type: 'application/json; charset=utf-8', body: JSON.stringify({ ok: false, title: wk.ok ? '이름이 없어요' : '아직 공유된 일정표가 없어요', text: wk.ok ? '앱에서 이름을 다시 골라 주세요.' : '지사에서 누군가 일정표를 올리면 나와요.' }) };
+  const key = nameKey_(branch, name);
+  const raw = await props.get('W_' + key);
+  const old = raw ? JSON.parse(raw) : null;
+  const src = 'week:' + (wk.at || '');
+  if (!old || old.src !== src) {
+    const data = personWeek_(wk, branch, name);
+    // 같은 현장 좌표는 예전 것을 그대로 써서 다시 찾지 않음
+    if (old) {
+      const memo = {};
+      (old.days || []).forEach(d => (d.stops || []).forEach(s => { if (s.lat) memo[s.name + '|' + (s.area || '')] = s; }));
+      data.days.forEach(d => d.stops.forEach(s => { const m = memo[s.name + '|' + (s.area || '')]; if (m) { s.lat = m.lat; s.lng = m.lng; s.addr = m.addr; } }));
+      if (old.origin) data.origin = old.origin;
+    }
+    data.savedAt = wk.at || Date.now();
+    await props.set('W_' + key, JSON.stringify(data));
+  }
+  return widget(key, fmt);
+}
+
 // GET /?w=키 → 위젯 JSON (fmt=text 줄글, view=1 화면)
 async function widget(key, fmt) {
   const raw = W_KEY_RE.test(key) ? await props.get('W_' + key) : null;
@@ -1023,7 +1141,7 @@ async function widget(key, fmt) {
 }
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
-const RPC = { getConfig, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
+const RPC = { listWeeks, getConfig, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, getWeek, saveWidget, saveWidgetKm, deleteWidget };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)
@@ -1032,5 +1150,5 @@ function setAppUrl(u) {
   APP_URL = prod ? prod.replace(/\/?$/, '/') : u;
 }
 
-module.exports = { RPC, widget, setAppUrl, SERVER_VER,
+module.exports = { RPC, widget, widgetByName, setAppUrl, SERVER_VER,
   _t: { juris_, inJuris_, bookKey_, bookFile_, widgetView_, addLegs_, redis_, MEM } };

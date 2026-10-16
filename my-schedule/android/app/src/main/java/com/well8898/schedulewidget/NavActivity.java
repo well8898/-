@@ -17,6 +17,15 @@ public class NavActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         Uri u = getIntent().getData();
+        // 위젯의 현장 줄·제목: 앱을 그날로 연다 (schedapp://day?d=2026-10-16)
+        if (u != null && "schedapp".equals(u.getScheme())) {
+            Intent i = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            String d = u.getQueryParameter("d");
+            if (d != null) i.putExtra("d", d);
+            startActivity(i);
+            finish();
+            return;
+        }
         if (u != null && !open(direct(u)) && !open(u)) open(fallback(u));
         finish();
     }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="w_bg">#FF1D232B</color>
+    <color name="w_ink">#FFF1F5F9</color>
+    <color name="w_sub">#FF94A3B8</color>
+    <color name="w_btn">#FF2A313B</color>
+    <color name="w_btn_ink">#FFE2E8F0</color>
+    <color name="w_line">#FF5B8DEF</color>
+    <color name="w_past">#FF3B4A6B</color>
+    <color name="w_dim">#FF64748B</color>
+</resources>

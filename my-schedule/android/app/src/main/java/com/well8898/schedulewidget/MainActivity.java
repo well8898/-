@@ -2,153 +2,156 @@ package com.well8898.schedulewidget;
 
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Bundle;
-import android.text.InputType;
-import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import org.json.JSONObject;
-
-/** 처음 한 번: 웹앱의 「홈 화면 위젯 주소」를 붙여넣고 저장 → 위젯 추가. */
+/**
+ * 앱 화면 = 웹앱(시안 B)을 그대로 띄운다. 처음에 웹앱에서 지사·이름을 고르면
+ * AndroidApp.setUser 로 알려 주고, 위젯은 그 이름의 일정을 서버에서 바로 받는다(주소 복사 없음).
+ */
 public class MainActivity extends Activity {
-    private EditText input;
-    private TextView status;
-    private Button update;
+    private WebView web;
+    private TextView update;
+    private ValueCallback<Uri[]> fileCb;
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        getWindow().setStatusBarColor(0xFF12161E);
+        getWindow().setStatusBarColor(Color.WHITE);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(20);
-        box.setPadding(pad, pad, pad, pad);
-
-        box.addView(text("오늘 현장 위젯", 22, Color.WHITE, true));
-        // 새 버전이 있으면 맨 위에 받기 버튼
-        update = button("", 0xFF2E9E5B, v -> startActivity(new android.content.Intent(
-                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(Update.APK))));
+        box.setBackgroundColor(Color.WHITE);
+        // 새 버전이 있으면 맨 위에 초록 띠
+        update = new TextView(this);
+        update.setBackgroundColor(0xFF16A34A);
+        update.setTextColor(Color.WHITE);
+        update.setTextSize(15);
+        update.setPadding(dp(16), dp(12), dp(16), dp(12));
         update.setVisibility(View.GONE);
-        box.addView(update, lp(dp(10)));
-        box.addView(text("웹앱 아래쪽 「홈 화면 위젯 주소」의 주소를 복사해서 아래에 붙여넣고 저장하세요.", 14, 0xFF8B95A5, false));
+        update.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Update.APK))));
+        box.addView(update, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        input = new EditText(this);
-        input.setTypeface(font(false));
-        input.setHint("https://…vercel.app/?w=…");
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(0xFF5B6575);
-        input.setTextSize(14);
-        input.setText(Data.url(this));
-        box.addView(input, lp(dp(14)));
+        web = new WebView(this);
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setSupportMultipleWindows(false); // target=_blank 도 같은 화면 → 아래에서 가로채기
+        s.setUserAgentString(s.getUserAgentString() + " ScheduleWidgetApp/" + Update.currentName(this));
+        web.addJavascriptInterface(new Bridge(), "AndroidApp");
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                Uri u = r.getUrl();
+                // 우리 웹앱은 앱 안에서, 그 밖(길안내·지도·카톡 등)은 해당 앱으로
+                if (("https".equals(u.getScheme()) || "http".equals(u.getScheme())) && Data.HOST.equals(u.getHost())) return false;
+                openOutside(u);
+                return true;
+            }
+        });
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                // 일정표 파일 올리기
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                try {
+                    startActivityForResult(p.createIntent(), 42);
+                } catch (Exception e) {
+                    fileCb = null;
+                    return false;
+                }
+                return true;
+            }
+        });
+        box.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        setContentView(box);
 
-        box.addView(button("붙여넣기", 0xFF222834, v -> paste(true)), lp(dp(10)));
-        box.addView(button("저장", 0xFF4C8DFF, v -> save()), lp(dp(10)));
-        box.addView(button("홈 화면에 위젯 추가", 0xFF222834, v -> pin()), lp(dp(10)));
-        box.addView(button("위젯 새로고침", 0xFF222834, v -> WidgetProvider.update(this)), lp(dp(10)));
-
-        status = text("", 14, 0xFF8B95A5, false);
-        box.addView(status, lp(dp(16)));
-        box.addView(text("위젯에서: 현장 줄이나 「티맵」을 누르면 길안내, 맨 위 제목을 누르면 새로고침. "
-                + "위젯 추가 버튼이 안 되면 홈 화면을 길게 눌러 위젯 → 오늘 현장을 고르세요.", 13, 0xFF8B95A5, false), lp(dp(24)));
-
-        box.addView(text("현재 버전 " + Update.currentName(this), 12, 0xFF5B6575, false), lp(dp(16)));
-
-        ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(0xFF12161E);
-        sv.addView(box);
-        setContentView(sv);
-        showSaved();
-        fromLink(getIntent());
+        if (!fromLink(getIntent())) web.loadUrl(startUrl(getIntent()));
         new Thread(() -> {
             Update.check(this, true);
             runOnUiThread(this::showUpdate);
         }).start();
     }
 
-    @Override
-    protected void onNewIntent(android.content.Intent i) {
-        super.onNewIntent(i);
-        fromLink(i);
+    /** 위젯 줄을 눌러 열면 그날(?d=) 로 */
+    private String startUrl(Intent i) {
+        String d = i == null ? null : i.getStringExtra("d");
+        String q = "?app=1";
+        String b = Data.prefs(this).getString("branch", ""), n = Data.prefs(this).getString("name", "");
+        if (!b.isEmpty()) q += "&b=" + Uri.encode(b) + (n.isEmpty() ? "" : "&n=" + Uri.encode(n));
+        if (d != null && d.matches("\\d{4}-\\d{2}-\\d{2}")) q += "&d=" + d;
+        return Data.BASE + q;
     }
 
-    // 웹앱에서 「위젯 앱에 바로 연결」을 누르면 주소를 받아 자동 저장 → 위젯 추가 창
-    private void fromLink(android.content.Intent i) {
-        android.net.Uri d = i == null ? null : i.getData();
-        if (d == null || !"schedwidget".equals(d.getScheme())) return;
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        if (!fromLink(i) && i.hasExtra("d")) web.loadUrl(startUrl(i));
+    }
+
+    // 예전 방식: 웹앱 「위젯 앱에 바로 연결」 → schedwidget://set?u=위젯주소
+    private boolean fromLink(Intent i) {
+        Uri d = i == null ? null : i.getData();
+        if (d == null || !"schedwidget".equals(d.getScheme())) return false;
         String u = Data.normalize(d.getQueryParameter("u"));
-        if (u.isEmpty()) {
-            status.setText("연결 주소가 올바르지 않아요. 웹앱에서 다시 눌러 주세요.");
+        if (!u.isEmpty()) {
+            Data.prefs(this).edit().putString("url", u).remove("json").apply();
+            WidgetProvider.update(this);
+            pin();
+        }
+        web.loadUrl(startUrl(null));
+        return true;
+    }
+
+    private void openOutside(Uri u) {
+        try {
+            if ("intent".equals(u.getScheme())) {
+                startActivity(Intent.parseUri(u.toString(), Intent.URI_INTENT_SCHEME));
+                return;
+            }
+        } catch (Exception e) { /* 아래로 */ }
+        // 티맵·카카오맵·네이버지도 웹 링크는 앱으로 바로 (NavActivity 와 같은 규칙)
+        startActivity(new Intent(this, NavActivity.class).setData(u));
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        if (req == 42 && fileCb != null) {
+            fileCb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
+            fileCb = null;
             return;
         }
-        input.setText(u);
-        save();
-        pin();
+        super.onActivityResult(req, res, data);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (web.canGoBack()) web.goBack();
+        else super.onBackPressed();
     }
 
     private void showUpdate() {
         String nv = Update.available(this);
         if (nv == null) return;
-        update.setText("⬆ 새 버전 " + nv + " 받기 (눌러서 받은 뒤 설치)");
+        update.setText("새 버전 " + nv + "이 나왔어요 · 눌러서 받기");
         update.setVisibility(View.VISIBLE);
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean focus) {
-        super.onWindowFocusChanged(focus);
-        // 복사해 둔 주소가 있으면 자동으로 채워 준다
-        if (focus && input.getText().toString().trim().isEmpty()) paste(false);
-    }
-
-    private void paste(boolean tell) {
-        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        ClipData clip = cm == null ? null : cm.getPrimaryClip();
-        String s = clip != null && clip.getItemCount() > 0 && clip.getItemAt(0).getText() != null
-                ? clip.getItemAt(0).getText().toString() : "";
-        String u = Data.normalize(s);
-        if (!u.isEmpty()) input.setText(u);
-        else if (tell) status.setText("복사한 내용에 위젯 주소(…?w=…)가 없어요.");
-    }
-
-    private void save() {
-        String u = Data.normalize(input.getText().toString());
-        if (u.isEmpty()) {
-            status.setText("주소가 올바르지 않아요. …?w=영문숫자 형태여야 해요.");
-            return;
-        }
-        input.setText(u);
-        Data.prefs(this).edit().putString("url", u).remove("json").apply();
-        status.setText("확인하는 중…");
-        new Thread(() -> {
-            String msg;
-            try {
-                JSONObject o = Data.fetch(this);
-                msg = o.optBoolean("ok", true) ? "저장했어요 ✓  " + o.optString("title") : o.optString("title") + " — " + o.optString("text");
-            } catch (Exception e) {
-                msg = "저장은 했는데 일정을 받지 못했어요: " + Data.why(e);
-            }
-            String m = msg;
-            runOnUiThread(() -> {
-                status.setText(m);
-                WidgetProvider.update(this);
-            });
-        }).start();
-    }
-
-    private void showSaved() {
-        JSONObject o = Data.cached(this);
-        if (o != null) status.setText("현재 위젯: " + o.optString("title"));
     }
 
     private void pin() {
@@ -156,55 +159,31 @@ public class MainActivity extends Activity {
         if (m != null && m.isRequestPinAppWidgetSupported()) {
             m.requestPinAppWidget(new ComponentName(this, WidgetProvider.class), null, null);
         } else {
-            status.setText("이 홈 화면은 자동 추가를 지원하지 않아요. 홈 화면을 길게 눌러 위젯 → 오늘 현장을 추가하세요.");
+            Toast.makeText(this, "홈 화면을 길게 눌러 위젯 → 오늘 현장을 추가하세요", Toast.LENGTH_LONG).show();
         }
-    }
-
-    // 앱 글꼴: Pretendard (res/font). 못 읽으면 기본 글꼴
-    private android.graphics.Typeface font(boolean bold) {
-        try {
-            return android.graphics.Typeface.create(getResources().getFont(R.font.pretendard),
-                    bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
-        } catch (Exception e) {
-            return bold ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT;
-        }
-    }
-
-    private TextView text(String s, int sp, int color, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-        t.setTextColor(color);
-        t.setTypeface(font(bold));
-        t.setPadding(0, dp(6), 0, 0);
-        return t;
-    }
-
-    private Button button(String s, int color, View.OnClickListener l) {
-        Button b = new Button(this);
-        b.setText(s);
-        b.setAllCaps(false);
-        b.setTextColor(Color.WHITE);
-        b.setTextSize(15);
-        b.setTypeface(font(true));
-        b.setGravity(Gravity.CENTER);
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(color);
-        g.setCornerRadius(dp(12));
-        b.setBackground(g);
-        b.setMinHeight(dp(48));
-        b.setOnClickListener(l);
-        return b;
-    }
-
-    private LinearLayout.LayoutParams lp(int top) {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        p.topMargin = top;
-        return p;
     }
 
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    /** 웹앱에서 부르는 함수 (window.AndroidApp) */
+    final class Bridge {
+        @JavascriptInterface
+        public void setUser(String branch, String name) {
+            if (branch == null || name == null || branch.isEmpty() || name.isEmpty()) return;
+            Data.setUser(MainActivity.this, branch, name);
+            WidgetProvider.update(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void addWidget() {
+            runOnUiThread(MainActivity.this::pin);
+        }
+
+        @JavascriptInterface
+        public String version() {
+            return Update.currentName(MainActivity.this);
+        }
     }
 }
