@@ -89,6 +89,7 @@ public class WidgetProvider extends AppWidgetProvider {
                     : PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             v.setOnClickPendingIntent(R.id.header, head);
+            v.setOnClickPendingIntent(R.id.refresh, head);
 
             String rk = o == null ? "" : o.optString("rk");
             v.setViewVisibility(R.id.route, rk.isEmpty() ? View.GONE : View.VISIBLE);
