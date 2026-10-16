@@ -85,6 +85,38 @@ final class Data {
         return m == null || m.isEmpty() ? e.getClass().getSimpleName() : m;
     }
 
+    /** 지금 위젯에 보여 줄 날. 고른 날이 없으면 기본(오늘·다음 근무일) = 응답 맨 위 */
+    static JSONObject day(Context c, JSONObject o) {
+        if (o == null) return null;
+        String sel = prefs(c).getString("sel", "");
+        JSONArray days = o.optJSONArray("days");
+        if (sel.isEmpty() || days == null) return o;
+        for (int i = 0; i < days.length(); i++) {
+            JSONObject d = days.optJSONObject(i);
+            if (d != null && sel.equals(d.optString("iso"))) return d;
+        }
+        return o;
+    }
+
+    /** ◀ ▶ : 일정표의 근무일 사이를 넘긴다 (끝에서 멈춤). 기본 날로 돌아오면 고른 날을 지운다. */
+    static void shift(Context c, int dir) {
+        JSONObject o = cached(c);
+        JSONArray days = o == null ? null : o.optJSONArray("days");
+        if (days == null || days.length() == 0) return;
+        String main = o.optString("main");
+        String cur = prefs(c).getString("sel", "");
+        if (cur.isEmpty()) cur = main;
+        int idx = -1;
+        for (int i = 0; i < days.length(); i++) if (cur.equals(days.optJSONObject(i).optString("iso"))) idx = i;
+        int next = idx < 0 ? (dir > 0 ? 0 : days.length() - 1) : Math.max(0, Math.min(days.length() - 1, idx + dir));
+        String iso = days.optJSONObject(next).optString("iso");
+        prefs(c).edit().putString("sel", iso.equals(main) ? "" : iso).apply();
+    }
+
+    static void resetDay(Context c) {
+        prefs(c).edit().remove("sel").apply();
+    }
+
     static final class Row {
         String time, name, info, link, kakao, naver;
         boolean done;

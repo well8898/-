@@ -23,7 +23,7 @@ public class RowService extends RemoteViewsService {
 
         @Override public void onCreate() { }
         @Override public void onDestroy() { }
-        @Override public void onDataSetChanged() { rows = Data.rows(Data.cached(c)); }
+        @Override public void onDataSetChanged() { rows = Data.rows(Data.day(c, Data.cached(c))); }
         @Override public int getCount() { return rows.size(); }
         @Override public RemoteViews getLoadingView() { return null; }
         @Override public int getViewTypeCount() { return 1; }

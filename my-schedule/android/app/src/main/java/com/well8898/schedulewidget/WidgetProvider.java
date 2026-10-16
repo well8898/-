@@ -14,6 +14,8 @@ import org.json.JSONObject;
 
 public class WidgetProvider extends AppWidgetProvider {
     static final String REFRESH = "com.well8898.schedulewidget.REFRESH";
+    static final String PREV = "com.well8898.schedulewidget.PREV";
+    static final String NEXT = "com.well8898.schedulewidget.NEXT";
 
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
@@ -22,7 +24,14 @@ public class WidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onReceive(Context c, Intent i) {
+        if (PREV.equals(i.getAction()) || NEXT.equals(i.getAction())) {
+            // 날짜 넘기기는 받아 둔 데이터로 바로 (인터넷 안 씀)
+            Data.shift(c, NEXT.equals(i.getAction()) ? 1 : -1);
+            render(c, Data.cached(c), null);
+            return;
+        }
         if (REFRESH.equals(i.getAction())) {
+            Data.resetDay(c);
             render(c, null, "새로고침 중…");
             refresh(c, goAsync());
             return;
@@ -69,6 +78,7 @@ public class WidgetProvider extends AppWidgetProvider {
         boolean hasUrl = !Data.url(c).isEmpty();
         for (int id : ids) {
             RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget);
+            JSONObject d = Data.day(c, o);
             if (!hasUrl) {
                 v.setTextViewText(R.id.title, "오늘 현장");
                 v.setTextViewText(R.id.sub, "앱을 열어 주소를 넣어 주세요");
@@ -76,13 +86,13 @@ public class WidgetProvider extends AppWidgetProvider {
                 v.setTextViewText(R.id.title, "일정 불러오는 중…");
                 v.setTextViewText(R.id.sub, note == null ? "" : note);
             } else {
-                v.setTextViewText(R.id.title, o.optString("title"));
-                v.setTextViewText(R.id.sub, note != null ? note : o.optString("sub"));
+                v.setTextViewText(R.id.title, d.optString("title"));
+                String up = o.optString("updated");
+                v.setTextViewText(R.id.sub, note != null ? note : d.optString("sub") + (up.isEmpty() ? "" : " · " + up + " 저장"));
             }
-            v.setTextViewText(R.id.updated, o == null ? "" : o.optString("updated"));
             v.setTextViewText(R.id.empty, hasUrl ? "표시할 현장이 없어요" : "앱을 열어 내 위젯 주소를 넣어 주세요");
 
-            // 제목 누르면 새로고침 (주소가 없으면 앱 열기)
+            // 제목·↻ 누르면 기본 날로 돌아가며 새로고침 (주소가 없으면 앱 열기)
             PendingIntent head = hasUrl
                     ? PendingIntent.getBroadcast(c, 1, new Intent(c, WidgetProvider.class).setAction(REFRESH),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
@@ -90,11 +100,15 @@ public class WidgetProvider extends AppWidgetProvider {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             v.setOnClickPendingIntent(R.id.header, head);
             v.setOnClickPendingIntent(R.id.refresh, head);
+            v.setOnClickPendingIntent(R.id.prev, PendingIntent.getBroadcast(c, 7,
+                    new Intent(c, WidgetProvider.class).setAction(PREV), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+            v.setOnClickPendingIntent(R.id.next, PendingIntent.getBroadcast(c, 8,
+                    new Intent(c, WidgetProvider.class).setAction(NEXT), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
 
 
             // 하루 경로 (지사 → 현장들 → 마지막 현장). 티맵은 경유지 링크가 없어 빠짐
-            String rk = o == null ? "" : o.optString("rk");
-            String rv = o == null ? "" : o.optString("rv");
+            String rk = d == null ? "" : d.optString("rk");
+            String rv = d == null ? "" : d.optString("rv");
             v.setViewVisibility(R.id.route, rk.isEmpty() ? View.GONE : View.VISIBLE);
             v.setViewVisibility(R.id.route_naver, rv.isEmpty() ? View.GONE : View.VISIBLE);
             if (!rk.isEmpty()) v.setOnClickPendingIntent(R.id.route, view(c, 3, rk));

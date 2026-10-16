@@ -471,11 +471,11 @@ function widgetOutput_(e) {
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// 위젯에 보여 줄 날(오늘·다음 근무일)의 현장 좌표가 없으면 찾아서 저장 (길안내 링크용, 처음 한 번만)
+// 위젯에 보여 줄 날(오늘부터 남은 근무일)의 현장 좌표가 없으면 찾아서 저장 (길안내 링크용, 처음 한 번만)
 function withCoords_(key, data) {
   try {
     const tz = 'Asia/Seoul', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-    const targets = (data.days || []).filter(d => d.iso >= today && d.stops && d.stops.length).slice(0, 2);
+    const targets = (data.days || []).filter(d => d.iso >= today && d.stops && d.stops.length).slice(0, 7);
     const need = [];
     targets.forEach(d => d.stops.forEach(s => {
       if (s.lat == null && s.name && !need.some(x => x.q === s.name + '|' + (s.area || ''))) {
@@ -562,16 +562,28 @@ function widgetView_(data) {
   const days = data.days || [];
   const t = days.find(d => d.iso === today);
   let main = t && t.stops && t.stops.length && hour < 18 ? t : null;
-  let when = '오늘';
-  if (!main) {
-    main = days.find(d => d.iso > today && d.stops && d.stops.length) || null;
-    when = main ? (main.iso === tomorrow_(today) ? '내일' : '다음 근무') : '';
-  }
+  if (!main) main = days.find(d => d.iso > today && d.stops && d.stops.length) || null;
   const off = t && t.off && hour < 18;
+  const updated = Utilities.formatDate(new Date(data.savedAt || now), tz, 'M/d HH:mm');
+  // 위젯 앱에서 ◀ ▶ 로 넘겨 볼 수 있게 일정표의 모든 근무일
+  const all = days.filter(d => d.stops && d.stops.length).map(d => {
+    const v = dayView_(data, d, today, now);
+    return { iso: d.iso, title: v.title, sub: v.sub, lines: v.lines, rk: v.rk || '', rv: v.rv || '' };
+  });
   if (!main) {
     const title = off ? '오늘은 휴가예요' : '이번 일정표에 남은 근무가 없어요';
-    return { ok: true, name: data.name, title: title, sub: '새 일정표를 올려 주세요', lines: [], text: title };
+    return { ok: true, name: data.name, title: title, sub: '새 일정표를 올려 주세요', lines: [], text: title, updated: updated, days: all, main: '' };
   }
+  const v = dayView_(data, main, today, now);
+  if (off) v.title = '오늘 휴가 · ' + v.title;
+  return Object.assign(v.per, { all: v.rows.join(' / ') }, { ok: true, name: data.name, title: v.title, sub: v.sub, start: v.lines[0] ? v.lines[0].time : '',
+    lines: v.lines, count: v.lines.length, text: v.text, rk: v.rk, rv: v.rv, updated: updated, days: all, main: main.iso });
+}
+
+// 하루치 위젯 내용: 제목·요약·현장 줄·길안내 링크·하루 경로
+function dayView_(data, main, today, now) {
+  const tz = 'Asia/Seoul';
+  const when = main.iso === today ? '오늘' : main.iso === tomorrow_(today) ? '내일' : '';
   const kindNm = { '정': '정기', '밀': '정밀', '수': '수시', '완': '설치', '설': '설치' };
   const lines = main.stops.map((s, i) => {
     const nav = s.lat ? navLinks_(s.addr ? s.addr.replace(/\([^)]*\)/g, ' ').trim() : s.name, s.lat, s.lng) : null;
@@ -582,13 +594,13 @@ function widgetView_(data) {
   });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
   const places = new Set(main.stops.map(s => s.name)).size;
-  const title = (off ? '오늘 휴가 · ' : '') + when + ' ' + main.label + (main.team ? ' · ' + main.team : '');
+  const title = (when ? when + ' ' : '') + main.label + (main.team ? ' · ' + main.team : '');
   const sub = places + '곳 · ' + units + '대' + (main.km ? ' · ' + main.km + 'km' : '')
     + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
   const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
     + ' ' + l.kind + ' ' + l.units), sub].join('\n');
   const nowHm = Utilities.formatDate(now, tz, 'HH:mm');
-  // 위젯 앱에서 줄마다 따로 쓰기 쉽게 l1~l8 (현장 한 줄씩), all (전체를 한 덩어리로)
+  // 위젯 앱에서 줄마다 따로 쓰기 쉽게 l1~l8 (현장 한 줄씩)
   const rows = text.split('\n').slice(1, -1);
   const per = {};
   // 줄마다 길안내 링크: k1~k8 카카오, t1~t8 티맵, v1~v8 네이버 (좌표를 못 찾은 현장은 카카오 검색)
@@ -605,22 +617,22 @@ function widgetView_(data) {
     per['t' + (i + 1)] = l ? (l.nav ? l.nav.tmap : 'https://map.kakao.com/?eName=' + q) : '';
     per['v' + (i + 1)] = l ? (l.nav ? l.nav.naver : 'https://map.naver.com/p/search/' + q) : '';
   }
+  if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '곳 더';
   // 하루 경로 (지사 출발 → 현장들 → 마지막 현장): 카카오 rk, 네이버 rv
+  let rk = '', rv = '';
   const pts = lines.filter(l => l.nav).map(l => ({ n: l.name, lat: main.stops[l.no - 1].lat, lng: main.stops[l.no - 1].lng }));
   if (pts.length) {
     const lab = x => encodeURIComponent(String(x).replace(/[,/]/g, ' '));
     const o = data.origin, end = pts[pts.length - 1], via = pts.slice(0, -1).slice(0, 5);
-    per.rk = 'https://map.kakao.com/link/by/car/' + (o ? [{ n: data.branch[0], lat: o.lat, lng: o.lng }] : [])
+    const bn = data.branch && data.branch[0] ? data.branch[0] : '지사';
+    rk = 'https://map.kakao.com/link/by/car/' + (o ? [{ n: bn, lat: o.lat, lng: o.lng }] : [])
       .concat(via, [end]).map(x => lab(x.n) + ',' + x.lat + ',' + x.lng).join('/');
-    let v = 'nmap://route/car?dlat=' + end.lat + '&dlng=' + end.lng + '&dname=' + lab(end.n);
-    if (o) v += '&slat=' + o.lat + '&slng=' + o.lng + '&sname=' + lab(data.branch[0]);
-    via.forEach((x, i) => { v += '&v' + (i + 1) + 'lat=' + x.lat + '&v' + (i + 1) + 'lng=' + x.lng + '&v' + (i + 1) + 'name=' + lab(x.n); });
-    per.rv = v + '&appname=elevator.schedule';
+    rv = 'nmap://route/car?dlat=' + end.lat + '&dlng=' + end.lng + '&dname=' + lab(end.n);
+    if (o) rv += '&slat=' + o.lat + '&slng=' + o.lng + '&sname=' + lab(bn);
+    via.forEach((x, i) => { rv += '&v' + (i + 1) + 'lat=' + x.lat + '&v' + (i + 1) + 'lng=' + x.lng + '&v' + (i + 1) + 'name=' + lab(x.n); });
+    rv += '&appname=elevator.schedule';
   }
-  if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '곳 더';
-  return Object.assign(per, { all: rows.join(' / ') }, { ok: true, name: data.name, title: title, sub: sub, start: lines[0] ? lines[0].time : '',
-    lines: lines, count: lines.length, text: text,
-    updated: Utilities.formatDate(new Date(data.savedAt || now), tz, 'M/d HH:mm') });
+  return { title: title, sub: sub, lines: lines, rows: rows, text: text, per: per, rk: rk, rv: rv };
 }
 
 function tomorrow_(iso) {
