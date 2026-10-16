@@ -2180,7 +2180,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.5';
+const PAGE_VER = '2.6';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2908,6 +2908,7 @@ async function doShare(force) {
     const r = await run('shareWeek', BRANCH[0], { source: data.source, days: data.days }, force);
     if (r && r.ok) {
       shared = { at: r.at };
+      appWidgetUser(BRANCH[0]);
       return shareBox();
     }
     if (r && r.older && confirm(r.message + '\n그래도 이 일정표로 바꿀까요?')) return doShare(true);
@@ -2952,13 +2953,18 @@ function startShared() {
   sel = null;
   render();
   if (data && !curName()) return;
-  const ab = appBridge();
-  if (ab) {
-    try {
-      ab.setUser(LINK.b, curName());
-    } catch (e) {}
-  }
+  appWidgetUser(LINK.b);
   homeCard();
+}
+// 앱 안: 지금 지사·이름을 위젯에 알려 줌 → 위젯이 서버에서 바로 새로 받음
+// (일정표를 올렸을 때, 사람을 바꿨을 때)
+function appWidgetUser(branch) {
+  const ab = appBridge();
+  const b = branch || (BRANCH && BRANCH[0]) || (LINK && LINK.b) || '';
+  if (!ab || !b || !curName()) return;
+  try {
+    ab.setUser(b, curName());
+  } catch (e) {}
 }
 // 홈 화면 아이콘 만들기 안내 (처음 한 번)
 function homeCard() {
@@ -3314,6 +3320,9 @@ document.addEventListener('drop', e => {
 $('name').addEventListener('input', () => {
   store.set('sched.name', $('name').value.trim());
   render();
+  // 이름을 다 고친 뒤 위젯도 그 사람으로 (글자마다 보내지 않게 잠깐 기다림)
+  clearTimeout(appWidgetUser.t);
+  appWidgetUser.t = setTimeout(() => appWidgetUser(), 1200);
 });
 (async () => {
   // 처음 화면 모드: 지난번 고른 것, 없으면 링크·앱은 쉬운 화면
