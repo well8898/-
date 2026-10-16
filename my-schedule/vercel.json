@@ -1,0 +1,26 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "w"
+        }
+      ],
+      "destination": "/api/w"
+    },
+    {
+      "source": "/",
+      "destination": "/web.html"
+    }
+  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "regions": [
+    "icn1"
+  ]
+}

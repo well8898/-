@@ -1,0 +1,2883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- my-schedule/index.html 에서 만든 파일입니다. 화면을 고칠 때는 그 파일을 고친 뒤 tools/wrap.py 로 다시 만드세요. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>내 검사 일정</title>
+<meta name="theme-color" content="#1f5fbf">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+/* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
+:root {
+  --bg: #f1f4f7;
+  --surface: #ffffff;
+  --ink: #18212b;
+  --muted: #5d6b78;
+  --line: #dde3e9;
+  --accent: #1f5fbf;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6eefa;
+  --k-jeong: #2a3440;
+  --k-mil: #1d7fc4;
+  --k-su: #c27a0e;
+  --k-wan: #c2392f;
+  --off: #8a6d1e;
+  --off-soft: #f8f0dc;
+  --hero: #1f5fbf;
+  --hero-ink: #ffffff;
+  --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1419;
+    --surface: #19212a;
+    --ink: #e6ebf0;
+    --muted: #94a2b0;
+    --line: #2a3541;
+    --accent: #6ea6f5;
+    --accent-ink: #0f1419;
+    --accent-soft: #1d2d44;
+    --k-jeong: #c9d3dd;
+    --k-mil: #5fb4ec;
+    --k-su: #e7a84a;
+    --k-wan: #f07c72;
+    --off: #e2c06e;
+    --off-soft: #2e2818;
+    --hero: #1e3a66;
+    --hero-ink: #eef4ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0f1419;
+  --surface: #19212a;
+  --ink: #e6ebf0;
+  --muted: #94a2b0;
+  --line: #2a3541;
+  --accent: #6ea6f5;
+  --accent-ink: #0f1419;
+  --accent-soft: #1d2d44;
+  --k-jeong: #c9d3dd;
+  --k-mil: #5fb4ec;
+  --k-su: #e7a84a;
+  --k-wan: #f07c72;
+  --off: #e2c06e;
+  --off-soft: #2e2818;
+  --hero: #1e3a66;
+  --hero-ink: #eef4ff;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  min-height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+.gutter {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.col {
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* app bar */
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+}
+.bar.scrolled {
+  border-bottom-color: var(--line);
+}
+.bar-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-block: 12px 10px;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.who small {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.who b {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.who b em {
+  font-style: normal;
+  color: var(--accent);
+}
+.ghost {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+/* day tabs */
+.tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding-block: 2px 12px;
+}
+.tab {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 7px 2px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-height: 68px;
+  cursor: pointer;
+}
+.tab .dw {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.tab .dd {
+  font: 600 clamp(13px, 4.1vw, 17px) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.tab .st {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.tab.off .st {
+  color: var(--off);
+}
+.tab.none .st {
+  color: var(--muted);
+}
+.tab.today {
+  border-color: var(--accent);
+}
+.tab[aria-selected='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tab[aria-selected='true'] .dw,
+.tab[aria-selected='true'] .dd,
+.tab[aria-selected='true'] .st {
+  color: var(--accent-ink);
+}
+
+main {
+  padding-block: 4px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.week {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.week b {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.dayhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dayhead h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.dayhead h2 span {
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 6px;
+}
+.pill {
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.pill.off {
+  background: var(--off-soft);
+  color: var(--off);
+}
+.pill.none {
+  background: var(--surface);
+  color: var(--muted);
+}
+.brief {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.brief p {
+  margin: 0;
+  text-wrap: pretty;
+}
+.brief .crew {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.brief .crew b {
+  color: var(--ink);
+}
+
+.stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stop {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.t {
+  font: 600 17px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+.nm {
+  font-weight: 600;
+  font-size: 16.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.kind {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 6px;
+  line-height: 1.5;
+}
+.k-정 {
+  color: var(--k-jeong);
+}
+.k-밀 {
+  color: var(--k-mil);
+}
+.k-수 {
+  color: var(--k-su);
+}
+.k-설,
+.k-완 {
+  color: var(--k-wan);
+}
+.u {
+  font: 600 17px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.u small {
+  font: 400 13px var(--font-body);
+  color: var(--muted);
+  margin-left: 1px;
+}
+.maps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.maps a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+.maps a:active {
+  background: var(--accent-soft);
+}
+.note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.empty-day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+}
+.others {
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.others b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.wday {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wday-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.wday-h strong {
+  font-size: 17px;
+}
+.wday-h strong span {
+  font-size: 13.5px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 5px;
+}
+.wlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.wlist li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--line);
+}
+.wlist li:first-child {
+  border-top: 0;
+}
+.wlist .t,
+.wlist .u {
+  font-size: 15px;
+}
+.wlist .nm {
+  font-size: 15px;
+}
+.wlist .others {
+  border: 0;
+  padding: 2px 0 0;
+  font-size: 12.5px;
+}
+.wlist.flat {
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.kmap {
+  height: 260px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.pin {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 13px;
+  background: #1f5fbf;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  font: 600 12px var(--font-mono);
+  white-space: nowrap;
+}
+.pin.home {
+  background: #18212b;
+}
+.legs {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+.legs h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.leg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+.leg span:first-child {
+  overflow-wrap: anywhere;
+}
+.leg .km {
+  font: 600 15px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.leg.total {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  font-weight: 700;
+}
+.legs .copy {
+  justify-self: start;
+  margin-top: 4px;
+}
+.legs .route {
+  font-size: 12.5px;
+  color: var(--muted);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+/* first screen */
+.start {
+  padding-block: 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.start h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.start h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.start p {
+  margin: 0;
+  color: var(--muted);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.field input {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 17px;
+  font-weight: 600;
+  width: 100%;
+}
+.big {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 14px;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+label.ghost {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  pointer-events: none;
+}
+.vh:focus-visible + * {
+  outline: 2px solid var(--accent);
+}
+.err-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--k-wan);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px))
+    calc(10px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.drop {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.drop.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.msg {
+  font-size: 14px;
+  text-align: center;
+  min-height: 1.5em;
+}
+.msg.err {
+  color: var(--k-wan);
+}
+@media (hover: none) {
+  .drop {
+    display: none;
+  }
+}
+@media (max-width: 359px) {
+  body {
+    font-size: 15px;
+  }
+  .t,
+  .u {
+    font-size: 15px;
+  }
+  .nm {
+    font-size: 15.5px;
+  }
+  .tabs {
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: in 0.18s ease-out;
+  }
+  @keyframes in {
+    from {
+      opacity: 0.4;
+      transform: translateX(var(--dx, 0));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ---- 하루 보기 (요약 · 지도 · 타임라인) ---- */
+.panel{display:flex;flex-direction:column;gap:12px}
+.sum{background:var(--hero);color:var(--hero-ink);border-radius:18px;padding:16px 18px 14px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 6px 18px -10px rgba(20,50,110,.55)}
+.sum-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sum-date{font:600 15px var(--font-body);opacity:.85}
+.sum-team{font-size:12.5px;font-weight:600;border:1px solid currentColor;border-radius:999px;padding:1px 9px;opacity:.85}
+.sum-foot{font-size:13px;opacity:.85;border-top:1px solid rgba(255,255,255,.22);padding-top:9px}
+.kmap{position:relative}
+.kload{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;
+  font-size:14px;font-weight:600;color:var(--ink);background:var(--surface);padding:16px}
+.kload small{font-weight:400;color:var(--muted);font-size:12.5px}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--accent-soft);border-top-color:var(--accent);animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.legs .wait{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13.5px}
+.legs .wait .spin{width:18px;height:18px;border-width:2px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;position:relative;padding-bottom:12px}
+.tl-item::before{content:"";position:absolute;left:13px;top:30px;bottom:0;width:2px;background:var(--line)}
+.tl-item:last-child::before{display:none}
+.tl-no{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;
+  font:600 13px var(--font-mono);position:relative;z-index:1;margin-top:10px}
+.tl-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tl-head{display:flex;align-items:center;gap:8px}
+.tl-head .t{font-size:16px;padding:0}
+.tl-head .u{margin-left:auto;font-size:15px}
+.tl-card .nm{font-size:16px}
+.addr{font-size:13px;color:var(--muted)}
+.tl-card .others{margin-top:2px}
+.tl-card .maps{margin-top:4px}
+.tl-card .maps a{min-height:36px;font-size:13.5px;border-radius:9px}
+.sum{gap:6px}
+.sum-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.sum-list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 0;
+  border-top:1px solid rgba(255,255,255,.13)}
+.sum-list li:first-child{border-top:0}
+.sum-list .st{font:600 15px var(--font-mono);font-variant-numeric:tabular-nums}
+.sum-list .sn{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sum-list .sa{font-size:12.5px;font-weight:400;opacity:.72;margin-left:6px}
+.sum-list .sk{font-size:12.5px;font-weight:600;white-space:nowrap;background:rgba(255,255,255,.16);border-radius:6px;padding:1px 7px}
+.sum-foot{padding-top:8px;margin-top:2px}
+.branch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.branch select{font:600 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:100%}
+.branch small{font-size:12px}
+.branch .juris{flex-basis:100%;color:var(--muted);line-height:1.4}
+.real{white-space:nowrap;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
+.maps.three{grid-template-columns:1fr 1fr 1fr}
+.leg .km small{font:400 12px var(--font-body);color:var(--muted)}
+.dayroute{display:flex;flex-direction:column;gap:6px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.dayroute b{font-size:14px}
+.dayroute small{font-size:12.5px;color:var(--muted)}
+.dayroute .maps a{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.maps button{font:600 13.5px var(--font-body);min-height:36px;border-radius:9px;background:var(--bg);color:var(--ink);border:1px solid var(--line);cursor:pointer}
+.resume{background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.resume.old{border-color:var(--line)}
+.resume small{color:var(--muted);font-size:12.5px}
+.resume b{font-size:16px}
+/* 버튼 글자가 항상 버튼 안에 들어가게: 좁으면 글자를 줄이고 두 줄까지 */
+.maps a,.maps button{min-width:0;padding:6px 6px;font-size:clamp(11.5px,3.5vw,14px);line-height:1.25;text-align:center;
+  white-space:normal;word-break:keep-all;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center}
+.maps.three a,.maps.three button{font-size:clamp(11px,3.2vw,13.5px);padding:6px 4px}
+.ghost,.tab{min-width:0}
+.ghost{white-space:nowrap;font-size:clamp(12px,3.6vw,14px)}
+.others b{white-space:nowrap}
+.nofind{white-space:nowrap;font-size:11px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:0 5px;margin-left:4px}
+.fixaddr{font:600 12px var(--font-body);color:var(--accent);background:none;border:1px solid var(--accent);border-radius:7px;padding:2px 8px;margin-left:6px;cursor:pointer;white-space:nowrap}
+.fixaddr.soft{color:var(--muted);border-color:var(--line)}
+.fixbox{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px}
+.fixbox input{font:500 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--accent);border-radius:9px;padding:8px 10px;width:100%;box-sizing:border-box}
+.fixbox small{font-size:12px;color:var(--muted)}
+.elv{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+.elv-sum{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.elv .cnt{font-size:12px;font-weight:700;color:var(--ink)}
+.elv .cnt.all{font-weight:600;color:var(--muted)}
+.elv .model{font:600 11.5px var(--font-mono);background:var(--bg);color:var(--ink);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.elv-tg,.elv-more{font:600 12px var(--font-body);color:var(--accent);background:none;border:0;padding:2px 2px;cursor:pointer;white-space:nowrap}
+.elv-tb table{border-collapse:collapse;width:100%;font-size:12.5px;color:var(--ink)}
+.elv-tb th{color:var(--muted);font-weight:500;font-size:11.5px;text-align:left;padding:4px 3px}
+.elv-tb td{border-top:1px solid var(--line);padding:5px 3px;text-align:left}
+.elv-tb tr.dim td{opacity:.55}
+.elv:empty{display:none}
+.elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.elv .mr{background:var(--accent-soft);color:var(--accent)}
+.elv .mrl{background:var(--off-soft);color:var(--off)}
+.ver{font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;opacity:.8}
+.tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
+.widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
+.widget summary{font-weight:600;cursor:pointer}
+.widget p{margin:8px 0;color:var(--muted);font-size:12.5px}
+.wurl{font:12px var(--font-mono);background:var(--bg);border-radius:8px;padding:8px;overflow-wrap:anywhere;user-select:all;margin-bottom:8px}
+.share,.homecard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:8px}
+.share h3,.homecard h3{margin:0;font-size:15px}
+.share p,.homecard p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+.share textarea{font:12px var(--font-mono);width:100%;box-sizing:border-box;min-height:90px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.share .ok{color:var(--accent);font-weight:600}
+.homecard ol{margin:0;padding-left:20px;line-height:1.7;font-size:15px}
+.homecard b{color:var(--accent)}
+.linkbtn{font:inherit;color:var(--accent);background:none;border:0;padding:0 8px 0 0;cursor:pointer;text-decoration:underline}
+.namepick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.namepick h3{grid-column:1/-1;margin:4px 0 0;font-size:18px}
+.namepick button{font:700 18px var(--font-body);padding:14px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+
+.maps .call{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.maps>:only-child{grid-column:1/-1}
+/* 쉬운 화면: 글씨 크게, 꼭 필요한 것만 */
+body.easy #panel{zoom:1.15}
+body.linkmode #startView .start>p,body.linkmode #startView .field,body.linkmode #pick,body.linkmode #drop,body.linkmode #resume{display:none!important}
+body.easy #repick,body.easy #branchRow,body.easy #widgetBox,body.easy #shareBox,body.easy .fixaddr,body.easy #srvVer{display:none!important}
+body.easy .homecard{zoom:1}
+</style>
+</head>
+<body>
+<input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
+<div class="err-bar" id="errBar" hidden></div>
+<script>
+// 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시 (문제 줄의 실제 내용도 같이)
+function errLine(n) {
+  if (!n) return '';
+  const pick = t => ((t || '').split('\n')[n - 1] || '').trim().slice(0, 90);
+  const own = [...document.scripts]
+    .filter(x => !x.src)
+    .sort((a, b) => b.text.length - a.text.length)[0];
+  const a = pick(own && own.text);
+  const b = pick(document.documentElement.outerHTML);
+  return (a ? ' · 스크립트 줄: ' + a : '') + (b ? ' · 문서 줄: ' + b : '');
+}
+window.addEventListener(
+  'error',
+  e => {
+    const b = document.getElementById('errBar');
+    if (!b) return;
+    b.hidden = false;
+    b.textContent =
+      '화면 오류: ' +
+      (e.message ||
+        (e.target && e.target.src
+          ? '불러오지 못함 ' + e.target.src
+          : '알 수 없음')) +
+      (e.lineno ? ' (' + e.lineno + '번째 줄)' : '') +
+      (e.filename
+        ? ' · 파일: ' + (e.filename.split('?')[0].split('/').pop() || '화면')
+        : '') +
+      errLine(e.lineno);
+  },
+  true
+);
+</script>
+
+<section class="gutter" id="startView">
+  <div class="col start">
+    <div>
+      <h1><span id="who0"></span>이번 주 검사 현장</h1>
+    </div>
+    <p>지사 검사 일정표(엑셀 또는 PDF)를 올리면 내 조의 현장만 골라 날짜별로 보여 줘요.</p>
+    <div class="field"><label for="name">내 이름</label><input id="name" value="" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div>
+    <div class="resume" id="resume" hidden></div>
+    <label class="big" id="pick" for="file" role="button" tabindex="0">일정표 파일 고르기</label>
+    <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
+    <div class="msg" id="msg"></div>
+    <div class="namepick" id="namePick" hidden></div>
+    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 휴대폰에서 읽어요. '지사에 공유하기'를 누를 때만 일정 내용이 서버에 저장돼요.</p>
+  </div>
+</section>
+
+<div id="appView" hidden>
+  <header class="bar gutter" id="bar">
+    <div class="col">
+      <div class="bar-in">
+        <div class="who"><small id="src">검사 일정표</small><b id="who">내 일정</b></div>
+        <label class="ghost" id="repick" for="file" role="button" tabindex="0">파일 바꾸기</label>
+      </div>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="날짜"></nav>
+    </div>
+  </header>
+  <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
+    <div class="week" id="week"></div>
+    <div class="homecard" id="homeCard" hidden></div>
+    <div class="branch" id="branchRow"></div>
+    <section class="share" id="shareBox" hidden></section>
+    <details class="widget" id="widgetBox" hidden></details>
+    <section class="panel" id="panel" role="tabpanel"></section>
+    <p class="ver"><button type="button" class="linkbtn" id="easyTg" hidden></button>화면 버전 10.18 · <span id="srvVer">서버 확인 중</span></p>
+  </div></main>
+</div>
+
+<script>
+function parseItems(items, yearHint) {
+  const Y = yearHint || new Date().getFullYear();
+  // headers
+  const heads = items.filter(
+    i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s) && !/~/.test(i.s)
+  );
+  if (heads.length < 1)
+    throw new Error('날짜 머리글(예: 10/12 (월))을 찾지 못했어요.');
+  const hy = Math.min(...heads.map(h => h.y));
+  const cols = heads
+    .filter(h => Math.abs(h.y - hy) < 6)
+    .map(h => ({ c: h.x + h.w / 2, s: h.s.trim() }))
+    .sort((a, b) => a.c - b.c);
+  const sp =
+    cols.length > 1
+      ? (cols[cols.length - 1].c - cols[0].c) / (cols.length - 1)
+      : cols[0].c;
+  cols.forEach((c, k) => {
+    c.l = k ? (cols[k - 1].c + c.c) / 2 : c.c - sp / 2;
+    c.r = k < cols.length - 1 ? (c.c + cols[k + 1].c) / 2 : c.c + sp / 2;
+    const m = c.s.match(/(\d{1,2})\/(\d{1,2})/);
+    const d = new Date(Y, +m[1] - 1, +m[2]);
+    c.date = d;
+  });
+  const labels = items
+    .filter(i => /^\s*\d{1,2}\s*조\s*$/.test(i.s) && i.x + i.w <= cols[0].l + 2)
+    .map(i => ({ y: i.y, t: i.s.replace(/\s/g, '') }))
+    .sort((a, b) => a.y - b.y);
+  const rowLabels = items.filter(
+    i => /^\s*(행사|복무)\s*$/.test(i.s) && i.x + i.w <= cols[0].l + 2
+  );
+  const firstMisc = rowLabels.length
+    ? Math.min(...rowLabels.map(i => i.y))
+    : Infinity;
+  // 행사·복무 같은 머리글이 없는 양식: 마지막 조 칸 다음부터를 기타(휴가·비고) 영역으로
+  const spacing =
+    labels.length > 1
+      ? (labels[labels.length - 1].y - labels[0].y) / (labels.length - 1)
+      : Infinity;
+  const miscStart = Math.min(
+    firstMisc,
+    labels.length > 1 ? labels[labels.length - 1].y + spacing * 0.99 : Infinity
+  );
+  const NAMES =
+    /^\s*[가-힣A-Za-z]{2,6}\s*\([^)]*\)\s*(\/\s*[가-힣A-Za-z]{2,6}\s*\([^)]*\)\s*)+$/;
+  const LEAVE = /연차|휴가|병가|돌봄|출산|공가|경조|건강|휴직/;
+  const days = cols.map(c => {
+    const its = items.filter(
+      i => i.y > hy + 3 && i.x + i.w / 2 >= c.l && i.x + i.w / 2 < c.r
+    );
+    // group lines by y
+    its.sort((a, b) => a.y - b.y || a.x - b.x);
+    const lines = [];
+    for (const it of its) {
+      const L = lines[lines.length - 1];
+      if (L && Math.abs(L.y - it.y) < 3) {
+        L.parts.push(it);
+      } else lines.push({ y: it.y, parts: [it] });
+    }
+    lines.forEach(L => {
+      L.parts.sort((a, b) => a.x - b.x);
+      let s = '',
+        end = null;
+      for (const p of L.parts) {
+        if (end !== null && p.x - end > 2) s += ' ';
+        s += p.s;
+        end = p.x + p.w;
+      }
+      L.s = s.trim();
+    });
+    const teams = [];
+    let buf = '';
+    let misc = '';
+    for (const L of lines) {
+      if (!L.s) continue;
+      if (
+        L.y >= miscStart - 3 ||
+        /^(휴가자|임피|검사지원)/.test(L.s) ||
+        /(휴가자|검사지원):/.test(L.s)
+      ) {
+        // 앞줄에서 이어지는 줄('(건강),한상호' 등)은 붙이고, 나머지는 새 줄로
+        misc += (misc && !/^[(,]/.test(L.s) ? '\n' : '') + L.s;
+        continue;
+      }
+      if (/^\d+$/.test(L.s)) continue; // 빈 칸의 '0' 같은 숫자
+      let sm = L.s.match(/^\[(\d+)현장\s*([\d.]+)대\]\s*(.*)$/);
+      if (!sm && NAMES.test(L.s)) sm = [L.s, null, null, L.s]; // 현장수 없이 이름만 있는 요약
+      if (sm) {
+        const lab = labels.filter(l => l.y <= L.y + 1).pop();
+        const stops = parseStops(buf);
+        teams.push({
+          team: lab ? lab.t : '',
+          sites: sm[1] != null ? +sm[1] : places(stops).length,
+          units:
+            sm[2] != null ? +sm[2] : stops.reduce((a, x) => a + (x.units || 0), 0),
+          members: sm[3]
+            .split('/')
+            .map(x => x.trim())
+            .filter(Boolean),
+          stops
+        });
+        buf = '';
+        continue;
+      }
+      if (/^\d{1,2}:\d{2}/.test(L.s)) buf += '\n' + L.s;
+      else buf += L.s;
+    }
+    const vac = new Set();
+    const vm = misc.match(/휴가자:([^\n]*?)(?=임피:|검사지원:|$)/m);
+    if (vm)
+      vm[1].split(',').forEach(x => {
+        if (x.trim()) vac.add(x.trim());
+      });
+    for (const m of misc.matchAll(/([가-힣]{2,4})\s*\(([^)]*)\)/g))
+      if (LEAVE.test(m[2])) vac.add(m[1] + '(' + m[2] + ')');
+    const notes = misc
+      .split('\n')
+      .map(x => x.trim())
+      .filter(
+        x =>
+          x &&
+          !/^\d+$/.test(x) &&
+          !/^휴가자:/.test(x) &&
+          !/^[가-힣]{2,4}\s*\([^)]*\)(\s*[-~].*)?$/.test(x)
+      );
+    return {
+      label: c.s,
+      iso: fmt(c.date),
+      teams,
+      vacation: [...vac],
+      support: notes
+    };
+  });
+  // 주말처럼 아무것도 없는 날은 뺌
+  return days.filter(d => d.teams.length || d.vacation.length || d.support.length);
+}
+// 구글 시트형 「주간 검사 일정표」(경남서부 등): 날짜마다 종류·현장명·대수·업체·지역·환산·비고 칸,
+// 조마다 현장 줄들 + 맨 아래 요약 줄(현장 수 · 검사원 이름 · 환산 합), 맨 아래 휴가·연차 칸.
+// 검사 종류는 「종류」 칸 색깔: 빨강 설치 · 초록 수시 · 노랑 정밀 · 흰색 정기
+// pdf.js는 띄어쓴 글자를 한 덩어리로 줌('엘지 수월') → 낱말마다 나누고 글자 폭 비율로 x 추정
+function gsSplit(items) {
+  const cw = ch => (/[가-힣]/.test(ch) ? 1 : /\s/.test(ch) ? 0.55 : /[0-9A-Za-z]/.test(ch) ? 0.5 : 0.31);
+  const out = [];
+  items.forEach(it => {
+    if (!/\s/.test(it.s.trim())) return out.push(it);
+    const chars = [...it.s];
+    const tot = chars.reduce((a, ch) => a + cw(ch), 0) || 1;
+    let acc = 0, cur = '', start = 0, curW = 0;
+    chars.forEach(ch => {
+      const w = (cw(ch) / tot) * it.w;
+      if (/\s/.test(ch)) {
+        if (cur) out.push({ x: it.x + start, y: it.y, w: curW, s: cur });
+        cur = '';
+        curW = 0;
+        acc += w;
+        return;
+      }
+      if (!cur) start = acc;
+      cur += ch;
+      curW += w;
+      acc += w;
+    });
+    if (cur) out.push({ x: it.x + start, y: it.y, w: curW, s: cur });
+  });
+  return out;
+}
+function isGsWeek(items) {
+  items = gsSplit(items);
+  return items.some(i => /검사조/.test(i.s)) && items.some(i => /^\s*현장명\s*$/.test(i.s)) && items.some(i => /^\s*환산\s*$/.test(i.s));
+}
+function parseGsWeek(items, rects, yearHint) {
+  items = gsSplit(items);
+  const near = (a, b, t) => Math.abs(a - b) <= t;
+  // 줄로 묶기 (y 차이 2 이하)
+  const rowsOf = its => {
+    const out = [];
+    [...its].sort((a, b) => a.y - b.y || a.x - b.x).forEach(it => {
+      const L = out[out.length - 1];
+      if (L && near(L.y, it.y, 2)) L.items.push(it);
+      else out.push({ y: it.y, items: [it] });
+    });
+    return out;
+  };
+  const textOf = its => {
+    let s = '', end = null;
+    [...its].sort((a, b) => a.x - b.x).forEach(p => {
+      if (end !== null && p.x - end > 1.5) s += ' ';
+      s += p.s;
+      end = p.x + p.w;
+    });
+    return s.replace(/\s+/g, ' ').trim();
+  };
+  // 머리글 줄: 종류 · 현장명 · 대수 · 업체 · 지역 · 환산 · 비고 (날짜마다 한 벌)
+  const kinds = items.filter(i => /^\s*종류\s*$/.test(i.s));
+  const hy = Math.min(...items.filter(i => /^\s*현장명\s*$/.test(i.s)).map(i => i.y));
+  const H = items.filter(i => near(i.y, hy, 2));
+  const kx = kinds.filter(i => near(i.y, hy, 2)).map(i => i.x).sort((a, b) => a - b);
+  if (!kx.length) throw new Error('일정표 머리글(종류·현장명…)을 찾지 못했어요.');
+  const hx = (name, k) => {
+    const lo = kx[k], hi = k + 1 < kx.length ? kx[k + 1] : Infinity;
+    const h = H.find(i => i.s.trim() === name && i.x > lo - 1 && i.x < hi - 1);
+    return h ? h.x : null;
+  };
+  const cols = kx.map((x, k) => {
+    const c = { k: x, name: hx('현장명', k), units: hx('대수', k), comp: hx('업체', k), area: hx('지역', k), hw: hx('환산', k), note: hx('비고', k) };
+    c.end = k + 1 < kx.length ? kx[k + 1] - 1.5 : Infinity;
+    // 칸 경계: 종류 칸은 현장명 글자 시작 전까지(종류 x + 14)
+    c.b = [x - 4, x + 14, c.units - 1, c.comp - 1.5, c.area - 1.5, c.hw - 1.5, c.note - 0.5, c.end];
+    return c;
+  });
+  // 날짜: 머리글 바로 위 줄들에서 「9월 14일(월)」을 x 순서대로
+  const Y = yearHint || new Date().getFullYear();
+  const top = items.filter(i => i.y < hy - 1 && i.y > hy - 12);
+  const dates = [];
+  rowsOf(top).forEach(r => {
+    const t = textOf(r.items);
+    for (const m of t.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*\(([월화수목금토일])\)/g)) dates.push(m);
+  });
+  if (!dates.length) throw new Error('날짜(예: 9월 14일(월))를 찾지 못했어요.');
+  const body = items.filter(i => i.y > hy + 2);
+  const rows = rowsOf(body);
+  // 한 줄을 날짜별 칸으로 나눔 → [종류, 현장명, 대수, 업체, 지역, 환산, 비고]
+  const cellsOf = (r, c) => {
+    const parts = [[], [], [], [], [], [], []];
+    r.items.forEach(it => {
+      if (it.x < c.b[0] || it.x >= c.b[7]) return;
+      let j = 0;
+      while (j < 6 && it.x >= c.b[j + 1]) j++;
+      // 대수 칸에 숫자가 아닌 글자가 넘어오면(긴 이름의 끝 ')' 등) 현장명 칸으로
+      if (j === 2 && !/^\d+$/.test(it.s.trim())) j = 1;
+      parts[j].push(it);
+    });
+    return parts.map(textOf);
+  };
+  const isNames = s => /^[가-힣]{2,4}(\([^)]*\))?\s*,/.test(s) || /^,$/.test(s);
+  const isSumCell = c => isNames(c[1]) || (/^\d+$/.test(c[0]) && /^[\d.]+$/.test(c[5]) && /^[\d.]+$/.test(c[6]) && !c[2]);
+  // 조 요약 줄 (모든 날짜 공통의 y)
+  const sumY = [];
+  rows.forEach(r => {
+    if (cols.some(c => isSumCell(cellsOf(r, c)))) {
+      const last = sumY[sumY.length - 1];
+      if (last && r.y - last.y2 <= 3) last.y2 = r.y, last.rows.push(r);
+      else sumY.push({ y: r.y, y2: r.y, rows: [r] });
+    }
+  });
+  if (!sumY.length) throw new Error('조별 요약 줄(검사원 이름)을 찾지 못했어요.');
+  const lastSum = sumY[sumY.length - 1].y2;
+  // 조 번호: 맨 왼쪽(첫 종류 칸 왼쪽)의 숫자
+  const labels = body.filter(i => i.x + i.w <= kx[0] - 1 && /^\s*\d{1,2}\s*$/.test(i.s)).map(i => ({ y: i.y, n: +i.s.trim() }));
+  // 종류 칸 색 → 검사 종류
+  const kindAt = (c, y) => {
+    const r = rects.find(q => q.x0 <= c.k + 3 && q.x1 >= c.k + 3 && q.x1 - q.x0 < 20 && q.y0 - 1 <= y + 2 && q.y1 + 1 >= y + 2);
+    if (!r) return '정';
+    const [R, G, B] = r.c;
+    if (R > 200 && G < 90 && B < 90) return '설';
+    if (R > 200 && G > 200 && B < 90) return '밀';
+    if (G > 160 && R < 190 && B < 130) return '수';
+    return '정';
+  };
+  const LEAVE = /연차|휴가|병가|휴직|출산|공가|경조|교육|출장/;
+  return cols.map((c, k) => {
+    const m = dates[k];
+    const date = m ? new Date(Y, +m[1] - 1, +m[2]) : null;
+    const teams = [];
+    let prev = hy + 2;
+    sumY.forEach(sb => {
+      const block = rows.filter(r => r.y > prev && r.y < sb.y - 0.5);
+      const sc = sb.rows.map(r => cellsOf(r, c)).reduce((a, b) => a.map((v, i) => [v, b[i]].filter(Boolean).join(' ')));
+      prev = sb.y2;
+      const lab = labels.filter(l => l.y > (block[0] ? block[0].y - 3 : sb.y - 40) && l.y < sb.y2 + 1).pop();
+      // 이름: '최상문, 김흥호 2박3일' → 멤버 + 메모
+      const raw = sc[1].replace(/\s*\d박\s*\d일\s*/g, ' ').trim();
+      const stay = (sc[1].match(/\d박\s*\d일/) || [''])[0];
+      const members = raw.split(',').map(x => x.trim().replace(/\s*\(\s*/, '(').replace(/\(([^)]*)$/, '($1)')).filter(x => /^[가-힣]{2,4}(\(.*\))?$/.test(x));
+      const stops = [];
+      block.forEach(r => {
+        const [kw, name, units, comp, area, hw, note] = cellsOf(r, c);
+        const u = /^\d+$/.test(units) ? +units : null;
+        const memo = [note].filter(x => x && !/^[\d.]+$/.test(x)).join(' ');
+        if (!name && u == null) {
+          if (memo && stops.length) stops[stops.length - 1].memo = [stops[stops.length - 1].memo, memo].filter(Boolean).join(' ');
+          return;
+        }
+        const last = stops[stops.length - 1];
+        // 업체·지역 없이 글만 있는 줄: 앞 현장의 메모(대수가 있으면 앞 현장 대수에 더함)
+        // '10호기' '11~12호기'처럼 호기만 적은 줄: 같은 현장의 나머지 호기
+        if (last && ((!comp && !area) || (/^[\d~,\s-]+호기$/.test(name) && (!area || area === last.area)))) {
+          if (u != null) last.units = (last.units || 0) + u;
+          last.memo = [last.memo, name, memo].filter(Boolean).join(' ');
+          return;
+        }
+        stops.push({ time: '', kind: kindAt(c, r.y), area: area || '', name: name || '(현장명 없음)', units: u, memo, company: comp || '' });
+      });
+      if (!members.length && !stops.length) return;
+      teams.push({
+        team: lab ? lab.n + '조' : '',
+        sites: /^\d+$/.test(sc[0]) ? +sc[0] : stops.length,
+        units: stops.reduce((a, x) => a + (x.units || 0), 0),
+        members,
+        stops,
+        note: stay
+      });
+    });
+    // 맨 아래 칸: 연차(이름, 이름) · 육아휴직(이름) · 오전반차(이름) …
+    const misc = rows.filter(r => r.y > lastSum + 2).map(r => cellsOf(r, c).slice(1).filter(Boolean).join(' ')).filter(Boolean);
+    const vacation = [], support = [];
+    misc.join(' ').replace(/([가-힣·\s]{2,}?)\(([^)]*)\)/g, (all, kind, who) => {
+      kind = kind.trim().split(/\s+/).pop();
+      const names = who.split(/[,\s]+/).filter(x => /^[가-힣]{2,4}$/.test(x));
+      if (!names.length) return all;
+      if (LEAVE.test(kind) && !/반차|반가/.test(kind)) names.forEach(n => vacation.push(n + '(' + kind + ')'));
+      else support.push(kind + ': ' + names.join(', '));
+      return all;
+    });
+    return {
+      label: m ? m[1] + '/' + m[2] + ' (' + m[3] + ')' : '',
+      iso: date ? fmt(date) : '',
+      teams,
+      vacation,
+      support
+    };
+  }).filter(d => d.iso && (d.teams.length || d.vacation.length));
+}
+function fmt(d) {
+  return (
+    d.getFullYear() +
+    '-' +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(d.getDate()).padStart(2, '0')
+  );
+}
+function parseStops(buf) {
+  return buf
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      let memo = '';
+      const mm = s.match(/^(.*\(\d+\))\s*-\s*(.+)$/);
+      if (mm) {
+        s = mm[1];
+        memo = mm[2].trim();
+      }
+      const m = s.match(
+        /^(\d{1,2}:\d{2})\s*\[([^\]]+)\]\s*(?:\[([^\]]+)\])?\s*(?:\[(.*)\]|(.*?))\s*(?:\((\d+)\))?\s*$/
+      );
+      if (!m) return { time: '', kind: '', area: '', name: s, units: null };
+      let name = (m[4] !== undefined ? m[4] : m[5] || '').trim();
+      if (m[4] === undefined) {
+        const u = name.match(/^(.*)\((\d+)\)$/);
+        if (u && !m[6]) {
+          name = u[1];
+          m[6] = u[2];
+        }
+      }
+      let area = m[3] && m[3] !== '주소불명' ? m[3] : '';
+      // 동 칸 없이 [종류][현장명](대수)만 있는 줄: 두 번째 괄호가 동이 아니라 현장명
+      if (!name && m[3]) {
+        name = m[3];
+        area = '';
+      } else if (area && !/(동|읍|면|리|가|\d)$/.test(area) && area.length > 6) {
+        // 동 자리에 긴 이름이 들어간 경우(예: 아파트 이름) → 현장명 앞에 붙임
+        name = (area + ' ' + name).trim();
+        area = '';
+      }
+      return {
+        time: m[1],
+        kind: m[2],
+        area,
+        name,
+        units: m[6] ? +m[6] : null,
+        memo
+      };
+    });
+}
+
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치' };
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, v);
+    } catch (e) {}
+  }
+};
+let data = null;
+$('name').value = store.get('sched.name') || '';
+
+const esc = s =>
+  String(s).replace(
+    /[&<>"]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+  );
+const bare = s => s.replace(/\(.*?\)/g, '').trim();
+const todayIso = (() => {
+  const d = new Date();
+  return (
+    d.getFullYear() +
+    '-' +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(d.getDate()).padStart(2, '0')
+  );
+})();
+// 동·읍·면 → 시·구 (일정표에는 동 이름만 있어 검색이 엉뚱한 지역으로 가지 않게)
+const REGION = (() => {
+  const m = {};
+  const add = (r, l) => l.split(' ').forEach(d => (m[d] = r));
+  add(
+    '고양시 덕양구',
+    '주교동 원당동 성사동 고양동 관산동 내유동 화정동 행신동 토당동 신원동 오금동 삼송동 동산동 지축동 원흥동 도내동 덕은동 향동동 현천동 대자동 벽제동 선유동 효자동 용두동 화전동 대장동 강매동 신평동 내곡동 북한동'
+  );
+  add(
+    '고양시 일산동구',
+    '장항동 백석동 마두동 식사동 풍동 중산동 정발산동 사리현동 설문동 지영동 문봉동 성석동 산황동'
+  );
+  add(
+    '고양시 일산서구',
+    '일산동 주엽동 대화동 탄현동 덕이동 가좌동 법곳동 구산동'
+  );
+  add(
+    '파주시',
+    '금촌동 아동동 야동동 검산동 맥금동 교하동 야당동 동패동 목동동 와동동 당하동 문발동 신촌동 상지석동 하지석동 서패동 다율동 산남동 연다산동 오도동 송촌동 문산읍 파주읍 법원읍 조리읍 탄현면 광탄면 적성면 파평면 월롱면 군내면 장단면 진동면 진서면'
+  );
+  return m;
+})();
+function placeName(n) {
+  return (
+    n
+      .replace(/\(주\)|㈜/g, '')
+      .replace(/\([^)]*$/, '')
+      .replace(/\s*[A-Z0-9,\s]+동(,\s*[A-Z0-9]+동)*\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim() || n
+  );
+}
+function mapQuery(st) {
+  let n = placeName(st.name);
+  if (st.area && n.startsWith(st.area + ' ')) n = n.slice(st.area.length + 1);
+  const goyang = !BRANCH || BRANCH[0] === '고양파주지사';
+  const pre = goyang && REGION[st.area] ? REGION[st.area] : province();
+  return [st.area ? pre + ' ' + st.area : '', n]
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function mapUrl(st) {
+  return 'https:\/\/map.kakao.com/?eName=' + encodeURIComponent(mapQuery(st));
+}
+function naverUrl(st) {
+  return 'https:\/\/map.naver.com/p/search/' + encodeURIComponent(mapQuery(st));
+}
+function sumUnits(stops) {
+  return stops.reduce((a, s) => a + (s.units || 0), 0);
+}
+function places(stops) {
+  const seen = [];
+  stops.forEach(s => {
+    if (!seen.includes(s.name)) seen.push(s.name);
+  });
+  return seen;
+}
+function areas(stops) {
+  const a = [];
+  stops.forEach(s => {
+    if (s.area && !a.includes(s.area)) a.push(s.area);
+  });
+  return a;
+}
+
+function mine(name) {
+  return data.days.map(d => {
+    const t = d.teams.find(t => t.members.some(m => bare(m) === name));
+    const off = d.vacation.some(v => bare(v) === name);
+    const sup = d.support.filter(s => s.includes(name));
+    return { ...d, t, off, sup };
+  });
+}
+function mdow(d) {
+  const [y, m, dd] = d.iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, dd);
+  return { md: m + '/' + dd, dow: DOW[dt.getDay()] };
+}
+function briefText(d, name) {
+  const t = d.t,
+    st = t.stops,
+    pl = places(st),
+    ar = areas(st);
+  const mates = t.members.filter(m => bare(m) !== name).map(bare);
+  const first = st[0],
+    last = st[st.length - 1];
+  let s =
+    (ar.length ? ar.join('·') + '에서 ' : '') +
+    pl.length +
+    '곳, 승강기 ' +
+    sumUnits(st) +
+    '대를 봐요. ';
+  if (first) s += first.time + ' ' + first.name + '에서 시작';
+  if (last && last !== first)
+    s += '해 ' + last.time + ' ' + last.name + '에서 마무리';
+  s += '합니다.';
+  if (st.some(x => !x.area))
+    s += ' 주소가 표에 없는 현장이 있으니 미리 확인하세요.';
+  return { s, mates };
+}
+
+let sel = null; // 선택한 날짜 iso, 또는 'week'
+// 지사 목록 (data/branches.tsv) — 출발지·검색 지역 기준
+const BRANCHES = [
+  ['서울남서지사', '서울 구로구 디지털로31길 53'],
+  ['서울동부지사', '서울 성동구 천호대로 376'],
+  ['서울서부지사', '서울 마포구 토정로 318'],
+  ['서울북부지사', '서울 도봉구 삼양로 538-5'],
+  ['서울강남지사', '서울 강남구 영동대로 316'],
+  ['서울강동지사', '서울 강동구 양재대로 1473'],
+  ['서울서초지사', '서울 서초구 서초대로 67'],
+  ['서울강서지사', '서울 강서구 공항대로 287'],
+  ['부산서부지사', '부산 부산진구 황령대로 24'],
+  ['부산동부지사', '부산 해운대구 센텀중앙로 90'],
+  ['부산북부지사', '부산 금정구 금정로 252'],
+  ['울산지사', '울산 중구 종가로 362-11'],
+  ['경남동부지사', '경남 창원시 성산구 원이대로 362'],
+  ['경남서부지사', '경남 창원시 마산회원구 3·15대로 685'],
+  ['진주출장소', '경남 진주시 신안로 94'],
+  ['대구서부지사', '대구 달서구 계대동문로 124'],
+  ['대구동부지사', '대구 동구 동대구로 471'],
+  ['경북동부지사', '경북 포항시 북구 삼흥로 95'],
+  ['경북서부지사', '경북 구미시 이계북로 7'],
+  ['인천남부지사', '인천 남동구 논현로46번길 23'],
+  ['경기북부지사', '경기 구리시 산마루로 19'],
+  ['양주출장소', '경기 양주시 옥정동로7가길 30'],
+  ['고양파주지사', '경기 고양시 일산서구 킨텍스로 217-59'],
+  ['인천동부지사', '인천 부평구 무네미로 478'],
+  ['안산지사', '경기 안산시 상록구 해안로 705'],
+  ['인천서부지사', '인천 서구 원당대로 676'],
+  ['수원지사', '경기 수원시 영통구 광교로 146'],
+  ['성남지사', '경기 성남시 분당구 백현로 97'],
+  ['안양지사', '경기 안양시 만안구 안양로 119'],
+  ['용인지사', '경기 용인시 기흥구 관곡로64번길 18'],
+  ['평택안성지사', '경기 평택시 경기대로 1377'],
+  ['화성오산지사', '경기 화성시 병점2로 12'],
+  ['강원지사', '강원 원주시 호저로 47'],
+  ['강릉출장소', '강원 강릉시 강릉대로 317'],
+  ['춘천출장소', '강원 춘천시 안마산로 99'],
+  ['대전지사', '대전 유성구 도안북로 57'],
+  ['세종지사', '세종특별자치시 한누리대로 169'],
+  ['충북지사', '충북 청주시 상당구 중흥로 16'],
+  ['충남지사', '충남 아산시 배방읍 희망로46번길 45-31'],
+  ['천안지사', '충남 천안시 동남구 신촌2길 5-4'],
+  ['광주지사', '광주 서구 죽봉대로 52'],
+  ['전북동부지사', '전북특별자치도 전주시 덕진구 팔과정로 164'],
+  ['전북서부지사', '전북 익산시 익산대로16길 39'],
+  ['전남동부지사', '전남 순천시 중앙로 260'],
+  ['전남서부지사', '광주 광산구 무진대로 282'],
+  ['제주지사', '제주 제주시 연삼로 473']
+];
+let BRANCH = null; // [이름, 주소]
+const JURIS_TXT = {}; // 지사 → 관할구역 글 (서버에서 받아 옴)
+let BRANCH_SRC = ''; // 'title' | 'saved' | 'guess' | 'pick'
+const branchByName = n => BRANCHES.find(b => b[0] === n) || null;
+const province = () => (BRANCH ? BRANCH[1].split(' ')[0] : '');
+// 일정표 제목·파일 이름에서 지사 이름 찾기 ('고양파주지사', '경남동부' 등)
+function branchFromText(t) {
+  const x = String(t || '').replace(/\s/g, '');
+  return (
+    BRANCHES.find(b => x.includes(b[0])) ||
+    BRANCHES.find(b => /(지사|출장소)$/.test(b[0]) && x.includes(b[0].replace(/(지사|출장소)$/, ''))) ||
+    null
+  );
+}
+function setBranch(b, src) {
+  const changed = (BRANCH && BRANCH[0]) !== (b && b[0]);
+  BRANCH = b;
+  BRANCH_SRC = src;
+  if (b) store.set('sched.branch', b[0]);
+  if (changed) {
+    for (const k in GEO) delete GEO[k];
+    ORIGIN = null;
+    RECPTN_KEY = '';
+  }
+}
+// 동네로 지사 추측 (웹앱에서만): 현장이 많은 동·읍·면 → 가장 가까운 지사
+async function guessBranch() {
+  if (!SERVER || !data) return;
+  const cnt = {};
+  data.days.forEach(d =>
+    d.teams.forEach(t =>
+      t.stops.forEach(s => {
+        if (s.area) cnt[s.area] = (cnt[s.area] || 0) + 1;
+      })
+    )
+  );
+  const areas = Object.keys(cnt)
+    .sort((a, b) => cnt[b] - cnt[a])
+    .slice(0, 10);
+  if (!areas.length) return;
+  const bn = $('branchNote');
+  if (bn) bn.textContent = '현장 동네로 지사를 추측하는 중…';
+  try {
+    const r = await run('guessBranch', areas, BRANCHES);
+    const b = r && r.ok && branchByName(r.branch);
+    if (b && BRANCH_SRC !== 'pick') {
+      setBranch(b, 'guess');
+      render();
+    } else branchRow();
+  } catch (e) {
+    branchRow();
+  }
+}
+function branchRow() {
+  const el = $('branchRow');
+  if (!el) return;
+  const why = {
+    title: '일정표 제목에서 찾음',
+    saved: '지난번에 고른 지사',
+    guess: '현장 동네로 추측 · 틀리면 바꿔 주세요',
+    pick: '직접 고름',
+    link: '공유 링크의 지사'
+  }[BRANCH_SRC] || '어느 지사 일정표인지 골라 주세요';
+  el.innerHTML = `<label for="branchSel">출발 지사</label>
+    <select id="branchSel"><option value="">선택…</option>${BRANCHES.map(
+      b => `<option${BRANCH && b[0] === BRANCH[0] ? ' selected' : ''}>${esc(b[0])}</option>`
+    ).join('')}</select><small id="branchNote">${why}</small>${
+      BRANCH && JURIS_TXT[BRANCH[0]] ? `<small class="juris">관할 ${esc(JURIS_TXT[BRANCH[0]].replace(/\|/g, ' · ').replace(/,/g, ', '))}</small>` : ''}`;
+  $('branchSel').onchange = e => {
+    setBranch(branchByName(e.target.value), 'pick');
+    render();
+  };
+}
+const siteKey = x => placeName(x.name).replace(/\s/g, '');
+// 같은 날 같은 현장에 가는 다른 조
+function othersAt(d, s) {
+  const k = siteKey(s);
+  const out = [];
+  d.teams.forEach(t => {
+    if (t === d.t) return;
+    const hit = t.stops.filter(
+      x => siteKey(x) === k && (!x.area || !s.area || x.area === s.area)
+    );
+    if (hit.length)
+      out.push({
+        team: t.team,
+        names: t.members.map(bare),
+        times: [...new Set(hit.map(x => x.time))],
+        units: hit.reduce((a, x) => a + (x.units || 0), 0),
+        kinds: [...new Set(hit.map(x => KIND[x.kind] || x.kind).filter(Boolean))]
+      });
+  });
+  return out;
+}
+function othersHtml(d, s) {
+  const o = othersAt(d, s);
+  if (!o.length) return '';
+  return `<div class="others">${o
+    .map(
+      x =>
+        `<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b> · ${esc(x.kinds.join('·'))} <b>${x.units}대</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`
+    )
+    .join('')}</div>`;
+}
+let days = [];
+function curName() {
+  return $('name').value.trim();
+}
+function defaultDay(ds) {
+  return (
+    ds.find(d => d.iso === todayIso && d.t) ||
+    ds.find(d => d.t && d.iso >= todayIso) ||
+    ds.find(d => d.iso === todayIso) ||
+    ds.find(d => d.t) ||
+    ds[0]
+  ).iso;
+}
+function render() {
+  const name = curName();
+  $('who0').innerHTML = name ? `<em>${esc(name)}</em> 님<br>` : '';
+  $('who').innerHTML = name ? `<em>${esc(name)}</em> 님 일정` : '내 일정';
+  const loaded = !!data;
+  $('startView').hidden = loaded;
+  if (!loaded) resumeCard();
+  $('appView').hidden = !loaded;
+  if (!loaded) return;
+  $('src').textContent = data.source || '검사 일정표';
+  branchRow();
+  shareBox();
+  if (SERVER) syncWidget();
+  days = mine(name);
+  if (!days.some(d => d.t || d.off)) {
+    $('tabs').innerHTML = '';
+    $('week').innerHTML = '';
+    $('panel').innerHTML =
+      `<div class="empty-day"><p class="note">${name ? `이 일정표에서 '${esc(name)}' 이름을 찾지 못했어요.<br>이름을 확인하거나 다른 일정표를 올려 주세요.` : '이름을 입력하면 내 조의 일정만 골라 보여 줘요.'}</p>
+      <div class="field" style="margin-top:14px;text-align:left"><label for="name2">내 이름</label><input id="name2" value="${esc(name)}" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="done"></div></div>`;
+    $('name2').addEventListener('change', e => {
+      $('name').value = e.target.value;
+      store.set('sched.name', e.target.value.trim());
+      render();
+    });
+    return;
+  }
+  if (!sel || (sel !== 'week' && !days.some(d => d.iso === sel)))
+    sel = defaultDay(days);
+  const work = days.filter(d => d.t);
+  $('week').innerHTML =
+    `<span>이번 주 근무 <b>${work.length}</b>일</span><span>현장 <b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>곳</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
+  $('tabs').innerHTML =
+    `<button class="tab" role="tab" type="button" data-iso="week" aria-selected="${sel === 'week'}"><span class="dw">이번 주</span><span class="dd">전체</span><span class="st">${work.reduce((a, d) => a + places(d.t.stops).length, 0)}곳</span></button>` +
+    days
+      .map(d => {
+        const { md, dow } = mdow(d);
+        const cls = d.t ? '' : d.off ? ' off' : ' none';
+        const st = d.t ? places(d.t.stops).length + '곳' : d.off ? '휴가' : '–';
+        return `<button class="tab${cls}${d.iso === todayIso ? ' today' : ''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso === sel}">
+      <span class="dw">${d.iso === todayIso ? '오늘' : dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`;
+      })
+      .join('');
+  drawPanel();
+}
+function drawWeek() {
+  let h = `<div class="dayhead"><h2>이번 주<span>날짜를 누르면 하루 일정으로</span></h2></div>`;
+  days.forEach(d => {
+    const { md, dow } = mdow(d);
+    const pill = d.t
+      ? `<span class="pill">${esc(d.t.team)} · ${places(d.t.stops).length}곳</span>`
+      : d.off
+        ? '<span class="pill off">휴가</span>'
+        : '<span class="pill none">배정 없음</span>';
+    h += `<section class="wday"><button class="wday-h" type="button" data-go="${d.iso}"><strong>${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span></strong>${pill}</button>`;
+    if (d.t)
+      h += `<ul class="wlist">${d.t.stops
+        .map(
+          s => `<li><span class="t">${esc(s.time)}</span>
+      <div style="min-width:0"><div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
+        <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}</div>
+      <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></li>`
+        )
+        .join('')}</ul>`;
+    else
+      h += `<div class="wlist flat">${d.off ? '휴가' : '배정된 현장 없음'}</div>`;
+    if (d.sup.length)
+      h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
+    h += '</section>';
+  });
+  return h;
+}
+function offWhy(d, name) {
+  const v = d.vacation.find(x => bare(x) === name);
+  const m = v && v.match(/\(([^)]*)\)/);
+  return m ? ' (' + esc(m[1]) + ')' : '';
+}
+function daySum(d) {
+  const st = d.t.stops;
+  const areas = [...new Set(st.map(x => x.area).filter(Boolean))];
+  const kinds = {};
+  st.forEach(x => {
+    const k = KIND[x.kind] || x.kind || '기타';
+    kinds[k] = (kinds[k] || 0) + (x.units || 0);
+  });
+  const order = ['정기', '정밀', '수시', '설치'];
+  const ks = Object.keys(kinds).sort(
+    (a, b) => (order.indexOf(a) + 9) % 9 - (order.indexOf(b) + 9) % 9
+  );
+  return {
+    areas,
+    kinds: ks.map(k => [k, kinds[k]]),
+    start: st[0] ? st[0].time : '',
+    sites: places(st).length
+  };
+}
+function drawPanel(dx) {
+  const p = $('panel');
+  p.style.setProperty('--dx', (dx || 0) + 'px');
+  p.style.animation = 'none';
+  p.offsetHeight;
+  p.style.animation = '';
+  if (sel === 'week') {
+    p.innerHTML = drawWeek();
+    return;
+  }
+  const d = days.find(x => x.iso === sel);
+  const name = curName();
+  const { md, dow } = mdow(d);
+  const dayLabel = `${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>`;
+  let h = '';
+  if (d.t) {
+    const b = briefText(d, name);
+    const m = daySum(d);
+    h += `<section class="sum">
+      <div class="sum-top"><span class="sum-date">${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>
+        <span class="sum-team">${esc(d.t.team)}</span></div>
+      <ul class="sum-list">${d.t.stops
+        .map(
+          x =>
+            `<li><span class="st">${esc(x.time)}</span>` +
+            `<span class="sn">${esc(placeName(x.name))}<span class="sa">${esc(x.area || '')}</span></span>` +
+            `<span class="sk">${esc(KIND[x.kind] || x.kind || '')}${x.units != null ? ' ' + x.units : ''}</span></li>`
+        )
+        .join('')}</ul>
+      <div class="sum-foot">${m.sites}곳 · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대${b.mates.length ? ' · 동행 ' + esc(b.mates.join(', ')) : ''}</div>
+    </section>
+      ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
+      <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
+      <ol class="tl">${d.t.stops
+        .map(
+          (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
+        <div class="tl-card">
+          <div class="tl-head"><span class="t">${esc(s.time)}</span>${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
+          <div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
+          <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
+          <div class="elv" id="elv-${i}"></div>
+          ${othersHtml(d, s)}
+          <div class="maps" id="maps-${i}"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오 길찾기</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버 길찾기</a></div>
+        </div></li>`
+        )
+        .join('')}</ol>`;
+  } else if (d.off)
+    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요${offWhy(d, name)}.</p></div>`;
+  else
+    h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill none">배정 없음</span></div><div class="empty-day"><p class="note">이 일정표에 이날 배정된 현장이 없어요.</p></div>`;
+  if (d.sup.length)
+    h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
+  p.innerHTML = h;
+  if (SERVER && d.t) dayExtras(d);
+}
+function go(iso, dx) {
+  if (!iso || iso === sel) return;
+  sel = iso;
+  $('tabs')
+    .querySelectorAll('.tab')
+    .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
+  drawPanel(dx);
+  window.scrollTo({ top: 0 });
+}
+$('tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab');
+  if (t) go(t.dataset.iso);
+});
+$('panel').addEventListener('click', e => {
+  const g = e.target.closest('[data-go]');
+  if (g) go(g.dataset.go);
+  const fx = e.target.closest('[data-fix]');
+  if (fx) fixForm(+fx.dataset.fix);
+  // 승강기 호기별 표 펼치기 · 건물 나머지 보기
+  const tg = e.target.closest('[data-elv]');
+  if (tg) {
+    const tb = $('elvtb-' + tg.dataset.elv);
+    if (tb) {
+      tb.hidden = !tb.hidden;
+      tg.textContent = tb.hidden ? '호기별 ▾' : '접기 ▴';
+    }
+  }
+  const mo = e.target.closest('[data-elvrest]');
+  if (mo) {
+    const tb = $('elvtb-' + mo.dataset.elvrest);
+    const r = tb && tb.querySelector('.elv-rest');
+    if (r) {
+      r.hidden = !r.hidden;
+      mo.textContent = r.hidden ? mo.textContent.replace('접기', '보기') : mo.textContent.replace('보기', '접기');
+    }
+  }
+});
+// ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
+// 휴대폰인지 (앱 길안내 버튼은 휴대폰에서만)
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+// 티맵 길안내: 티맵 앱키가 있으면 공식 앱 실행 링크(https, 앱 없으면 설치 안내), 없으면 앱 주소
+function tmapUrl(de, g) {
+  return tmapKey
+    ? `https:\/\/apis.openapi.sk.com/tmap/app/routes?appKey=${encodeURIComponent(tmapKey)}&name=${de}&lon=${g.lng}&lat=${g.lat}`
+    : `tmap:\/\/route?goalname=${de}&goalx=${g.lng}&goaly=${g.lat}`;
+}
+// 서버: 구글 앱스 스크립트(google.script.run) 또는 Vercel(/api/rpc — vercel.app 주소나 window.SCHED_API)
+const GAS = typeof google !== 'undefined' && !!(google.script && google.script.run);
+const API = !GAS && (window.SCHED_API || (/\.vercel\.app$/.test(location.hostname) ? '/api/rpc' : ''));
+const SERVER = GAS || !!API;
+const GEO = {},
+  LEGS = {},
+  MINS = {};
+let ROUTE_SRC = '',
+  tmapKey = '',
+  webUrl = '';
+let ORIGIN = null,
+  kakaoJsKey = '',
+  kakaoReady = null,
+  kakaoError = '';
+function run(fn, ...a) {
+  if (!GAS)
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn, args: a }) }).then(
+      async r => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error((j && j.message) || '서버 오류(' + r.status + ')');
+        return j;
+      }
+    );
+  return new Promise((res, rej) =>
+    google.script.run
+      .withSuccessHandler(res)
+      .withFailureHandler(rej)
+      [fn](...a)
+  );
+}
+// 설정(지도 키 등): 웹앱이 화면과 함께 넣어 주면(window.CFG) 서버에 따로 묻지 않음
+const applyCfg = c => {
+  const sv = document.getElementById('srvVer');
+  if (sv) sv.textContent = c && c.ver ? '서버 ' + c.ver : SERVER ? '서버 예전 버전(Code.gs 새로 배포 필요)' : '서버 없음';
+  if (c && c.ok) {
+    kakaoJsKey = c.kakaoJsKey || '';
+    tmapKey = c.tmapKey || '';
+    webUrl = c.webUrl || '';
+  }
+};
+const cfgReady = !SERVER
+  ? Promise.resolve(applyCfg(null))
+  : window.CFG
+    ? Promise.resolve(applyCfg(window.CFG))
+    : run('getConfig').then(applyCfg).catch(() => {});
+function loadKakao() {
+  if (!kakaoReady)
+    kakaoReady = cfgReady.then(() => {
+      if (!kakaoJsKey) {
+        kakaoError =
+          '스크립트 속성에 KAKAO_JS_KEY가 없어서 지도를 그릴 수 없어요.';
+        return null;
+      }
+      const load = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src =
+          'https:\/\/dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=' +
+          encodeURIComponent(kakaoJsKey);
+        sc.onload = () => kakao.maps.load(() => res(kakao));
+        sc.onerror = () => rej(new Error('스크립트 로드 실패'));
+        document.head.appendChild(sc);
+      });
+      const to = new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('시간 초과')), 8000)
+      );
+      return Promise.race([load, to]).catch(e => {
+        kakaoError =
+          '카카오 지도를 불러오지 못했어요(' +
+          esc(e.message) +
+          '). 카카오 디벨로퍼스 → 앱 → 플랫폼 → Web 사이트 도메인에 ' +
+          esc(location.origin) +
+          ' 를 등록하세요.';
+        return null;
+      });
+    });
+  return kakaoReady;
+}
+const ll = g => (+g.lat).toFixed(5) + ',' + (+g.lng).toFixed(5);
+// 승강기검사접수정보(공공데이터)에서 현장 실주소 찾기 — 웹앱에 DATA_GO_KR_KEY가 있을 때
+let RECPTN = null,
+  RECPTN_KEY = '';
+let recptnP = null;
+async function loadRecptn() {
+  const ds = data.days.map(d => d.iso.replace(/-/g, '')).sort();
+  const k = ds[0] + ds[ds.length - 1] + (BRANCH ? BRANCH[0] : '');
+  if (RECPTN_KEY === k) return;
+  // 동시에 여러 번 불려도 요청은 하나
+  if (recptnP && recptnP.k === k) return recptnP;
+  recptnP = loadRecptn1(ds, k);
+  recptnP.k = k;
+  return recptnP;
+}
+async function loadRecptn1(ds, k) {
+  try {
+    const r = await run('recptnList', ds[0], ds[ds.length - 1], BRANCH ? BRANCH[0] : '');
+    RECPTN = r && r.ok ? r.list : [];
+  } catch (e) {
+    RECPTN = [];
+  }
+  RECPTN_KEY = k;
+}
+const normNm = x =>
+  placeName(String(x || ''))
+    .replace(/\(주\)|㈜|주식회사/g, '')
+    .replace(/[\s()·\-_.,]/g, '');
+function realAddr(d, s) {
+  const r = matchRecptn(d, s);
+  return r ? r.addr : '';
+}
+// 일정표 현장 ↔ 검사접수 건 (건물명 + 검사일·동·종류로 가장 잘 맞는 것)
+function matchRecptn(d, s) {
+  if (!RECPTN || !RECPTN.length) return null;
+  const n = normNm(s.name),
+    day = d.iso.replace(/-/g, '');
+  let best = null,
+    bs = 0;
+  for (const r of RECPTN) {
+    const m = normNm(r.nm);
+    let sc;
+    if (m === n) sc = 4;
+    else if (m.length >= 3 && n.length >= 3 && (m.includes(n) || n.includes(m))) sc = 2;
+    else continue;
+    if (r.d === day) sc += 2;
+    if (s.area && r.addr.includes(s.area)) sc += 2;
+    if (KIND[s.kind] === r.kind) sc += 1;
+    if (sc > bs) {
+      bs = sc;
+      best = r;
+    }
+  }
+  return best && bs >= 4 ? best : null;
+}
+// 하루치 위치 찾기 목록 (아직 모르는 현장만)
+function needFor(d) {
+  const need = [];
+  d.t.stops.forEach(s => {
+    if (placeName(s.name).length < 2) return;
+    const q = mapQuery(s);
+    if (!(q in GEO) && !need.some(x => x.q === q))
+      need.push({
+        q,
+        addr: realAddr(d, s),
+        area: s.area,
+        region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
+        name: placeName(s.name)
+      });
+  });
+  return need;
+}
+// 지사 좌표 (한 번만, 여러 곳에서 동시에 불러도 요청은 하나)
+let originP = null;
+function ensureOrigin() {
+  if (!BRANCH || ORIGIN) return Promise.resolve();
+  const b = BRANCH[0];
+  if (!originP || originP.b !== b) {
+    originP = run('getOrigin', BRANCH[0], BRANCH[1])
+      .then(o => {
+        if (o && o.ok && BRANCH && BRANCH[0] === b) {
+          ORIGIN = o.origin;
+          JURIS_TXT[b] = o.juris || '';
+          branchRow();
+        }
+      })
+      .catch(() => {})
+      .finally(() => (originP = null));
+    originP.b = b;
+  }
+  return originP;
+}
+// 하루치 위치 + 구간 거리를 서버에 한 번에 물어 GEO·LEGS 를 채움 (서버가 예전 버전이면 위치만)
+async function fetchDay(d) {
+  const need = needFor(d);
+  const order = d.t.stops
+    .filter(s => placeName(s.name).length >= 2)
+    .map(s => {
+      const q = mapQuery(s),
+        g = GEO[q];
+      return g ? { q, lat: g.lat, lng: g.lng } : { q };
+    });
+  if (!need.length) return;
+  let r = null;
+  try {
+    r = await run('dayBundle', need, ORIGIN, BRANCH ? BRANCH[0] : '', order);
+  } catch (e) {
+    r = null; // 서버에 dayBundle 이 아직 없음
+  }
+  if (!r) r = await run('geocodeSites', need, ORIGIN, BRANCH ? BRANCH[0] : '');
+  if (!r.ok) throw new Error(r.message);
+  need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
+  Object.keys(r.legs || {}).forEach(k => {
+    LEGS[k] = r.legs[k].km;
+    MINS[k] = r.legs[k].min;
+  });
+  if (r.src) ROUTE_SRC = r.src;
+}
+// 지금 날짜를 다 그린 뒤, 남은 근무일도 미리 찾아 둠 (날짜를 넘길 때 바로 뜨게)
+let prefetching = false;
+async function prefetchDays() {
+  if (prefetching || !SERVER) return;
+  prefetching = true;
+  try {
+    for (const d of days.filter(x => x.t && x.iso >= todayIso && x.iso !== sel)) {
+      if (!needFor(d).length) continue;
+      await fetchDay(d).catch(() => {});
+    }
+  } finally {
+    prefetching = false;
+  }
+}
+async function dayExtras(d) {
+  const iso = d.iso;
+  try {
+    await cfgReady;
+    // 공단 접수자료(실주소)와 지사 좌표는 서로 기다리지 않고 동시에
+    await Promise.all([loadRecptn(), ensureOrigin()]);
+    await fetchDay(d);
+    if (sel !== iso) return;
+    d.t.stops.forEach((s, i) => {
+      const g = GEO[mapQuery(s)];
+      const el = $('addr-' + i),
+        mp = $('maps-' + i);
+      // 위치를 못 찾았거나 틀린 현장은 주소를 직접 넣을 수 있음 (한 번 넣으면 모두 함께 씀)
+      if (!g) {
+        if (el) el.innerHTML = esc(s.area ? (REGION[s.area] || '') + ' ' + s.area : '주소 미기재') +
+          ' <span class="nofind">위치 못 찾음</span><button type="button" class="fixaddr" data-fix="' + i + '">주소 직접 넣기</button>';
+        return;
+      }
+      if (el)
+        el.innerHTML = (g.addr ? esc(g.addr) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>')
+          : esc(el.textContent.replace(/위치 고치기|위치 못 찾음|주소 직접 넣기/g, '').trim())) +
+          '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>';
+      if (mp) {
+        const q = g.addr
+          ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
+          : encodeURIComponent(mapQuery(s));
+        const nm = encodeURIComponent(placeName(s.name));
+        // 좌표를 아는 현장: 실주소(없으면 현장명)를 도착지로 길찾기
+        // 휴대폰: 카카오맵(웹 주소, 앱 있으면 앱) · 네이버지도 앱 · 티맵 앱
+        // PC: 카카오맵 웹 길찾기 · 네이버지도 웹 검색 (티맵은 PC용이 없어 숨김)
+        const dest = g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : placeName(s.name);
+        const de = encodeURIComponent(dest.replace(/,/g, ' '));
+        if (IS_MOBILE) {
+          mp.innerHTML =
+            `<a href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오 길찾기</a>` +
+            `<a href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule" target="_blank" rel="noopener">네이버 길찾기</a>` +
+            `<a href="${tmapUrl(de, g)}" target="_blank" rel="noopener">티맵 길찾기</a>`;
+          mp.classList.add('three');
+        } else {
+          mp.innerHTML =
+            `<a href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오 길찾기</a>` +
+            `<a href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버 길찾기</a>`;
+        }
+      }
+    });
+    // 방문 순서: 지사 → 현장들(같은 건물 연속은 하나로) → 지사
+    const stops = [];
+    d.t.stops.forEach((s, i) => {
+      const g = GEO[mapQuery(s)];
+      if (!g) return;
+      const last = stops[stops.length - 1];
+      if (last && ll(last.g) === ll(g)) last.nums.push(i + 1);
+      else stops.push({ g, nums: [i + 1], name: s.name });
+    });
+    const pts = ORIGIN
+      ? [
+          { g: ORIGIN, name: ORIGIN.name, home: 1 },
+          ...stops,
+          { g: ORIGIN, name: ORIGIN.name, home: 1 }
+        ]
+      : stops;
+    const pairs = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const k = ll(pts[i].g) + '>' + ll(pts[i + 1].g);
+      if (!(k in LEGS) && !pairs.some(p => p.k === k))
+        pairs.push({ k, a: pts[i].g, b: pts[i + 1].g });
+    }
+    if (pairs.length) {
+      const r = await run(
+        'routeLegs',
+        pairs.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng])
+      );
+      if (!r.ok) throw new Error(r.message);
+      pairs.forEach((p, i) => {
+        LEGS[p.k] = r.km[i];
+        MINS[p.k] = r.min ? r.min[i] : null;
+      });
+      if (r.src) ROUTE_SRC = r.src;
+    }
+    if (sel !== iso) return;
+    drawLegs(d, pts);
+    drawDayMap(stops);
+    loadElv(d).then(() => setTimeout(prefetchDays, 300));
+  } catch (e) {
+    if (sel === iso && $('dlegs'))
+      $('dlegs').innerHTML =
+        `<p class="note">위치·거리 계산 실패: ${esc(e.message || e)}</p>`;
+    if (sel === iso && $('dmap')) {
+      $('dmap').style.height = 'auto';
+      $('dmap').innerHTML =
+        '<p class="note" style="padding:14px">지도를 표시하지 못했어요.</p>';
+    }
+    // 지도·거리가 실패해도 승강기 정보는 따로 불러옴
+    if (sel === iso) loadElv(d);
+  }
+}
+// 현장 주소 직접 넣기 / 고치기 / 지우기
+function fixForm(i) {
+  const d = days.find(x => x.iso === sel);
+  const s = d && d.t && d.t.stops[i];
+  const el = $('addr-' + i);
+  if (!s || !el) return;
+  const old = $('fixbox-' + i);
+  if (old) return old.remove();
+  const g = GEO[mapQuery(s)];
+  const box = document.createElement('div');
+  box.className = 'fixbox';
+  box.id = 'fixbox-' + i;
+  box.innerHTML = `<input type="text" placeholder="도로명·지번 주소 또는 건물 이름" value="${esc(g && g.fixed ? g.addr || '' : '')}">
+    <div class="maps${g && g.fixed ? ' three' : ''}"><button type="button" data-act="save">저장</button><button type="button" data-act="cancel">취소</button>${g && g.fixed ? '<button type="button" data-act="clear">직접 넣은 주소 지우기</button>' : ''}</div>
+    <small>저장하면 이 현장(${esc(placeName(s.name))}${s.area ? ' · ' + esc(s.area) : ''})의 위치로 다른 분들도 함께 써요.</small>`;
+  el.after(box);
+  const inp = box.querySelector('input');
+  inp.focus();
+  const msg = t => (box.querySelector('small').textContent = t);
+  box.addEventListener('click', async e => {
+    const act = e.target.dataset && e.target.dataset.act;
+    if (!act) return;
+    if (act === 'cancel') return box.remove();
+    const q = mapQuery(s);
+    try {
+      if (act === 'save') {
+        if (inp.value.trim().length < 2) return msg('주소를 입력해 주세요.');
+        msg('주소를 찾는 중…');
+        const r = await run('setSiteAddr', placeName(s.name) || s.area || q, s.area || '', inp.value.trim(), ORIGIN, BRANCH ? BRANCH[0] : '');
+        if (!r.ok) return msg(r.message || '저장하지 못했어요.');
+        GEO[q] = r.place;
+      } else {
+        msg('지우는 중…');
+        const r = await run('clearSiteAddr', placeName(s.name) || s.area || q, s.area || '');
+        if (!r.ok) return msg(r.message || '지우지 못했어요.');
+        delete GEO[q];
+      }
+      box.remove();
+      dayExtras(d);
+    } catch (err) {
+      msg('실패: ' + (err.message || err));
+    }
+  });
+}
+// 현장 승강기 정보(기계실 MR/MRL·형식·인승·층수·설치연도): 공단 승강기 정보 서비스, 웹앱에서만
+const ELV = {};
+async function loadElv(d) {
+  try {
+    const list = [];
+    d.t.stops.forEach(s => {
+      if (placeName(s.name).length < 2) return;
+      const q = mapQuery(s);
+      if (q in ELV || list.some(x => x.q === q)) return;
+      const g = GEO[q];
+      const n = normNm(s.name);
+      const nos = (RECPTN || [])
+        .filter(r => r.no && normNm(r.nm) === n && (!s.area || r.addr.includes(s.area)))
+        .map(r => r.no);
+      list.push({ q, name: placeName(s.name), area: s.area || '', addr: (g && g.addr) || realAddr(d, s), nos });
+    });
+    if (list.length) {
+      let r;
+      try {
+        r = await run('siteElevators', list, BRANCH ? BRANCH[0] : '');
+      } catch (e) {
+        const m = String((e && e.message) || e);
+        r = { ok: false, message: /not found|찾을 수 없/i.test(m) ? '서버(Code.gs)를 최신으로 바꾸고 새 버전으로 배포해 주세요' : m };
+      }
+      if (!r || !r.ok) {
+        // 왜 안 나오는지 첫 현장 카드에 한 줄로
+        const el = $('elv-0');
+        if (el && sel === d.iso) el.innerHTML = `<div class="spec">승강기 정보를 못 불러왔어요: ${esc((r && r.message) || '알 수 없는 오류')}</div>`;
+        return;
+      }
+      list.forEach(x => (ELV[x.q] = r.info[x.q] || null));
+    }
+    if (sel !== d.iso) return;
+    d.t.stops.forEach((s, i) => {
+      const el = $('elv-' + i),
+        v = ELV[mapQuery(s)];
+      if (el && v && v.list && v.list.length) el.innerHTML = elvHtml(v, d, s, i);
+    });
+  } catch (e) {
+    /* 서버에 siteElevators 가 없거나 실패하면 표시만 안 함 */
+  }
+}
+// 오늘 검사할 승강기: 그날 검사접수된 번호 (일정표 메모는 보지 않음) → 모르면 null(건물 전체)
+function elvToday(v, d, s) {
+  const day = d.iso.replace(/-/g, ''),
+    n = normNm(s.name);
+  const rs = new Set(
+    (RECPTN || [])
+      .filter(r => r.no && r.d === day && normNm(r.nm) === n && (!s.area || r.addr.includes(s.area)))
+      .map(r => r.no)
+  );
+  const t = rs.size ? v.list.filter(x => rs.has(x.no)) : null;
+  return t && t.length ? t : null;
+}
+function elvRows(L, cls) {
+  return L.map(
+    x => `<tr class="${cls || ''}"><td>${esc(x.ho || '')}</td><td>${x.mr === 'Y' ? '<span class="mr">MR</span>' : x.mr === 'N' ? '<span class="mrl">MRL</span>' : ''}</td><td>${esc(/확인불가|^-+$/.test(x.model || '') ? '–' : x.model || '')}</td><td>${esc(x.cap || '')}</td><td>${esc(x.year || '')}</td></tr>`
+  ).join('');
+}
+function elvHtml(v, d, s, i) {
+  const all = v.list || [];
+  const today = elvToday(v, d, s);
+  const L = today || all;
+  const mr = L.filter(x => x.mr === 'Y').length,
+    mrl = L.filter(x => x.mr === 'N').length;
+  const uniq = f => L.map(f).filter((x, k, a) => x && a.indexOf(x) === k);
+  const models = uniq(x => x.model).filter(m => !/확인불가|^-+$/.test(m));
+  const years = uniq(x => x.year).sort();
+  const floors = uniq(x => x.floors).map(Number).filter(Boolean);
+  const spec = [
+    uniq(x => x.form).join('·'),
+    uniq(x => x.cap).join('·'),
+    floors.length ? Math.max(...floors) + '층' : '',
+    years.length ? (years.length > 1 ? years[0] + '~' + years[years.length - 1] : years[0]) + '년' : ''
+  ].filter(Boolean);
+  const rest = today ? all.filter(x => !today.includes(x)) : [];
+  return (
+    `<div class="elv-sum">` +
+    (today ? `<span class="cnt">오늘 ${today.length}대</span>` : `<span class="cnt all">건물 전체 ${all.length}대</span>`) +
+    (mr ? `<span class="mr">MR ${mr}</span>` : '') +
+    (mrl ? `<span class="mrl">MRL ${mrl}</span>` : '') +
+    models.slice(0, 3).map(m => `<span class="model">${esc(m)}</span>`).join('') +
+    (models.length > 3 ? `<span class="model">+${models.length - 3}</span>` : '') +
+    (L.length ? `<button type="button" class="elv-tg" data-elv="${i}">호기별 ▾</button>` : '') +
+    `</div>` +
+    `<div class="spec">${esc(spec.join(' · '))}${today && all.length > today.length ? ` · 건물 전체 ${all.length}대` : ''}${today ? '' : ' · 건물 전체 기준'}</div>` +
+    `<div class="elv-tb" id="elvtb-${i}" hidden><table><tr><th>호기</th><th>기계실</th><th>모델</th><th>인승</th><th>설치</th></tr>${elvRows(L)}` +
+    (rest.length ? `<tbody class="elv-rest" hidden>${elvRows(rest, 'dim')}</tbody>` : '') +
+    `</table>${rest.length ? `<button type="button" class="elv-more" data-elvrest="${i}">건물 나머지 ${rest.length}대 보기</button>` : ''}</div>`
+  );
+}
+// 하루 경로 내비: 지사 출발 → 현장 경유 → 마지막 현장 도착 (경유지는 앱 한도 5곳까지)
+function dayRouteHtml(pts) {
+  const sites = pts.filter(x => !x.home);
+  if (!sites.length) return '';
+  const start = pts[0] && pts[0].home ? pts[0] : null;
+  const end = sites[sites.length - 1];
+  const via = sites.slice(0, -1).slice(0, 5);
+  const cut = sites.length - 1 > 5;
+  const lab = x => encodeURIComponent(String(x.home ? x.name : placeName(x.name)).replace(/[,/]/g, ' '));
+  // 카카오맵: /link/by/car/이름,위도,경도/... (휴대폰은 앱, PC는 웹으로 열림)
+  const kakao =
+    'https:\/\/map.kakao.com/link/by/car/' +
+    (start ? [start] : []).concat(via, [end]).map(x => `${lab(x)},${x.g.lat},${x.g.lng}`).join('/');
+  // 네이버지도 앱: 출발(s)·경유(v1~v5)·도착(d)
+  let naver = `nmap:\/\/route/car?dlat=${end.g.lat}&dlng=${end.g.lng}&dname=${lab(end)}`;
+  if (start) naver += `&slat=${start.g.lat}&slng=${start.g.lng}&sname=${lab(start)}`;
+  via.forEach((x, i) => (naver += `&v${i + 1}lat=${x.g.lat}&v${i + 1}lng=${x.g.lng}&v${i + 1}name=${lab(x)}`));
+  naver += '&appname=elevator.schedule';
+  return `<div class="dayroute"><b>하루 경로 길찾기</b><small>${start ? esc(start.name) + ' 출발 → ' : ''}경유 ${via.length}곳 → ${esc(placeName(end.name))} 도착${cut ? ' · 경유지는 앞의 5곳까지만' : ''}</small>
+    <div class="maps"><a href="${kakao}" target="_blank" rel="noopener">카카오 하루 길찾기</a>${IS_MOBILE ? `<a href="${naver}" target="_blank" rel="noopener">네이버 하루 길찾기</a>` : ''}</div></div>`;
+}
+function drawLegs(d, pts) {
+  const el = $('dlegs');
+  if (!el) return;
+  if (pts.length < 2) {
+    el.innerHTML =
+      '<p class="note">지도에 찍을 수 있는 현장이 없어요. 주소가 없는 현장은 지도와 거리 계산에서 빠져요.</p>';
+    return;
+  }
+  let tot = 0,
+    totMin = 0,
+    unknown = false;
+  const rows = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const lk = ll(pts[i].g) + '>' + ll(pts[i + 1].g);
+    const km = LEGS[lk],
+      mn = MINS[lk];
+    if (km == null) unknown = true;
+    else tot += km;
+    if (mn != null) totMin += mn;
+    const nm = x => (x.home ? x.name : x.nums.join('·') + '. ' + x.name);
+    rows.push(
+      `<div class="leg"><span>${esc(nm(pts[i]))} → ${esc(nm(pts[i + 1]))}</span><span class="km">${km == null ? '–' : km.toFixed(1) + 'km'}${mn != null ? `<small> · ${mn}분</small>` : ''}</span></div>`
+    );
+  }
+  const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
+  const route = pts.map(x => x.name).join(' → ');
+  el.innerHTML = `${dayRouteHtml(pts)}<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
+    ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
+    <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
+    <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
+    ${skipped ? `<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
+  $('copyRoute').onclick = () => {
+    const t = $('routeText').textContent;
+    const done = () => {
+      $('copyRoute').textContent = '복사했어요';
+    };
+    (navigator.clipboard
+      ? navigator.clipboard.writeText(t).then(done)
+      : Promise.reject()
+    ).catch(() => {
+      const r = document.createRange();
+      r.selectNodeContents($('routeText'));
+      const sl = getSelection();
+      sl.removeAllRanges();
+      sl.addRange(r);
+      $('copyRoute').textContent = '선택됨 · 길게 눌러 복사';
+    });
+  };
+}
+async function drawDayMap(stops) {
+  const el = $('dmap');
+  if (!el) return;
+  if (!stops.length) {
+    el.style.height = 'auto';
+    el.innerHTML =
+      '<p class="note" style="padding:14px">지도에 찍을 수 있는 현장이 없어요. 주소가 없는 현장은 지도에서 빠져요.</p>';
+    return;
+  }
+  const k = await loadKakao();
+  if (!k) {
+    el.style.height = 'auto';
+    el.innerHTML = `<p class="note" style="padding:14px">${kakaoError}</p>`;
+    return;
+  }
+  el.innerHTML = '';
+  const LL = g => new k.maps.LatLng(+g.lat, +g.lng);
+  const map = new k.maps.Map(el, { center: LL(stops[0].g), level: 5 });
+  const b = new k.maps.LatLngBounds();
+  const add = (g, label, cls) => {
+    b.extend(LL(g));
+    new k.maps.CustomOverlay({
+      map,
+      position: LL(g),
+      yAnchor: 0.5,
+      content: `<div class="pin${cls || ''}">${label}</div>`
+    });
+  };
+  stops.forEach(x => add(x.g, x.nums.join('·')));
+  if (ORIGIN) add(ORIGIN, '지사', ' home');
+  const path = (ORIGIN ? [ORIGIN] : []).concat(
+    stops.map(x => x.g),
+    ORIGIN ? [ORIGIN] : []
+  );
+  if (path.length > 1)
+    new k.maps.Polyline({
+      map,
+      path: path.map(LL),
+      strokeWeight: 3,
+      strokeColor: '#1f5fbf',
+      strokeOpacity: 0.7,
+      strokeStyle: 'shortdash'
+    });
+  if (stops.length + (ORIGIN ? 1 : 0) > 1) map.setBounds(b, 40, 40, 40, 40);
+}
+
+// ---------- 홈 화면 위젯 (웹앱 전용): 내 일정만 저장 → 개인 주소(?w=키)로 위젯 앱이 읽음 ----------
+function widgetKeyGet() {
+  let k = store.get('sched.wkey');
+  if (!/^[a-z0-9]{12,32}$/.test(k || '')) {
+    const a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    k = [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join('');
+    store.set('sched.wkey', k);
+  }
+  return k;
+}
+let widgetSig = '',
+  widgetTimer = null,
+  widgetKmSent = {},
+  widgetKmTot = {};
+function syncWidget() {
+  const name = curName();
+  if (!data || !name) return;
+  clearTimeout(widgetTimer);
+  widgetTimer = setTimeout(async () => {
+    const payload = {
+      name,
+      branch: BRANCH ? [BRANCH[0], BRANCH[1]] : null,
+      days: mine(name).map(d => {
+        const { md, dow } = mdow(d);
+        return {
+          iso: d.iso,
+          label: md + '(' + dow + ')',
+          off: !!d.off,
+          team: d.t ? d.t.team : '',
+          mates: d.t ? d.t.members.filter(m => bare(m) !== name).map(bare) : [],
+          stops: d.t
+            ? d.t.stops.map(s => ({ time: s.time, kind: s.kind, area: s.area, name: placeName(s.name), units: s.units }))
+            : []
+        };
+      })
+    };
+    const raw = JSON.stringify(payload);
+    let h = 0;
+    for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) | 0;
+    const sig = widgetKeyGet() + ':' + h;
+    if (!widgetSig) widgetSig = store.get('sched.wsig') || '';
+    if (sig === widgetSig) return widgetBox();
+    try {
+      await cfgReady;
+      const r = await run('saveWidget', widgetKeyGet(), payload);
+      if (r && r.ok) {
+        widgetSig = sig;
+        store.set('sched.wsig', sig);
+        widgetKmSent = {};
+        // 저장 전에 계산된 하루 km도 보냄
+        Object.keys(widgetKmTot).forEach(iso => widgetKm(iso, widgetKmTot[iso], false));
+      }
+    } catch (e) {}
+    widgetBox();
+  }, 1200);
+}
+function widgetKm(iso, tot, unknown) {
+  if (!unknown && tot > 0) widgetKmTot[iso] = tot;
+  if (SERVER && !unknown && tot > 0 && widgetKmSent[iso] !== tot && widgetSig) {
+    widgetKmSent[iso] = tot;
+    run('saveWidgetKm', widgetKeyGet(), iso, tot.toFixed(1)).catch(() => {});
+  }
+  return '';
+}
+function widgetBox() {
+  const el = $('widgetBox');
+  if (!el || !SERVER || !webUrl || !widgetSig) return;
+  const u = webUrl + '?w=' + widgetKeyGet();
+  el.hidden = false;
+  el.innerHTML = `<summary>홈 화면 위젯 주소</summary>
+    <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
+    ${/Android/.test(navigator.userAgent) ? `<p>위젯 앱(오늘 현장)을 설치했다면 아래 버튼 하나로 연결돼요. 주소를 복사할 필요 없어요.</p>
+    <div class="maps"><a class="call" target="_top" href="intent://set?u=${encodeURIComponent(u)}#Intent;scheme=schedwidget;package=com.well8898.schedulewidget;end">위젯 앱에 바로 연결</a></div>` : ''}
+    <div class="wurl" id="wUrl">${esc(u)}</div>
+    <div class="maps three"><button type="button" data-copy="${esc(u)}">JSON 주소 복사</button><button type="button" data-copy="${esc(u + '&fmt=text')}">글자 주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
+  el.querySelectorAll('[data-copy]').forEach(b => {
+    b.onclick = () => {
+      const t = b.dataset.copy;
+      const done = () => (b.textContent = '복사했어요');
+      (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(() => {
+        const r = document.createRange();
+        r.selectNodeContents($('wUrl'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+        b.textContent = '선택됨 · 길게 눌러 복사';
+      });
+    };
+  });
+  $('wReset').onclick = () => {
+    run('deleteWidget', widgetKeyGet()).catch(() => {});
+    store.set('sched.wkey', '');
+    widgetSig = '';
+    syncWidget();
+  };
+}
+
+// ── 지사 공유 · 이름 링크 (어르신들은 파일 없이 링크만 누르면 됨) ──
+// Vercel에서는 주소창의 ?b=지사&n=이름&d=날짜 를 직접 읽음 (앱스 스크립트는 서버가 window.LINK 로 넣어 줌)
+const QS = new URLSearchParams(API ? location.search : '');
+if (API && QS.get('b')) window.LINK = { b: QS.get('b').trim(), n: (QS.get('n') || '').trim().slice(0, 20), easy: QS.get('easy') !== '0' };
+if (API && /^\d{4}-\d{2}-\d{2}$/.test(QS.get('d') || '')) window.START_DAY = QS.get('d');
+const LINK = window.LINK || null;
+let shared = null; // { at } 공유한 뒤
+function allNames() {
+  const s = new Set();
+  data.days.forEach(d => d.teams.forEach(t => t.members.forEach(m => bare(m) && s.add(bare(m)))));
+  return [...s].sort((a, b) => a.localeCompare(b, 'ko'));
+}
+function linkFor(n) {
+  if (!webUrl || !BRANCH) return '';
+  return webUrl + '?b=' + encodeURIComponent(BRANCH[0]) + (n ? '&n=' + encodeURIComponent(n) : '');
+}
+function copyText(t, btn, area) {
+  const done = () => (btn.textContent = '복사했어요 ✓');
+  (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(() => {
+    if (area) {
+      area.focus();
+      area.select();
+      try {
+        if (document.execCommand('copy')) return done();
+      } catch (e) {}
+    }
+    btn.textContent = '선택됨 · 길게 눌러 복사';
+  });
+}
+function shareBox() {
+  const el = $('shareBox');
+  if (!el) return;
+  if (!SERVER || !data || LINK || !BRANCH) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  if (!shared) {
+    el.innerHTML = `<h3>지사 사람들도 이 일정표로 보게 하기</h3>
+      <p>한 사람이 공유하면, 다른 분들은 파일 없이 <b>링크만 눌러</b> 자기 일정을 봐요. 어르신들께 좋아요.<br>
+      공유하면 이 일정표(조·현장·이름)가 <b>${esc(BRANCH[0])}</b> 공유용으로 서버에 저장돼요.</p>
+      <div class="maps"><button type="button" class="call" id="shareGo">${esc(BRANCH[0])}에 공유하기</button></div>
+      <p id="shareMsg"></p>`;
+    $('shareGo').onclick = () => doShare(false);
+    return;
+  }
+  const names = allNames();
+  const one = linkFor('');
+  const msg = `[${BRANCH[0]} 이번 주 검사 일정]\n아래 링크를 누르고 내 이름을 고르면 내 일정만 보여요.\n${one}`;
+  const each = names.map(n => n + ': ' + linkFor(n)).join('\n');
+  el.innerHTML = `<h3><span class="ok">✓ 공유했어요</span> · 이제 단톡방에 링크를 보내 주세요</h3>
+    <p><b>방법 1 (간단)</b> 링크 하나를 지사 단톡방에 올리면, 각자 눌러서 이름만 고르면 돼요. 다음 주에 새 일정표를 공유하면 같은 링크로 새 일정이 나와요.</p>
+    <textarea id="shareOne" readonly>${esc(msg)}</textarea>
+    <div class="maps"><button type="button" class="call" id="copyOne">단톡방용 글 복사</button></div>
+    <details><summary>방법 2 · 사람마다 이름이 들어간 링크 (이름 고르기도 어려우신 분께 1:1로)</summary>
+      <textarea id="shareEach" readonly>${esc(each)}</textarea>
+      <div class="maps"><button type="button" id="copyEach">전체 복사</button></div></details>`;
+  $('copyOne').onclick = e => copyText(msg, e.target, $('shareOne'));
+  $('copyEach').onclick = e => copyText(each, e.target, $('shareEach'));
+}
+async function doShare(force) {
+  const m = $('shareMsg');
+  if (m) m.textContent = '공유하는 중…';
+  try {
+    await cfgReady;
+    const r = await run('shareWeek', BRANCH[0], { source: data.source, days: data.days }, force);
+    if (r && r.ok) {
+      shared = { at: r.at };
+      return shareBox();
+    }
+    if (r && r.older && confirm(r.message + '\n그래도 이 일정표로 바꿀까요?')) return doShare(true);
+    if (m) m.textContent = (r && r.message) || '공유하지 못했어요.';
+  } catch (e) {
+    if (m) m.textContent = '공유하지 못했어요: ' + (e.message || e);
+  }
+}
+// 이름 링크로 열었는데 이름이 없으면: 큰 이름 버튼으로 고르기
+function namePick(names, wk) {
+  const el = $('namePick');
+  el.hidden = false;
+  el.innerHTML = `<h3>내 이름을 눌러 주세요</h3>` + names.map(n => `<button type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      $('name').value = b.dataset.n;
+      store.set('sched.name', b.dataset.n);
+      el.hidden = true;
+      data = wk;
+      startShared();
+    };
+  });
+}
+function startShared() {
+  setBranch(branchByName(LINK.b), 'link');
+  sel = null;
+  render();
+  if (data && !curName()) return;
+  homeCard();
+}
+// 홈 화면 아이콘 만들기 안내 (처음 한 번)
+function homeCard() {
+  const el = $('homeCard');
+  if (!el || !LINK || store.get('sched.homeDone')) return;
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua);
+  const kakao = /KAKAOTALK/i.test(ua);
+  el.hidden = false;
+  el.innerHTML = `<h3>📱 다음부터 바로 열리게 홈 화면에 아이콘 만들기</h3>
+    <ol>${kakao ? `<li>오른쪽 아래(또는 위) <b>⋮</b> 또는 <b>공유</b> → <b>다른 브라우저로 열기</b></li>` : ''}
+    ${ios
+      ? `<li>사파리 아래쪽 <b>공유 버튼(□↑)</b>을 누르세요</li><li><b>홈 화면에 추가</b> → 오른쪽 위 <b>추가</b></li>`
+      : `<li>크롬 오른쪽 위 <b>⋮</b>(점 세 개)를 누르세요</li><li><b>홈 화면에 추가</b> → <b>추가</b></li>`}</ol>
+    <p>이제 홈 화면의 아이콘만 누르면 이번 주 내 일정이 나와요. 새 일정표도 자동으로 바뀌어요.</p>
+    <div class="maps"><button type="button" id="homeDone">다 했어요 · 안내 닫기</button></div>`;
+  $('homeDone').onclick = () => {
+    store.set('sched.homeDone', '1');
+    el.hidden = true;
+  };
+}
+function easyToggle() {
+  const b = $('easyTg');
+  if (!b) return;
+  const on = document.body.classList.contains('easy');
+  b.hidden = false;
+  b.textContent = on ? '자세히 보기' : '쉬운 화면';
+  b.onclick = () => {
+    const nx = !document.body.classList.contains('easy');
+    document.body.classList.toggle('easy', nx);
+    store.set('sched.easy', nx ? '1' : '0');
+    easyToggle();
+  };
+}
+
+// 좌우로 밀어서 날짜 넘기기
+let sx = null,
+  sy = 0;
+$('panel').addEventListener(
+  'touchstart',
+  e => {
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  },
+  { passive: true }
+);
+$('panel').addEventListener(
+  'touchend',
+  e => {
+    if (sx == null) return;
+    const dx = e.changedTouches[0].clientX - sx,
+      dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    const order = ['week', ...days.map(d => d.iso)];
+    const i = order.indexOf(sel);
+    const n = order[i + (dx < 0 ? 1 : -1)];
+    if (n) go(n, dx < 0 ? 40 : -40);
+  },
+  { passive: true }
+);
+addEventListener(
+  'scroll',
+  () => $('bar').classList.toggle('scrolled', scrollY > 4),
+  { passive: true }
+);
+
+// ---------- file loading ----------
+async function pdfItems(buf) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https:\/\/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const items = [];
+  // 색칠된 칸(검사 종류 색 구분용)과 PDF 제목(예: 경남서부지사 2026년 일정표)
+  items.rects = [];
+  try {
+    const meta = await doc.getMetadata();
+    items.title = (meta && meta.info && meta.info.Title) || '';
+  } catch (e) {}
+  let off = 0;
+  for (let p = 1; p <= doc.numPages; p++) {
+    const pg = await doc.getPage(p);
+    const vp = pg.getViewport({ scale: 1 });
+    try {
+      await pdfRects(pg, vp, off, items.rects);
+    } catch (e) {}
+    const tc = await pg.getTextContent();
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      items.push({
+        x: it.transform[4],
+        y: vp.height - it.transform[5] + off,
+        w: it.width,
+        s: it.str
+      });
+    }
+    off += vp.height;
+  }
+  return items;
+}
+// 페이지의 색칠된 사각형 → [{ x0, y0, x1, y1, c: [r, g, b] }] (흰색 제외, 위가 0인 좌표)
+async function pdfRects(pg, vp, off, out) {
+  const ol = await pg.getOperatorList();
+  const O = pdfjsLib.OPS;
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  let ctm = [1, 0, 0, 1, 0, 0], fill = [255, 255, 255], path = null;
+  const st = [];
+  ol.fnArray.forEach((f, i) => {
+    const a = ol.argsArray[i];
+    if (f === O.save) st.push([ctm, fill]);
+    else if (f === O.restore) [ctm, fill] = st.pop() || [ctm, fill];
+    else if (f === O.transform) ctm = mul(ctm, a);
+    else if (f === O.setFillRGBColor) fill = typeof a[0] === 'string' ? [1, 3, 5].map(k => parseInt(a[0].slice(k, k + 2), 16)) : [a[0], a[1], a[2]];
+    else if (f === O.setFillGray) fill = [a[0] * 255, a[0] * 255, a[0] * 255];
+    else if (f === O.constructPath && a[2]) {
+      const mm = a[2];
+      const p = [[mm[0], mm[2]], [mm[1], mm[3]]].map(([x, y]) => [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]]);
+      path = { x0: Math.min(p[0][0], p[1][0]), x1: Math.max(p[0][0], p[1][0]), y0: vp.height - Math.max(p[0][1], p[1][1]) + off, y1: vp.height - Math.min(p[0][1], p[1][1]) + off };
+    } else if (f === O.fill || f === O.eoFill || f === O.fillStroke || f === O.eoFillStroke) {
+      if (path && !(fill[0] > 250 && fill[1] > 250 && fill[2] > 250)) out.push({ ...path, c: fill });
+      path = null;
+    } else if (f === O.endPath) path = null;
+  });
+}
+function sheetItems(buf) {
+  const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+  for (const sn of wb.SheetNames) {
+    const ws = wb.Sheets[sn];
+    if (!ws['!ref']) continue;
+    const R = XLSX.utils.decode_range(ws['!ref']);
+    const merges = ws['!merges'] || [];
+    const items = [];
+    for (let r = R.s.r; r <= R.e.r; r++)
+      for (let c = R.s.c; c <= R.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (!cell || cell.v == null || cell.v === '') continue;
+        let s = cell.w != null ? String(cell.w) : String(cell.v);
+        if (cell.t === 'n' && cell.z && XLSX.SSF.is_date(cell.z)) {
+          const dc = XLSX.SSF.parse_date_code(cell.v);
+          s =
+            dc.m +
+            '/' +
+            dc.d +
+            ' (' +
+            DOW[new Date(dc.y, dc.m - 1, dc.d).getDay()] +
+            ')';
+        }
+        if (cell.t === 'd') {
+          const dt = new Date(cell.v);
+          s =
+            dt.getMonth() +
+            1 +
+            '/' +
+            dt.getDate() +
+            ' (' +
+            DOW[dt.getDay()] +
+            ')';
+        }
+        const mg = merges.find(m => m.s.r === r && m.s.c === c);
+        const w = mg ? (mg.e.c - mg.s.c + 1) * 100 : 100;
+        s.split(/\r?\n/).forEach((ln, i) => {
+          if (ln.trim())
+            items.push({ x: c * 100, y: r * 50 + i * 4, w, s: ln.trim() });
+        });
+      }
+    if (items.some(i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)))
+      return { items, sheet: sn };
+  }
+  throw new Error(
+    '엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.'
+  );
+}
+
+// 파일 읽기 도구(pdf.js·SheetJS)는 처음 화면을 막지 않게 나중에 받음
+let libsReady = null;
+function loadLibs() {
+  if (!libsReady) {
+    const one = src =>
+      new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = src;
+        sc.onload = res;
+        sc.onerror = () => rej(new Error('불러오기 실패: ' + src));
+        document.head.appendChild(sc);
+      });
+    const cdn = 'https:\/\/cdnjs.cloudflare.com/ajax/libs/';
+    libsReady = Promise.all([one(cdn + 'pdf.js/3.11.174/pdf.min.js'), one(cdn + 'xlsx/0.18.5/xlsx.full.min.js')]).catch(e => {
+      libsReady = null;
+      throw e;
+    });
+  }
+  return libsReady;
+}
+// 첫 화면(파일 고르기)이면 쉬는 시간에 미리 받아 둠
+(window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => {
+  if (!data) loadLibs().catch(() => {});
+});
+async function load(file) {
+  const msg = $('msg');
+  msg.className = 'msg';
+  msg.textContent = file.name + ' 읽는 중…';
+  try {
+    try {
+      await loadLibs();
+    } catch (e) {}
+    if (typeof pdfjsLib === 'undefined' || typeof XLSX === 'undefined')
+      throw new Error(
+        '파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.'
+      );
+    const buf = await file.arrayBuffer();
+    const yr = (file.name.match(/20\d\d/) || [])[0];
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
+    const t = items.find(i => /일정표/.test(i.s));
+    const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
+    // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
+    const gsw = isPdf && isGsWeek(items);
+    const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
+    const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
+    let ds;
+    try {
+      ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
+    } catch (e1) {
+      // 양식 구분이 애매하면 다른 방식으로도 한 번 더
+      try {
+        ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
+      } catch (e2) {
+        throw e1;
+      }
+    }
+    if (!ds.some(d => d.teams.length))
+      throw new Error(
+        '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
+      );
+    const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
+    data = {
+      source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
+      days: ds
+    };
+    sel = null;
+    shared = null;
+    msg.textContent = '';
+    saveLast();
+    const fromTitle = branchFromText((t ? t.s : '') + ' ' + (items.title || '') + ' ' + file.name);
+    const saved = branchByName(store.get('sched.branch'));
+    if (fromTitle) setBranch(fromTitle, 'title');
+    else {
+      setBranch(saved, saved ? 'saved' : '');
+      guessBranch();
+    }
+    render();
+    window.scrollTo({ top: 0 });
+  } catch (e) {
+    if (data) {
+      data = null;
+      render();
+    }
+    msg.className = 'msg err';
+    msg.textContent = e.message || '파일을 읽지 못했어요.';
+  }
+}
+// 지난 일정표: 이 휴대폰에 저장해 두고 첫 화면에서 '이어서 보기'
+function saveLast() {
+  try {
+    store.set('sched.last', JSON.stringify({ data, at: Date.now() }));
+  } catch (e) {}
+}
+function resumeCard() {
+  const el = $('resume');
+  let last = null;
+  try {
+    last = JSON.parse(store.get('sched.last') || 'null');
+  } catch (e) {}
+  if (!last || !last.data || !last.data.days || !last.data.days.length) {
+    el.hidden = true;
+    return;
+  }
+  const ds = last.data.days;
+  const past = ds[ds.length - 1].iso < todayIso;
+  const at = new Date(last.at);
+  el.hidden = false;
+  el.classList.toggle('old', past);
+  el.innerHTML = `<small>${past ? '지난주 일정표예요 · 새 파일을 올려 주세요' : '지난번에 올린 일정표'}</small>
+    <b>${esc(last.data.source || '검사 일정표')}</b>
+    <small>${at.getMonth() + 1}/${at.getDate()} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}에 올림</small>
+    <div class="maps"><button type="button" class="${past ? '' : 'call'}" id="resumeGo">이어서 보기</button><button type="button" id="resumeDel">지우기</button></div>`;
+  $('resumeGo').onclick = () => {
+    data = last.data;
+    sel = null;
+    const fromTitle = branchFromText(data.source || '');
+    const saved = branchByName(store.get('sched.branch'));
+    setBranch(fromTitle || saved, fromTitle ? 'title' : saved ? 'saved' : '');
+    if (!fromTitle && !saved) guessBranch();
+    render();
+  };
+  $('resumeDel').onclick = () => {
+    store.set('sched.last', '');
+    resumeCard();
+  };
+}
+// 버튼은 <label for="file"> 라서 스크립트 없이도 파일 선택이 열림. 키보드(Enter·Space)만 처리
+['pick', 'repick'].forEach(id =>
+  $(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      $('file').click();
+    }
+  })
+);
+$('file').onchange = e => {
+  if (e.target.files[0]) load(e.target.files[0]);
+  e.target.value = '';
+};
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  $('drop').classList.add('over');
+});
+document.addEventListener('dragleave', e => {
+  if (!e.relatedTarget) $('drop').classList.remove('over');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  $('drop').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) load(f);
+});
+$('name').addEventListener('input', () => {
+  store.set('sched.name', $('name').value.trim());
+  render();
+});
+(async () => {
+  if (LINK) {
+    // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
+    document.body.classList.add('linkmode');
+    document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
+    const ez = store.get('sched.easy');
+    document.body.classList.toggle('easy', ez ? ez === '1' : LINK.easy !== false);
+    if (LINK.n) {
+      $('name').value = LINK.n;
+      store.set('sched.name', LINK.n);
+    }
+    if (API && !window.SHARED) {
+      // Vercel: 공유 일정표를 서버에서 받아 옴
+      $('msg').textContent = '일정 불러오는 중…';
+      try {
+        const wk = await run('getWeek', LINK.b);
+        if (wk && wk.ok) window.SHARED = wk;
+      } catch (e) {}
+      $('msg').textContent = '';
+    }
+    const sh = window.SHARED;
+    if (sh && sh.days && sh.days.length) {
+      const wk = { source: sh.source || LINK.b + ' 공유 일정표', days: sh.days };
+      data = wk;
+      const names = allNames();
+      if (curName() && names.includes(curName())) startShared();
+      else {
+        // 이름부터 고르기 (큰 버튼)
+        $('name').value = '';
+        data = null;
+        render();
+        namePick(names, wk);
+      }
+    } else {
+      render();
+      const m = $('msg');
+      m.className = 'msg err';
+      m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
+    }
+    easyToggle();
+  } else render();
+  // 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
+  if (window.START_DAY && !data && $('resumeGo')) {
+    $('resumeGo').click();
+    if (days.some(x => x.iso === window.START_DAY)) go(window.START_DAY);
+  }
+})();
+</script>
+</body>
+</html>

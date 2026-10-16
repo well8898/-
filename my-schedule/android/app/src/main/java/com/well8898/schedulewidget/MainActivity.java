@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
         box.addView(text("웹앱 아래쪽 「홈 화면 위젯 주소」의 주소를 복사해서 아래에 붙여넣고 저장하세요.", 14, 0xFF8B95A5, false));
 
         input = new EditText(this);
-        input.setHint("https://script.google.com/macros/s/…/exec?w=…");
+        input.setHint("https://…vercel.app/?w=…");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         input.setTextColor(Color.WHITE);
         input.setHintTextColor(0xFF5B6575);
@@ -117,13 +117,13 @@ public class MainActivity extends Activity {
                 ? clip.getItemAt(0).getText().toString() : "";
         String u = Data.normalize(s);
         if (!u.isEmpty()) input.setText(u);
-        else if (tell) status.setText("복사한 내용에 위젯 주소(…/exec?w=…)가 없어요.");
+        else if (tell) status.setText("복사한 내용에 위젯 주소(…?w=…)가 없어요.");
     }
 
     private void save() {
         String u = Data.normalize(input.getText().toString());
         if (u.isEmpty()) {
-            status.setText("주소가 올바르지 않아요. …/exec?w=영문숫자 형태여야 해요.");
+            status.setText("주소가 올바르지 않아요. …?w=영문숫자 형태여야 해요.");
             return;
         }
         input.setText(u);

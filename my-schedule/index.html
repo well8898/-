@@ -1744,8 +1744,10 @@ function tmapUrl(de, g) {
     ? `https:\/\/apis.openapi.sk.com/tmap/app/routes?appKey=${encodeURIComponent(tmapKey)}&name=${de}&lon=${g.lng}&lat=${g.lat}`
     : `tmap:\/\/route?goalname=${de}&goalx=${g.lng}&goaly=${g.lat}`;
 }
-const SERVER =
-  typeof google !== 'undefined' && !!(google.script && google.script.run);
+// 서버: 구글 앱스 스크립트(google.script.run) 또는 Vercel(/api/rpc — vercel.app 주소나 window.SCHED_API)
+const GAS = typeof google !== 'undefined' && !!(google.script && google.script.run);
+const API = !GAS && (window.SCHED_API || (/\.vercel\.app$/.test(location.hostname) ? '/api/rpc' : ''));
+const SERVER = GAS || !!API;
 const GEO = {},
   LEGS = {},
   MINS = {};
@@ -1757,6 +1759,14 @@ let ORIGIN = null,
   kakaoReady = null,
   kakaoError = '';
 function run(fn, ...a) {
+  if (!GAS)
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn, args: a }) }).then(
+      async r => {
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error((j && j.message) || '서버 오류(' + r.status + ')');
+        return j;
+      }
+    );
   return new Promise((res, rej) =>
     google.script.run
       .withSuccessHandler(res)
@@ -2388,6 +2398,10 @@ function widgetBox() {
 }
 
 // ── 지사 공유 · 이름 링크 (어르신들은 파일 없이 링크만 누르면 됨) ──
+// Vercel에서는 주소창의 ?b=지사&n=이름&d=날짜 를 직접 읽음 (앱스 스크립트는 서버가 window.LINK 로 넣어 줌)
+const QS = new URLSearchParams(API ? location.search : '');
+if (API && QS.get('b')) window.LINK = { b: QS.get('b').trim(), n: (QS.get('n') || '').trim().slice(0, 20), easy: QS.get('easy') !== '0' };
+if (API && /^\d{4}-\d{2}-\d{2}$/.test(QS.get('d') || '')) window.START_DAY = QS.get('d');
 const LINK = window.LINK || null;
 let shared = null; // { at } 공유한 뒤
 function allNames() {
@@ -2810,40 +2824,51 @@ $('name').addEventListener('input', () => {
   store.set('sched.name', $('name').value.trim());
   render();
 });
-if (LINK) {
-  // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
-  document.body.classList.add('linkmode');
-  document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
-  const ez = store.get('sched.easy');
-  document.body.classList.toggle('easy', ez ? ez === '1' : LINK.easy !== false);
-  if (LINK.n) {
-    $('name').value = LINK.n;
-    store.set('sched.name', LINK.n);
-  }
-  const sh = window.SHARED;
-  if (sh && sh.days && sh.days.length) {
-    const wk = { source: sh.source || LINK.b + ' 공유 일정표', days: sh.days };
-    data = wk;
-    const names = allNames();
-    if (curName() && names.includes(curName())) startShared();
-    else {
-      // 이름부터 고르기 (큰 버튼)
-      $('name').value = '';
-      data = null;
-      render();
-      namePick(names, wk);
+(async () => {
+  if (LINK) {
+    // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
+    document.body.classList.add('linkmode');
+    document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
+    const ez = store.get('sched.easy');
+    document.body.classList.toggle('easy', ez ? ez === '1' : LINK.easy !== false);
+    if (LINK.n) {
+      $('name').value = LINK.n;
+      store.set('sched.name', LINK.n);
     }
-  } else {
-    render();
-    const m = $('msg');
-    m.className = 'msg err';
-    m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
+    if (API && !window.SHARED) {
+      // Vercel: 공유 일정표를 서버에서 받아 옴
+      $('msg').textContent = '일정 불러오는 중…';
+      try {
+        const wk = await run('getWeek', LINK.b);
+        if (wk && wk.ok) window.SHARED = wk;
+      } catch (e) {}
+      $('msg').textContent = '';
+    }
+    const sh = window.SHARED;
+    if (sh && sh.days && sh.days.length) {
+      const wk = { source: sh.source || LINK.b + ' 공유 일정표', days: sh.days };
+      data = wk;
+      const names = allNames();
+      if (curName() && names.includes(curName())) startShared();
+      else {
+        // 이름부터 고르기 (큰 버튼)
+        $('name').value = '';
+        data = null;
+        render();
+        namePick(names, wk);
+      }
+    } else {
+      render();
+      const m = $('msg');
+      m.className = 'msg err';
+      m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
+    }
+    easyToggle();
+  } else render();
+  // 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
+  if (window.START_DAY && !data && $('resumeGo')) {
+    $('resumeGo').click();
+    if (days.some(x => x.iso === window.START_DAY)) go(window.START_DAY);
   }
-  easyToggle();
-} else render();
-// 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
-if (window.START_DAY && !data && $('resumeGo')) {
-  $('resumeGo').click();
-  if (days.some(x => x.iso === window.START_DAY)) go(window.START_DAY);
-}
+})();
 </script>

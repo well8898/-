@@ -34,9 +34,11 @@ final class Data {
     static String normalize(String s) {
         if (s == null) return "";
         s = s.trim();
-        int i = s.indexOf("https://script.google.com/");
-        if (i < 0) return "";
-        s = s.substring(i).split("\\s")[0];
+        // 구글 앱스 스크립트(…/exec?w=) 또는 Vercel(…vercel.app/?w=) 주소
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("https://(script\\.google\\.com|[a-z0-9-]+(\\.[a-z0-9-]+)*\\.vercel\\.app)/\\S*").matcher(s);
+        if (!m.find()) return "";
+        s = m.group();
         Uri u = Uri.parse(s);
         String w = u.getQueryParameter("w");
         if (w == null || !w.matches("[a-z0-9]{12,32}")) return "";
