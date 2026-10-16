@@ -459,6 +459,12 @@ function widgetOutput_(e) {
   const key = String(e.parameter.w || '');
   const raw = W_KEY_RE.test(key) ? PropertiesService.getScriptProperties().getProperty('W_' + key) : null;
   const out = raw ? widgetView_(withCoords_(key, JSON.parse(raw))) : { ok: false, title: '위젯 주소가 올바르지 않아요', text: '웹앱에서 일정표를 올린 뒤 위젯 주소를 다시 복사하세요.' };
+  if (e.parameter.view) {
+    return HtmlService.createHtmlOutput(widgetHtml_(out))
+      .setTitle('오늘 현장')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   if (e.parameter.fmt === 'text') {
     return ContentService.createTextOutput(out.text || out.title).setMimeType(ContentService.MimeType.TEXT);
   }
@@ -505,6 +511,47 @@ function navLinks_(dest, lat, lng) {
       : 'tmap://route?goalname=' + de + '&goalx=' + lng + '&goaly=' + lat,
     naver: 'nmap://route/car?dlat=' + lat + '&dlng=' + lng + '&dname=' + de + '&appname=elevator.schedule',
   };
+}
+
+// 위젯 화면 (?w=키&view=1): A안 — 오늘 현장 목록, 줄마다 티맵 버튼, 하루 경로
+function widgetHtml_(o) {
+  const h = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let app = '';
+  try { app = ScriptApp.getService().getUrl(); } catch (e) { /* 없음 */ }
+  let rows = '';
+  for (let i = 1; i <= 8; i++) {
+    if (!o['n' + i]) continue;
+    const link = o['t' + i] || o['k' + i];
+    rows += '<div class="row' + (o['d' + i] === '1' ? ' done' : '') + '">'
+      + '<span class="no">' + i + '</span><span class="t">' + h(o['h' + i]) + '</span>'
+      + '<span class="n">' + h(o['n' + i]) + '<small>' + h(o['s' + i]) + '</small></span>'
+      + (link ? '<a class="go" target="_blank" href="' + h(link) + '">티맵</a>' : '') + '</div>';
+  }
+  if (o.l8 && /^외 /.test(o.l8)) rows += '<div class="more">' + h(o.l8) + '</div>';
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><style>'
+    + '*{box-sizing:border-box}html,body{margin:0;background:#121822;color:#eef3fb;'
+    + 'font-family:"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}'
+    + 'body{padding:12px 12px 10px}.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}'
+    + '.top b{font-size:16px}.top span{font-size:11px;color:#9fb0c8;white-space:nowrap}'
+    + '.sum{font-size:12.5px;color:#9fb0c8;margin:4px 0 10px}'
+    + '.row{display:grid;grid-template-columns:22px 46px minmax(0,1fr) auto;gap:8px;align-items:center;'
+    + 'background:rgba(255,255,255,.07);border-radius:14px;padding:8px 8px 8px 10px;margin-bottom:6px}'
+    + '.no{width:20px;height:20px;border-radius:50%;background:#4b8df8;display:grid;place-items:center;font-size:11px;font-weight:800}'
+    + '.t{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}'
+    + '.n{font-size:14.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '.n small{display:block;font-size:11.5px;color:#9fb0c8;font-weight:400}'
+    + '.go{background:#4b8df8;color:#fff;text-decoration:none;border-radius:11px;padding:9px 12px;font-size:13px;font-weight:800}'
+    + '.done{opacity:.45}.more{font-size:12px;color:#9fb0c8;text-align:center;margin:2px 0 6px}'
+    + '.bot{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}'
+    + '.bot a{display:block;text-align:center;color:#eef3fb;text-decoration:none;border:1px solid rgba(255,255,255,.2);'
+    + 'border-radius:12px;padding:9px 0;font-size:13px;font-weight:700}.msg{color:#9fb0c8;font-size:13px;margin-top:8px}'
+    + '</style></head><body>'
+    + '<div class="top"><b>' + h(o.title) + '</b><span>' + h(o.updated ? o.updated + ' 저장' : '') + '</span></div>'
+    + (o.sub ? '<div class="sum">' + h(o.sub) + '</div>' : '<div class="msg">' + h(o.text || '') + '</div>')
+    + rows
+    + '<div class="bot">' + (o.rk ? '<a target="_blank" href="' + h(o.rk) + '">하루 경로 · 카카오</a>' : '<span></span>')
+    + (app ? '<a target="_blank" href="' + h(app) + '">웹앱 열기</a>' : '') + '</div>'
+    + '</body></html>';
 }
 
 // 저장된 주간 일정 → 지금 보여 줄 하루 (오후 6시 이후거나 오늘 근무가 없으면 다음 근무일)
