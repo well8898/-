@@ -410,7 +410,7 @@ function dayView_(data, main, today, now) {
 function legText_(km, i, origin) {
   if (km == null) return '';
   if (km === 0) return '같은 현장';
-  return (i === 0 && origin ? '지사→' : '↑') + km + 'km';
+  return (i === 0 && origin ? '지사→' : '→') + km + 'km';
 }
 
 function tomorrow_(iso) {
