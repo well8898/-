@@ -1445,16 +1445,18 @@ const esc = s =>
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
   );
 const bare = s => s.replace(/\(.*?\)/g, '').trim();
-const todayIso = (() => {
-  const d = new Date();
-  return (
-    d.getFullYear() +
-    '-' +
-    String(d.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(d.getDate()).padStart(2, '0')
-  );
-})();
+const isoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayIso = isoOf(new Date());
+// 켜 둔 채로 날짜가 바뀌면(자정 넘김·다음 날 앱을 다시 볼 때) 오늘 일정으로 다시 열기
+function dayChanged() {
+  if (document.hidden || isoOf(new Date()) === todayIso) return;
+  if (document.querySelector('.sheet-bg')) return; // 올리기 확인 중이면 기다림
+  const q = new URLSearchParams(location.search);
+  q.delete('d');
+  location.replace(location.pathname + (q.toString() ? '?' + q.toString() : ''));
+}
+document.addEventListener('visibilitychange', dayChanged);
+setInterval(dayChanged, 60 * 1000);
 // 동·읍·면 → 시·구 (일정표에는 동 이름만 있어 검색이 엉뚱한 지역으로 가지 않게)
 const REGION = (() => {
   const m = {};
@@ -2212,7 +2214,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.0';
+const PAGE_VER = '3.1';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);

@@ -102,6 +102,11 @@ final class Data {
     static JSONObject day(Context c, JSONObject o) {
         if (o == null) return null;
         String sel = prefs(c).getString("sel", "");
+        // ‹ › 로 고른 날은 그날 하루만: 날짜가 바뀌면 다시 오늘(기본 날)로
+        if (!sel.isEmpty() && !today().equals(prefs(c).getString("selOn", ""))) {
+            resetDay(c);
+            sel = "";
+        }
         JSONArray days = o.optJSONArray("days");
         if (sel.isEmpty() || days == null) return o;
         for (int i = 0; i < days.length(); i++) {
@@ -123,7 +128,14 @@ final class Data {
         for (int i = 0; i < days.length(); i++) if (cur.equals(days.optJSONObject(i).optString("iso"))) idx = i;
         int next = idx < 0 ? (dir > 0 ? 0 : days.length() - 1) : Math.max(0, Math.min(days.length() - 1, idx + dir));
         String iso = days.optJSONObject(next).optString("iso");
-        prefs(c).edit().putString("sel", iso.equals(main) ? "" : iso).apply();
+        prefs(c).edit().putString("sel", iso.equals(main) ? "" : iso).putString("selOn", today()).apply();
+    }
+
+    /** 오늘 날짜 (한국 시간) yyyy-MM-dd */
+    static String today() {
+        SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd", Locale.KOREA);
+        f.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        return f.format(new Date());
     }
 
     static void resetDay(Context c) {

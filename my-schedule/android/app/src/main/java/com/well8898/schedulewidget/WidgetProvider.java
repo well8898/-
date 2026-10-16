@@ -1,5 +1,6 @@
 package com.well8898.schedulewidget;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -12,10 +13,14 @@ import android.widget.RemoteViews;
 
 import org.json.JSONObject;
 
+import java.util.Calendar;
+import java.util.TimeZone;
+
 public class WidgetProvider extends AppWidgetProvider {
     static final String REFRESH = "com.well8898.schedulewidget.REFRESH";
     static final String PREV = "com.well8898.schedulewidget.PREV";
     static final String NEXT = "com.well8898.schedulewidget.NEXT";
+    static final String DAILY = "com.well8898.schedulewidget.DAILY";
 
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
@@ -28,6 +33,12 @@ public class WidgetProvider extends AppWidgetProvider {
             // 날짜 넘기기는 받아 둔 데이터로 바로 (인터넷 안 씀)
             Data.shift(c, NEXT.equals(i.getAction()) ? 1 : -1);
             render(c, Data.cached(c), null);
+            return;
+        }
+        if (DAILY.equals(i.getAction())) {
+            // 자정이 지나면: 오늘 일정으로 새로 받기
+            Data.resetDay(c);
+            refresh(c, goAsync());
             return;
         }
         if (REFRESH.equals(i.getAction())) {
@@ -47,6 +58,7 @@ public class WidgetProvider extends AppWidgetProvider {
 
     private static void refresh(Context c, PendingResult pr) {
         render(c, Data.cached(c), null);
+        atMidnight(c);
         new Thread(() -> {
             String err = null;
             JSONObject o = Data.cached(c);
@@ -59,6 +71,20 @@ public class WidgetProvider extends AppWidgetProvider {
             render(c, o, err);
             if (pr != null) pr.finish();
         }).start();
+    }
+
+    /** 매일 0시 3분쯤 위젯을 새로 받게 예약 (배터리 절약 모드면 조금 늦을 수 있음) */
+    static void atMidnight(Context c) {
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am == null) return;
+        Calendar t = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"));
+        t.add(Calendar.DAY_OF_MONTH, 1);
+        t.set(Calendar.HOUR_OF_DAY, 0);
+        t.set(Calendar.MINUTE, 3);
+        t.set(Calendar.SECOND, 0);
+        Intent i = new Intent(c, WidgetProvider.class).setAction(DAILY);
+        PendingIntent pi = PendingIntent.getBroadcast(c, 7, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t.getTimeInMillis(), pi);
     }
 
     static void render(Context c, JSONObject o, String note) {
