@@ -2378,11 +2378,11 @@ function widgetBox() {
   const u = webUrl + '?w=' + widgetKeyGet();
   el.hidden = false;
   el.innerHTML = `<summary>홈 화면 위젯 주소</summary>
-    <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
+    <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 휴대폰(안드로이드)에서 열면 「위젯 앱에 바로 연결」 버튼이 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
     ${/Android/.test(navigator.userAgent) ? `<p>위젯 앱(오늘 현장)을 설치했다면 아래 버튼 하나로 연결돼요. 주소를 복사할 필요 없어요.</p>
     <div class="maps"><a class="call" target="_top" href="intent://set?u=${encodeURIComponent(u)}#Intent;scheme=schedwidget;package=com.well8898.schedulewidget;end">위젯 앱에 바로 연결</a></div>` : ''}
     <div class="wurl" id="wUrl">${esc(u)}</div>
-    <div class="maps three"><button type="button" data-copy="${esc(u)}">JSON 주소 복사</button><button type="button" data-copy="${esc(u + '&fmt=text')}">글자 주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
+    <div class="maps"><button type="button" data-copy="${esc(u)}">주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
   el.querySelectorAll('[data-copy]').forEach(b => {
     b.onclick = () => {
       const t = b.dataset.copy;

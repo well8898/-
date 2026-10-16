@@ -1026,5 +1026,11 @@ async function widget(key, fmt) {
 const RPC = { getConfig, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, getWeek, saveWidget, saveWidgetKm, deleteWidget };
 
-module.exports = { RPC, widget, setAppUrl: u => { APP_URL = u; }, SERVER_VER,
+// 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)
+function setAppUrl(u) {
+  const prod = env_('APP_URL') || (env_('VERCEL_PROJECT_PRODUCTION_URL') ? 'https://' + env_('VERCEL_PROJECT_PRODUCTION_URL') + '/' : '');
+  APP_URL = prod ? prod.replace(/\/?$/, '/') : u;
+}
+
+module.exports = { RPC, widget, setAppUrl, SERVER_VER,
   _t: { juris_, inJuris_, bookKey_, bookFile_, widgetView_, addLegs_, redis_, MEM } };
