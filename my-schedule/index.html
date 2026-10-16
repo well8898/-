@@ -2190,4 +2190,9 @@ $('name').addEventListener('input', () => {
   render();
 });
 render();
+// 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
+if (window.START_DAY && !data && $('resumeGo')) {
+  $('resumeGo').click();
+  if (days.some(x => x.iso === window.START_DAY)) go(window.START_DAY);
+}
 </script>

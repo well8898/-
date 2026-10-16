@@ -23,7 +23,11 @@ const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
 
 function doGet(e) {
   if (e && e.parameter && e.parameter.w) return widgetOutput_(e); // 홈 화면 위젯
-  return HtmlService.createHtmlOutput(pageHtml_())
+  let html = pageHtml_();
+  // 위젯에서 현장을 눌러 열 때 ?d=2026-10-16 → 그날 하루 보기로 시작
+  const day = e && e.parameter && String(e.parameter.d || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) html = html.replace('<head>', '<head><script>window.START_DAY="' + day + '";</script>');
+  return HtmlService.createHtmlOutput(html)
     .setTitle('내 검사 일정')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
