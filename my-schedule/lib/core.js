@@ -358,7 +358,7 @@ function dayView_(data, main, today, now) {
       kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units, nav: nav,
       km: main.legs ? main.legs[i] : null, leg: legText_(main.legs ? main.legs[i] : null, i, data.origin)
         // 마지막 현장: 지사로 돌아가는 거리도
-        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? ' · ' : '') + '지사까지 ' + main.backKm + 'km' : ''),
+        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? ' · ' : '') + main.backKm + 'km→지사' : ''),
     };
   });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);

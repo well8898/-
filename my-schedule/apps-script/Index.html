@@ -1966,7 +1966,7 @@ function drawEasy() {
         <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div>
         ${othersTxt(d, s) ? `<div class="ez-oth">같은 현장 · ${esc(othersTxt(d, s))}</div>` : ''}</button>
         ${open === i ? ezNav(s) + ezDetail(d, s, i) : ''}
-        ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">지사로 복귀 ${legTxt(L.back)}</div>` : ''}</div></div>`;
+        ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">${legTxt(L.back)} → 지사</div>` : ''}</div></div>`;
     });
     h += `</div>`;
     // 총 경로(지사 출발 → 현장들 → 지사 복귀) km
