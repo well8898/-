@@ -22,9 +22,18 @@ const env_ = k => String(process.env[k] || '').trim();
 
 // ── 저장소 (Upstash Redis REST). 환경 변수가 없으면 메모리(시험용) ──
 const MEM = new Map();
+// 연결할 때 이름 앞에 다른 글자가 붙어도(예: STORAGE_KV_REST_API_URL) 찾음
+function envEnd_(...ends) {
+  for (const e of ends) {
+    if (env_(e)) return env_(e);
+    const k = Object.keys(process.env).find(x => x.endsWith('_' + e) && !/READ_ONLY/.test(x) && env_(x));
+    if (k) return env_(k);
+  }
+  return '';
+}
 function redisConf_() {
-  const url = env_('KV_REST_API_URL') || env_('UPSTASH_REDIS_REST_URL');
-  const token = env_('KV_REST_API_TOKEN') || env_('UPSTASH_REDIS_REST_TOKEN');
+  const url = envEnd_('KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL');
+  const token = envEnd_('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN');
   return url && token ? { url: url.replace(/\/$/, ''), token } : null;
 }
 async function redis_(cmds) {
@@ -407,7 +416,8 @@ async function kakaoGet_(url) {
 
 // 화면 시작 시: 지도 키
 async function getConfig() {
-  return { ok: true, kakaoJsKey: env_('KAKAO_JS_KEY'), tmapKey: env_('TMAP_APP_KEY'), webUrl: APP_URL, ver: SERVER_VER };
+  return { ok: true, kakaoJsKey: env_('KAKAO_JS_KEY'), tmapKey: env_('TMAP_APP_KEY'), webUrl: APP_URL,
+    ver: SERVER_VER + (redisConf_() ? '' : ' (저장소 연결 안 됨)') };
 }
 
 // ════════ 지사 좌표 ════════
