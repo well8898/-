@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#1f5fbf">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" media="print" onload="this.media='all'">
+<script>try{var t=localStorage.getItem('sched.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 /* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
 :root {
@@ -780,7 +781,8 @@ label.ghost {
 .vmsg.ok{color:#047857}
 .vbtn{font:600 14px var(--font-body,inherit);padding:9px 16px;border-radius:999px;border:1px solid var(--line,#d1d5db);background:transparent;color:inherit;cursor:pointer}
 .vbtn.go{background:#3d5afe;border-color:#3d5afe;color:#fff;font-size:16px;padding:12px 22px}
-@media (prefers-color-scheme:dark){.vmsg.old{background:#3a2a05;color:#fcd34d}}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .vmsg.old{background:#3a2a05;color:#fcd34d}}
+:root[data-theme='dark'] .vmsg.old{background:#3a2a05;color:#fcd34d}
 .ver{font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;opacity:.8}
 .tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
@@ -807,6 +809,9 @@ body.easy #branchRow,body.easy #widgetBox,body.easy .fixaddr{display:none!import
 
 /* ── 시안 B: 하루 경로 ── */
 body{font-variant-numeric:tabular-nums}
+.themeb{flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.themeb svg{width:20px;height:20px}
+.bar-in .who{flex:1}
 .mode{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:3px;flex:none}
 .mode button{font:600 14px var(--font-body);border:0;background:none;color:var(--muted);padding:7px 12px;border-radius:9px;cursor:pointer}
 .mode button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
@@ -921,6 +926,14 @@ body.easy .tot3 div{background:var(--bg);border:0}
 .ez-oth{display:inline-block;margin-top:5px;font-size:13.5px;font-weight:600;color:#7a5300;background:#fff7e6;border-radius:8px;padding:4px 8px;line-height:1.4}
 .ewk-c small.ewk-o{white-space:normal;color:#7a5300;font-size:13px;margin-top:4px}
 .wd-o{display:block;font-size:12.5px;color:#7a5300;margin-top:1px}
+/* 같은 현장 안내: 어느 화면이든 같은 노란 박스 */
+.ez-oth,.ewk-c small.ewk-o,small.wd-o,.others>span{display:block;width:fit-content;max-width:100%;box-sizing:border-box;white-space:normal;margin-top:5px;font-size:13.5px;font-weight:600;line-height:1.4;color:#7a5300;background:#fff7e6;border-radius:8px;padding:4px 8px}
+.others,.wlist .others{border-top:0;padding-top:0;gap:0}
+.others>span,.ez-oth,.ewk-o,.wd-o{word-break:keep-all;overflow-wrap:anywhere}
+.nw{display:inline-block;max-width:100%}
+.others span b,.ez-oth b,.ewk-c .ewk-o b,.wd-o b{color:inherit;font-weight:800;font-size:inherit;display:inline}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .ez-oth,:root:not([data-theme='light']) .ewk-c small.ewk-o,:root:not([data-theme='light']) small.wd-o,:root:not([data-theme='light']) .others>span{color:#fcd34d;background:#3a2a05}}
+:root[data-theme='dark'] .ez-oth,:root[data-theme='dark'] .ewk-c small.ewk-o,:root[data-theme='dark'] small.wd-o,:root[data-theme='dark'] .others>span{color:#fcd34d;background:#3a2a05}
 </style>
 </head>
 <body>
@@ -980,6 +993,7 @@ window.addEventListener(
   <header class="bar gutter" id="bar">
     <div class="col">
       <div class="bar-in">
+        <button type="button" class="themeb" id="themeBtn" aria-label="밝게/어둡게 바꾸기"></button>
         <div class="who"><small id="src">검사 일정표</small><b id="who">내 일정</b></div>
         <div class="mode" id="modeSeg" role="group" aria-label="화면"><button type="button" data-m="easy">간단히</button><button type="button" data-m="full">자세히</button></div>
       </div>
@@ -1672,7 +1686,7 @@ function othersHtml(d, s) {
   return `<div class="others">${o
     .map(
       x =>
-        `<span>같은 현장 · ${esc(x.team)} <b>${esc(x.names.join('·'))}</b> · ${esc(x.kinds.join('·'))} <b>${x.units}대</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`
+        `<span><span class="nw">같은 현장 · ${esc(x.team)}</span> <span class="nw"><b>${esc(x.names.join('·'))}</b> · ${esc(x.kinds.join('·'))} <b>${x.units}대</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span></span>`
     )
     .join('')}</div>`;
 }
@@ -1742,7 +1756,7 @@ function drawWeek() {
       h += `<ul>${d.t.stops
         .map(
           s =>
-            `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}${othersTxt(d, s) ? `<small class="wd-o">같은 현장 · ${esc(othersTxt(d, s))}</small>` : ''}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`
+            `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}${othersTxt(d, s) ? `<small class="wd-o">${othersChunks(d, s)}</small>` : ''}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`
         )
         .join('')}</ul>`;
     if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
@@ -1819,6 +1833,12 @@ function drawPanel(dx) {
   p.innerHTML = h;
   if (SERVER && d.t) dayExtras(d);
 }
+// 같은 현장 안내를 덩어리로: 줄이 길면 이름 덩어리가 통째로 다음 줄로 (단어 중간에서 안 끊김)
+function othersChunks(d, s, lead) {
+  return othersAt(d, s)
+    .map((o, i) => `<span class="nw">${i ? '' : '같은 현장 · ' + esc(lead || '')}${esc(o.team)}</span> <span class="nw"><b>${esc(o.names.join('·'))}</b> ${o.units}대${o.times.join() !== s.time && o.times.length ? ' (' + esc(o.times.join(', ')) + ')' : ''}</span>`)
+    .join('<span class="nw-sep"> / </span>');
+}
 // 같은 현장 다른 조: "6조 정준하·안재현 2대" (시간이 다르면 시간도)
 function othersTxt(d, s) {
   return othersAt(d, s)
@@ -1864,7 +1884,7 @@ function drawEasyWeek() {
       <span class="ewk-d"><b>${dow}</b><small>${d.iso === todayIso ? '오늘' : md}</small></span>
       <span class="ewk-c"><b>${d.t ? places(d.t.stops).length + '현장 ' + sumUnits(d.t.stops) + '대' : '휴가'}</b>
       <small>${first ? esc((first.time ? first.time + ' ' : '') + placeName(first.name)) + (more > 0 ? ' 외 ' + more + '현장' : '') : '푹 쉬세요'}</small>
-      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">같은 현장 · ${places(d.t.stops).length > 1 ? esc(placeName(s.name)) + ': ' : ''}${esc(othersTxt(d, s))}</small>`).join('') : ''}</span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
+      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">${othersChunks(d, s, places(d.t.stops).length > 1 ? placeName(s.name) + ': ' : '')}</small>`).join('') : ''}</span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
   });
   h += `</div>` + ezFoot(null);
   return h;
@@ -1978,7 +1998,7 @@ function drawEasy() {
       h += `<div class="ez-r${pz ? ' ez-past' : ''}"><div class="ez-tm">${esc(s.time || '')}</div><div class="ez-rail"><span class="ez-dot"></span><span class="ez-ln${last ? ' dash' : ''}"></span></div>
         <div class="ez-bd"><button type="button" class="ez-head" data-open="${i}" aria-expanded="${open === i}"><div class="ez-nm">${esc(placeName(s.name))}</div>
         <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div>
-        ${othersTxt(d, s) ? `<div class="ez-oth">같은 현장 · ${esc(othersTxt(d, s))}</div>` : ''}</button>
+        ${othersTxt(d, s) ? `<div class="ez-oth">${othersChunks(d, s)}</div>` : ''}</button>
         ${open === i ? ezNav(s) + ezDetail(d, s, i) : ''}
         ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">${legTxt(L.back)} → 지사</div>` : ''}</div></div>`;
     });
@@ -2137,9 +2157,32 @@ const applyCfg = c => {
     webUrl = c.webUrl || '';
   }
 };
+// ════════ 밝게 / 어둡게 (왼쪽 위 버튼) ════════
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>';
+const isDark = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+function themeIcon() {
+  const b = document.getElementById('themeBtn');
+  if (!b) return;
+  // 지금 어두우면 해(밝게 바꾸기), 밝으면 달(어둡게 바꾸기)
+  b.innerHTML = isDark() ? SUN : MOON;
+  b.setAttribute('aria-label', isDark() ? '밝게 보기' : '어둡게 보기');
+  b.title = isDark() ? '밝게 보기' : '어둡게 보기';
+}
+(() => {
+  try { const t = localStorage.getItem('sched.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { /* 생략 */ }
+  themeIcon();
+  document.getElementById('themeBtn').onclick = () => {
+    const t = isDark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('sched.theme', t); } catch (e) { /* 생략 */ }
+    themeIcon();
+  };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeIcon);
+})();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.3';
+const PAGE_VER = '2.4';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
