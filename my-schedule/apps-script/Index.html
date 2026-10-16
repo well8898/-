@@ -753,6 +753,10 @@ label.ghost {
 .others b{white-space:nowrap}
 .info .none{color:var(--muted);font-weight:400;font-family:var(--font-body)}
 .tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
+.widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
+.widget summary{font-weight:600;cursor:pointer}
+.widget p{margin:8px 0;color:var(--muted);font-size:12.5px}
+.wurl{font:12px var(--font-mono);background:var(--bg);border-radius:8px;padding:8px;overflow-wrap:anywhere;user-select:all;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -820,6 +824,7 @@ window.addEventListener(
   <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
     <div class="week" id="week"></div>
     <div class="branch" id="branchRow"></div>
+    <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
   </div></main>
 </div>
@@ -1329,6 +1334,7 @@ function render() {
   if (!loaded) return;
   $('src').textContent = data.source || '검사 일정표';
   branchRow();
+  if (SERVER) syncWidget();
   days = mine(name);
   if (!days.some(d => d.t || d.off)) {
     $('tabs').innerHTML = '';
@@ -1507,7 +1513,8 @@ const GEO = {},
   LEGS = {},
   MINS = {};
 let ROUTE_SRC = '',
-  tmapKey = '';
+  tmapKey = '',
+  webUrl = '';
 let ORIGIN = null,
   kakaoJsKey = '',
   kakaoReady = null,
@@ -1526,6 +1533,7 @@ const cfgReady = SERVER
         if (c && c.ok) {
           kakaoJsKey = c.kakaoJsKey || '';
           tmapKey = c.tmapKey || '';
+          webUrl = c.webUrl || '';
         }
       })
       .catch(() => {})
@@ -1787,7 +1795,7 @@ function drawLegs(d, pts) {
   const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
   const route = pts.map(x => x.name).join(' → ');
   el.innerHTML = `${dayRouteHtml(pts)}<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
-    <div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
+    ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
     ${skipped ? `<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
@@ -1853,6 +1861,96 @@ async function drawDayMap(stops) {
       strokeStyle: 'shortdash'
     });
   if (stops.length + (ORIGIN ? 1 : 0) > 1) map.setBounds(b, 40, 40, 40, 40);
+}
+
+// ---------- 홈 화면 위젯 (웹앱 전용): 내 일정만 저장 → 개인 주소(?w=키)로 위젯 앱이 읽음 ----------
+function widgetKeyGet() {
+  let k = store.get('sched.wkey');
+  if (!/^[a-z0-9]{12,32}$/.test(k || '')) {
+    const a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    k = [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join('');
+    store.set('sched.wkey', k);
+  }
+  return k;
+}
+let widgetSig = '',
+  widgetTimer = null,
+  widgetKmSent = {},
+  widgetKmTot = {};
+function syncWidget() {
+  const name = curName();
+  if (!data || !name) return;
+  clearTimeout(widgetTimer);
+  widgetTimer = setTimeout(async () => {
+    const payload = {
+      name,
+      branch: BRANCH ? BRANCH[0] : '',
+      days: mine(name).map(d => {
+        const { md, dow } = mdow(d);
+        return {
+          iso: d.iso,
+          label: md + '(' + dow + ')',
+          off: !!d.off,
+          team: d.t ? d.t.team : '',
+          mates: d.t ? d.t.members.filter(m => bare(m) !== name).map(bare) : [],
+          stops: d.t
+            ? d.t.stops.map(s => ({ time: s.time, kind: s.kind, area: s.area, name: placeName(s.name), units: s.units }))
+            : []
+        };
+      })
+    };
+    const sig = JSON.stringify(payload);
+    if (sig === widgetSig) return widgetBox();
+    try {
+      await cfgReady;
+      const r = await run('saveWidget', widgetKeyGet(), payload);
+      if (r && r.ok) {
+        widgetSig = sig;
+        widgetKmSent = {};
+        // 저장 전에 계산된 하루 km도 보냄
+        Object.keys(widgetKmTot).forEach(iso => widgetKm(iso, widgetKmTot[iso], false));
+      }
+    } catch (e) {}
+    widgetBox();
+  }, 1200);
+}
+function widgetKm(iso, tot, unknown) {
+  if (!unknown && tot > 0) widgetKmTot[iso] = tot;
+  if (SERVER && !unknown && tot > 0 && widgetKmSent[iso] !== tot && widgetSig) {
+    widgetKmSent[iso] = tot;
+    run('saveWidgetKm', widgetKeyGet(), iso, tot.toFixed(1)).catch(() => {});
+  }
+  return '';
+}
+function widgetBox() {
+  const el = $('widgetBox');
+  if (!el || !SERVER || !webUrl || !widgetSig) return;
+  const u = webUrl + '?w=' + widgetKeyGet();
+  el.hidden = false;
+  el.innerHTML = `<summary>홈 화면 위젯 주소</summary>
+    <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
+    <div class="wurl" id="wUrl">${esc(u)}</div>
+    <div class="maps three"><button type="button" data-copy="${esc(u)}">JSON 주소 복사</button><button type="button" data-copy="${esc(u + '&fmt=text')}">글자 주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
+  el.querySelectorAll('[data-copy]').forEach(b => {
+    b.onclick = () => {
+      const t = b.dataset.copy;
+      const done = () => (b.textContent = '복사했어요');
+      (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(() => {
+        const r = document.createRange();
+        r.selectNodeContents($('wUrl'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+        b.textContent = '선택됨 · 길게 눌러 복사';
+      });
+    };
+  });
+  $('wReset').onclick = () => {
+    run('deleteWidget', widgetKeyGet()).catch(() => {});
+    store.set('sched.wkey', '');
+    widgetSig = '';
+    syncWidget();
+  };
 }
 
 // 좌우로 밀어서 날짜 넘기기

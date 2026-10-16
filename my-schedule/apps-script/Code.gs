@@ -21,7 +21,8 @@ const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.w) return widgetOutput_(e); // 홈 화면 위젯
   return HtmlService.createHtmlOutput(pageHtml_())
     .setTitle('내 검사 일정')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
@@ -49,7 +50,9 @@ function getConfig() {
     const props = PropertiesService.getScriptProperties();
     const key = props.getProperty('KAKAO_JS_KEY') || '';
     // 티맵 앱키는 '티맵 길안내' 버튼(티맵 앱 실행 링크)에도 씀
-    return { ok: true, kakaoJsKey: key.trim(), tmapKey: (props.getProperty('TMAP_APP_KEY') || '').trim() };
+    let webUrl = '';
+    try { webUrl = ScriptApp.getService().getUrl(); } catch (e) { /* 배포 전 */ }
+    return { ok: true, kakaoJsKey: key.trim(), tmapKey: (props.getProperty('TMAP_APP_KEY') || '').trim(), webUrl: webUrl };
   } catch (e) {
     return { ok: false, message: e.message };
   }
@@ -408,6 +411,99 @@ function kakaoGet_(url) {
   if (code === 401 || code === 403) throw new Error('카카오 API 권한 오류(' + code + '). REST API 키와 카카오맵·카카오모빌리티 API 사용 설정을 확인하세요.');
   if (code !== 200) throw new Error('카카오 API 오류(' + code + '): ' + res.getContentText().slice(0, 200));
   return JSON.parse(res.getContentText());
+}
+
+// ════════════════════════════════════════════════════
+//  홈 화면 위젯: 웹앱이 저장한 '내 일정'을 개인 주소(?w=키)로 돌려줌
+//  ?w=키            → JSON (KWGT 등 위젯 앱용)
+//  ?w=키&fmt=text   → 줄글 (주소 내용을 그대로 띄우는 위젯 앱용)
+// ════════════════════════════════════════════════════
+const W_KEY_RE = /^[a-z0-9]{12,32}$/;
+
+// 화면에서 호출: 내 일정 저장 (주 단위, 내 것만)
+function saveWidget(key, data) {
+  try {
+    if (!W_KEY_RE.test(String(key || ''))) throw new Error('위젯 키가 올바르지 않습니다.');
+    const json = JSON.stringify(Object.assign({}, data, { savedAt: Date.now() }));
+    if (json.length > 8500) throw new Error('일정이 너무 커서 위젯에 저장하지 못했습니다.');
+    PropertiesService.getScriptProperties().setProperty('W_' + key, json);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 화면에서 호출: 하루 이동거리(km) 계산이 끝나면 위젯 데이터에 더해 둠
+function saveWidgetKm(key, iso, km) {
+  try {
+    if (!W_KEY_RE.test(String(key || ''))) return { ok: false };
+    const props = PropertiesService.getScriptProperties();
+    const raw = props.getProperty('W_' + key);
+    if (!raw) return { ok: false };
+    const data = JSON.parse(raw);
+    (data.days || []).forEach(d => { if (d.iso === iso) d.km = Number(km) || null; });
+    props.setProperty('W_' + key, JSON.stringify(data));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 화면에서 호출: 위젯 키를 바꿀 때 예전 키 데이터 삭제
+function deleteWidget(key) {
+  if (W_KEY_RE.test(String(key || ''))) PropertiesService.getScriptProperties().deleteProperty('W_' + key);
+  return { ok: true };
+}
+
+function widgetOutput_(e) {
+  const key = String(e.parameter.w || '');
+  const raw = W_KEY_RE.test(key) ? PropertiesService.getScriptProperties().getProperty('W_' + key) : null;
+  const out = raw ? widgetView_(JSON.parse(raw)) : { ok: false, title: '위젯 주소가 올바르지 않아요', text: '웹앱에서 일정표를 올린 뒤 위젯 주소를 다시 복사하세요.' };
+  if (e.parameter.fmt === 'text') {
+    return ContentService.createTextOutput(out.text || out.title).setMimeType(ContentService.MimeType.TEXT);
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 저장된 주간 일정 → 지금 보여 줄 하루 (오후 6시 이후거나 오늘 근무가 없으면 다음 근무일)
+function widgetView_(data) {
+  const tz = 'Asia/Seoul', now = new Date();
+  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  const hour = Number(Utilities.formatDate(now, tz, 'H'));
+  const days = data.days || [];
+  const t = days.find(d => d.iso === today);
+  let main = t && t.stops && t.stops.length && hour < 18 ? t : null;
+  let when = '오늘';
+  if (!main) {
+    main = days.find(d => d.iso > today && d.stops && d.stops.length) || null;
+    when = main ? (main.iso === tomorrow_(today) ? '내일' : '다음 근무') : '';
+  }
+  const off = t && t.off && hour < 18;
+  if (!main) {
+    const title = off ? '오늘은 휴가예요' : '이번 일정표에 남은 근무가 없어요';
+    return { ok: true, name: data.name, title: title, sub: '새 일정표를 올려 주세요', lines: [], text: title };
+  }
+  const kindNm = { '정': '정기', '밀': '정밀', '수': '수시', '완': '설치', '설': '설치' };
+  const lines = main.stops.map((s, i) => ({
+    no: i + 1, time: s.time || '', name: s.name, area: s.area || '',
+    kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units,
+  }));
+  const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
+  const places = new Set(main.stops.map(s => s.name)).size;
+  const title = (off ? '오늘 휴가 · ' : '') + when + ' ' + main.label + (main.team ? ' · ' + main.team : '');
+  const sub = places + '곳 · ' + units + '대' + (main.km ? ' · ' + main.km + 'km' : '')
+    + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
+  const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
+    + ' ' + l.kind + ' ' + l.units), sub].join('\n');
+  return { ok: true, name: data.name, title: title, sub: sub, start: lines[0] ? lines[0].time : '',
+    lines: lines, count: lines.length, text: text,
+    l1: lines[0] ? text.split('\n')[1] : '', updated: Utilities.formatDate(new Date(data.savedAt || now), tz, 'M/d HH:mm') };
+}
+
+function tomorrow_(iso) {
+  const d = new Date(iso + 'T12:00:00+09:00');
+  d.setDate(d.getDate() + 1);
+  return Utilities.formatDate(d, 'Asia/Seoul', 'yyyy-MM-dd');
 }
 
 // 편집기에서 실행해 설정 확인
