@@ -2693,19 +2693,9 @@ function shareBox() {
     $('shareGo').onclick = () => doShare(false);
     return;
   }
-  const names = allNames();
-  const one = linkFor('');
-  const msg = `[${BRANCH[0]} 이번 주 검사 일정]\n아래 링크를 누르고 내 이름을 고르면 내 일정만 보여요.\n${one}`;
-  const each = names.map(n => n + ': ' + linkFor(n)).join('\n');
-  el.innerHTML = `<h3><span class="ok">✓ 공유했어요</span> · 이제 단톡방에 링크를 보내 주세요</h3>
-    <p><b>방법 1 (간단)</b> 링크 하나를 지사 단톡방에 올리면, 각자 눌러서 이름만 고르면 돼요. 다음 주에 새 일정표를 공유하면 같은 링크로 새 일정이 나와요.</p>
-    <textarea id="shareOne" readonly>${esc(msg)}</textarea>
-    <div class="maps"><button type="button" class="call" id="copyOne">단톡방용 글 복사</button></div>
-    <details><summary>방법 2 · 사람마다 이름이 들어간 링크 (이름 고르기도 어려우신 분께 1:1로)</summary>
-      <textarea id="shareEach" readonly>${esc(each)}</textarea>
-      <div class="maps"><button type="button" id="copyEach">전체 복사</button></div></details>`;
-  $('copyOne').onclick = e => copyText(msg, e.target, $('shareOne'));
-  $('copyEach').onclick = e => copyText(each, e.target, $('shareEach'));
+  // 공유 완료만 짧게 (링크는 설치 페이지·앱에서 각자 지사와 이름을 고름)
+  el.innerHTML = `<h3><span class="ok">✓ ${esc(BRANCH[0])}에 공유했어요</span></h3>
+    <p>지사 사람들은 앱이나 링크에서 이름만 고르면 이 일정을 봐요.</p>`;
 }
 async function doShare(force) {
   const m = $('shareMsg');
