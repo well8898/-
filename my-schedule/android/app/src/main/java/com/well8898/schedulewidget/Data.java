@@ -140,6 +140,9 @@ final class Data {
             String area = l.optString("area");
             String kind = (l.optString("kind") + " " + l.optString("units")).trim();
             r.info = area.isEmpty() ? kind : kind.isEmpty() ? area : area + " · " + kind;
+            // 구간 거리 (지사→12.3km / ↑4.0km)
+            String leg = l.optString("leg");
+            if (!leg.isEmpty()) r.info = r.info.isEmpty() ? leg : r.info + " · " + leg;
             JSONObject nav = l.optJSONObject("nav");
             // 좌표를 못 찾은 현장은 이름으로 검색
             String q = Uri.encode((area + " " + r.name).trim());

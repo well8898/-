@@ -151,7 +151,7 @@ async function build() {
     mid.layoutVertically();
     const nm = String(l.name || '');
     txt(mid, nm.length > 8 ? nm.slice(0, 7) + '…' : nm, 13, fg, true);
-    txt(mid, [l.area, ((l.kind || '') + ' ' + (l.units || '')).trim()].filter(Boolean).join(' · '), 10, C.dim);
+    txt(mid, [l.area, ((l.kind || '') + ' ' + (l.units || '')).trim(), l.leg].filter(Boolean).join(' · '), 10, C.dim);
     r.addSpacer();
     const n = navs(l);
     pill(r, '티맵', n.tmap, C.tmap, '#FFFFFF');
