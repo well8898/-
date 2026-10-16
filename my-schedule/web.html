@@ -869,6 +869,18 @@ body.easy{background:var(--surface)}
 .pick-more{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .pick-alt{display:block;text-align:center;font:600 16px var(--font-body);color:var(--accent);background:none;border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer}
 .namepick .big{margin-top:16px}
+.sheet-bg{position:fixed;inset:0;z-index:40;background:rgba(10,15,25,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;max-height:92vh;overflow:auto;box-sizing:border-box;background:var(--surface);color:var(--ink);border-radius:22px 22px 0 0;padding:24px 20px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+.sheet h2{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.3;margin:0}
+.sheet h2 b{color:var(--accent)}
+.sh-src{margin:0;font-size:15px;font-weight:600;background:var(--bg);border-radius:12px;padding:10px 12px}
+.sh-why{margin:0;font-size:14px;color:var(--muted)}
+.sh-note{margin:0 0 4px;font-size:14px;color:var(--muted);line-height:1.5}
+.sh-go{font:700 18px var(--font-body);background:var(--accent);color:#fff;border:0;border-radius:14px;padding:16px;cursor:pointer}
+.sh-x{font:600 16px var(--font-body);background:none;border:0;color:var(--muted);padding:10px;cursor:pointer}
+.sheet .pick{margin-top:0}
+.sheet .pick-q{margin-top:0}
+@media (min-width:600px){.sheet-bg{align-items:center}.sheet{border-radius:22px}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:50;max-width:calc(100% - 32px);background:var(--ink);color:var(--bg);font:600 15px var(--font-body);padding:12px 16px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .2s,transform .2s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -2200,7 +2212,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.9';
+const PAGE_VER = '3.0';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2983,6 +2995,54 @@ function noWeek() {
     <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 다운로드 폴더에서 고르세요.</p>
     ${pickMore(false)}`;
 }
+// 올리기 확인: 「이 일정표를 ○○지사에 올릴까요?」 → 고른 지사 [이름, 주소] 또는 취소면 null
+function askBranch(b, src, why) {
+  return new Promise(done => {
+    const el = document.createElement('div');
+    el.className = 'sheet-bg';
+    const close = v => {
+      el.remove();
+      done(v);
+    };
+    const main = () => {
+      el.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shH">
+        <h2 id="shH">이 일정표를<br><b>${esc(b[0])}</b>에 올릴까요?</h2>
+        <p class="sh-src">${esc(src || '')}</p>
+        ${why ? `<p class="sh-why">${esc(why)}</p>` : ''}
+        <p class="sh-note">올리면 ${esc(b[0])} 분들이 모두 이 일정표로 봐요. 지사마다 일정표는 하나라서 전에 올린 것은 바뀌어요.</p>
+        <button type="button" class="sh-go" data-a="go">${esc(b[0])}에 올리기</button>
+        <button type="button" class="pick-alt" data-a="pick">다른 지사에 올리기</button>
+        <button type="button" class="sh-x" data-a="x">취소</button></div>`;
+      el.querySelector('[data-a="go"]').focus();
+    };
+    const pick = () => {
+      el.innerHTML = `<div class="sheet sheet-tall" role="dialog" aria-modal="true" aria-labelledby="shH">
+        <h2 id="shH">어느 지사<br>일정표인가요?</h2>
+        <p class="sh-src">${esc(src || '')}</p>
+        <input class="pick-q" id="shQ" placeholder="지사 이름 찾기 (예: 경남, 서울)" autocomplete="off">
+        <div class="pick">${BRANCHES.map(x => `<button type="button" data-b="${esc(x[0])}"><i>${esc(x[0][0])}</i>${esc(x[0])}</button>`).join('')}</div>
+        <button type="button" class="sh-x" data-a="${b ? 'back' : 'x'}">${b ? '뒤로' : '취소'}</button></div>`;
+      $('shQ').oninput = e => el.querySelectorAll('.pick button').forEach(x => (x.hidden = !x.dataset.b.includes(e.target.value.trim())));
+    };
+    el.onclick = e => {
+      const t = e.target.closest('[data-a],[data-b]');
+      if (!t) return e.target === el && close(null);
+      if (t.dataset.b) {
+        b = branchByName(t.dataset.b);
+        return main();
+      }
+      const a = t.dataset.a;
+      if (a === 'go') close(b);
+      else if (a === 'pick') pick();
+      else if (a === 'back') main();
+      else close(null);
+    };
+    el.onkeydown = e => e.key === 'Escape' && close(null);
+    document.body.appendChild(el);
+    if (b) main();
+    else pick();
+  });
+}
 // 화면 아래 잠깐 뜨는 알림
 function toast(t) {
   let el = $('toast');
@@ -3328,14 +3388,27 @@ async function load(file) {
     else if (linkB) setBranch(linkB, 'link');
     else {
       setBranch(saved, saved ? 'saved' : '');
-      guessBranch();
+      if (SERVER && !saved) await guessBranch();
     }
-    if (LINK && BRANCH) {
-      LINK.b = BRANCH[0];
-      store.set('sched.appBranch', BRANCH[0]);
+    if (SERVER) {
+      // 올리기 전에 어느 지사로 등록할지 한 번 확인 (다른 지사 일정표로 덮어쓰지 않게)
+      const why = { title: '일정표 제목·파일 이름에서 찾은 지사예요', link: '지금 보고 있는 지사예요', saved: '지난번에 고른 지사예요', guess: '현장 동네로 추측한 지사예요' }[BRANCH_SRC] || '';
+      const b = await askBranch(BRANCH, data.source, why);
+      if (!b) {
+        // 취소: 올리지 않고 보던 화면 그대로
+        data = prev;
+        render();
+        if (LINK && !prev) noWeek();
+        else if (LINK) toast('올리지 않았어요');
+        return;
+      }
+      if (!BRANCH || b[0] !== BRANCH[0]) setBranch(b, 'pick');
+      if (LINK) {
+        LINK.b = BRANCH[0];
+        store.set('sched.appBranch', BRANCH[0]);
+      }
+      doShare(false);
     }
-    // 올리면 바로 지사에 공유 (지사를 알 때만. 더 최근 일정표가 있으면 묻고)
-    if (SERVER && BRANCH) doShare(false);
     if (LINK) {
       // 앱·링크: 이 일정표에 내 이름이 있으면 바로, 없으면 이름 고르기
       const names = allNames();
