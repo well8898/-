@@ -1709,6 +1709,15 @@ function render() {
   branchRow();
   shareBox();
   if (SERVER) syncWidget();
+  // 사람이 바뀌면(어떤 방법이든) 앱 위젯·주소도 그 사람으로 — 글자마다 보내지 않게 잠깐 기다림
+  if (name && name !== render.synced) {
+    clearTimeout(render.t);
+    render.t = setTimeout(() => {
+      if (curName() === render.synced) return;
+      appWidgetUser();
+      rememberName();
+    }, 1200);
+  }
   days = mine(name);
   if (!days.some(d => d.t || d.off)) {
     $('tabs').innerHTML = '';
@@ -2175,7 +2184,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.6';
+const PAGE_VER = '2.7';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2949,14 +2958,28 @@ function startShared() {
   render();
   if (data && !curName()) return;
   appWidgetUser(LINK.b);
+  rememberName();
   homeCard();
 }
 // 앱 안: 지금 지사·이름을 위젯에 알려 줌 → 위젯이 서버에서 바로 새로 받음
 // (일정표를 올렸을 때, 사람을 바꿨을 때)
+// 바꾼 이름을 주소(?n=)에도 → 새로고침하거나 앱을 껐다 켜도 그 사람으로
+function rememberName() {
+  const n = curName();
+  if (!n || !LINK) return;
+  LINK.n = n;
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('n') === n) return;
+    q.set('n', n);
+    history.replaceState(null, '', location.pathname + '?' + q.toString());
+  } catch (e) {}
+}
 function appWidgetUser(branch) {
   const ab = appBridge();
   const b = branch || (BRANCH && BRANCH[0]) || (LINK && LINK.b) || '';
   if (!ab || !b || !curName()) return;
+  render.synced = curName();
   try {
     ab.setUser(b, curName());
   } catch (e) {}
@@ -3315,9 +3338,6 @@ document.addEventListener('drop', e => {
 $('name').addEventListener('input', () => {
   store.set('sched.name', $('name').value.trim());
   render();
-  // 이름을 다 고친 뒤 위젯도 그 사람으로 (글자마다 보내지 않게 잠깐 기다림)
-  clearTimeout(appWidgetUser.t);
-  appWidgetUser.t = setTimeout(() => appWidgetUser(), 1200);
 });
 (async () => {
   // 처음 화면 모드: 지난번 고른 것, 없으면 링크·앱은 쉬운 화면
