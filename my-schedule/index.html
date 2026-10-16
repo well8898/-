@@ -903,6 +903,10 @@ body.easy{background:var(--surface)}
 body.easy .set-h,body.easy #fileRow,body.easy #branchRow,body.easy #widgetBox{display:none!important}
 body.easy .setbox{border:0;padding:0}
 body.easy .tot3 div{background:var(--bg);border:0}
+
+.ez-oth{display:inline-block;margin-top:5px;font-size:13.5px;font-weight:600;color:#7a5300;background:#fff7e6;border-radius:8px;padding:4px 8px;line-height:1.4}
+.ewk-c small.ewk-o{white-space:normal;color:#7a5300;font-size:13px;margin-top:4px}
+.wd-o{display:block;font-size:12.5px;color:#7a5300;margin-top:1px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1717,7 +1721,10 @@ function drawWeek() {
     h += `<section class="wd${d.t ? '' : ' off'}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${dow} ${md}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>`;
     if (d.t)
       h += `<ul>${d.t.stops
-        .map(s => `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`)
+        .map(
+          s =>
+            `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}${othersTxt(d, s) ? `<small class="wd-o">같은 현장 · ${esc(othersTxt(d, s))}</small>` : ''}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`
+        )
         .join('')}</ul>`;
     if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
     h += '</section>';
@@ -1793,6 +1800,13 @@ function drawPanel(dx) {
   p.innerHTML = h;
   if (SERVER && d.t) dayExtras(d);
 }
+// 같은 현장 다른 조: "6조 정준하·안재현 2대" (시간이 다르면 시간도)
+function othersTxt(d, s) {
+  return othersAt(d, s)
+    .map(o => o.team + ' ' + o.names.join('·') + ' ' + o.units + '대' + (o.times.join() !== s.time && o.times.length ? ' (' + o.times.join(', ') + ')' : ''))
+    .join(' / ');
+}
+
 // 요일 탭: 요일 + 그날 현장 수 · 승강기 대수 (휴가는 빨간 "휴가"). 맨 앞 「이번 주」는 한 주 합계
 function dayTabs(easy) {
   const work = days.filter(d => d.t);
@@ -1830,7 +1844,8 @@ function drawEasyWeek() {
     h += `<button type="button" class="ewk-r${d.iso === todayIso ? ' today' : ''}${d.t ? '' : ' off'}" data-day="${d.iso}">
       <span class="ewk-d"><b>${dow}</b><small>${d.iso === todayIso ? '오늘' : md}</small></span>
       <span class="ewk-c"><b>${d.t ? places(d.t.stops).length + '현장 ' + sumUnits(d.t.stops) + '대' : '휴가'}</b>
-      <small>${first ? esc((first.time ? first.time + ' ' : '') + placeName(first.name)) + (more > 0 ? ' 외 ' + more + '현장' : '') : '푹 쉬세요'}</small></span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
+      <small>${first ? esc((first.time ? first.time + ' ' : '') + placeName(first.name)) + (more > 0 ? ' 외 ' + more + '현장' : '') : '푹 쉬세요'}</small>
+      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">같은 현장 · ${places(d.t.stops).length > 1 ? esc(placeName(s.name)) + ': ' : ''}${esc(othersTxt(d, s))}</small>`).join('') : ''}</span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
   });
   h += `</div>` + ezFoot(null);
   return h;
@@ -1905,7 +1920,6 @@ function ezDetail(d, s, i) {
     const cap = uniq(x => x.cap).join(', ');
     if (cap || floors.length) rows.push(['정원·층수', [cap, floors.length ? Math.max(...floors) + '층' : ''].filter(Boolean).join(' · ')]);
   }
-  othersAt(d, s).forEach(o => rows.push(['같은 현장', o.team + ' ' + o.names.join('·') + ' ' + o.times.join(', ')]));
   return `<div class="ez-kv">${rows.map(r => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
     <button type="button" class="ez-more" data-full="${i}">위치 고치기 · 호기별 보기는 자세히에서</button>`;
 }
@@ -1944,7 +1958,8 @@ function drawEasy() {
       const pz = past(i);
       h += `<div class="ez-r${pz ? ' ez-past' : ''}"><div class="ez-tm">${esc(s.time || '')}</div><div class="ez-rail"><span class="ez-dot"></span><span class="ez-ln${last ? ' dash' : ''}"></span></div>
         <div class="ez-bd"><button type="button" class="ez-head" data-open="${i}" aria-expanded="${open === i}"><div class="ez-nm">${esc(placeName(s.name))}</div>
-        <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div></button>
+        <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div>
+        ${othersTxt(d, s) ? `<div class="ez-oth">같은 현장 · ${esc(othersTxt(d, s))}</div>` : ''}</button>
         ${open === i ? ezNav(s) + ezDetail(d, s, i) : ''}
         ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">지사로 복귀 ${legTxt(L.back)}</div>` : ''}</div></div>`;
     });
