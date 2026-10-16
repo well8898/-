@@ -630,7 +630,6 @@ function tomorrow_(iso) {
 }
 
 // 편집기에서 실행해 설정 확인
-// 편집기에서 실행해 설정 확인
 function testSetup() {
   const props = PropertiesService.getScriptProperties();
   ['KAKAO_REST_API_KEY', 'KAKAO_JS_KEY', 'TMAP_APP_KEY', 'DATA_GO_KR_KEY'].forEach(k =>
