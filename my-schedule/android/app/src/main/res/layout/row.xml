@@ -15,6 +15,7 @@
         android:paddingEnd="6dp">
 
         <TextView
+            android:fontFamily="@font/pretendard"
             android:id="@+id/time"
             android:layout_width="44dp"
             android:layout_height="wrap_content"
@@ -29,6 +30,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
             <TextView
+            android:fontFamily="@font/pretendard"
                 android:id="@+id/name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -38,6 +40,7 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
             <TextView
+            android:fontFamily="@font/pretendard"
                 android:id="@+id/info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -48,6 +51,7 @@
         </LinearLayout>
 
         <TextView
+            android:fontFamily="@font/pretendard"
             android:id="@+id/go"
             android:autoSizeTextType="uniform"
             android:autoSizeMinTextSize="8sp"
@@ -63,6 +67,7 @@
             android:textSize="11sp"
             android:textStyle="bold" />
         <TextView
+            android:fontFamily="@font/pretendard"
             android:id="@+id/kakao"
             android:autoSizeTextType="uniform"
             android:autoSizeMinTextSize="8sp"
@@ -78,6 +83,7 @@
             android:textSize="11sp"
             android:textStyle="bold" />
         <TextView
+            android:fontFamily="@font/pretendard"
             android:id="@+id/naver"
             android:autoSizeTextType="uniform"
             android:autoSizeMinTextSize="8sp"

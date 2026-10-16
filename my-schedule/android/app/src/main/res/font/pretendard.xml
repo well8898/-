@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pretendard (SIL Open Font License 1.1, assets/Pretendard-OFL.txt) -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/pretendard_regular" />
+    <font android:fontStyle="normal" android:fontWeight="700" android:font="@font/pretendard_bold" />
+</font-family>

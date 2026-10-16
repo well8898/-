@@ -44,6 +44,7 @@ public class MainActivity extends Activity {
         box.addView(text("웹앱 아래쪽 「홈 화면 위젯 주소」의 주소를 복사해서 아래에 붙여넣고 저장하세요.", 14, 0xFF8B95A5, false));
 
         input = new EditText(this);
+        input.setTypeface(font(false));
         input.setHint("https://…vercel.app/?w=…");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         input.setTextColor(Color.WHITE);
@@ -159,12 +160,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    // 앱 글꼴: Pretendard (res/font). 못 읽으면 기본 글꼴
+    private android.graphics.Typeface font(boolean bold) {
+        try {
+            return android.graphics.Typeface.create(getResources().getFont(R.font.pretendard),
+                    bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        } catch (Exception e) {
+            return bold ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT;
+        }
+    }
+
     private TextView text(String s, int sp, int color, boolean bold) {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
-        if (bold) t.setTypeface(t.getTypeface(), android.graphics.Typeface.BOLD);
+        t.setTypeface(font(bold));
         t.setPadding(0, dp(6), 0, 0);
         return t;
     }
@@ -175,6 +186,7 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setTextColor(Color.WHITE);
         b.setTextSize(15);
+        b.setTypeface(font(true));
         b.setGravity(Gravity.CENTER);
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
