@@ -2180,7 +2180,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.4';
+const PAGE_VER = '2.5';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2211,17 +2211,28 @@ function verCheck(quiet) {
   const b = document.getElementById('verBtn');
   if (!SERVER || GAS) { if (!quiet) verShow('ok', '이 화면은 따로 확인할 게 없어요', '최신 버전 확인'); return; }
   if (!quiet) { b.textContent = '확인하는 중…'; b.disabled = true; }
+  verCheck.at = Date.now();
   run('latestVer').then(v => {
     const sv = document.getElementById('srvVer'); if (sv && v.server) sv.textContent = '서버 ' + v.server.replace(/^v/, '');
     const av = appVerNow();
     if (verNewer(v.page, PAGE_VER)) return verShow('old', '화면이 새로 바뀌었어요. 「새로고침」을 눌러 주세요.', '새로고침', reloadPage);
     if (av && v.app && verNewer(v.app, av)) return verShow('old', '앱 새 버전 ' + v.app + '이 나왔어요 (지금 ' + av + '). 눌러서 받은 뒤 「설치」를 누르세요.', '앱 새 버전 받기', getApp);
-    if (!quiet) verShow('ok', '✓ 모두 최신이에요', '최신 버전 확인');
+    // 「최신이에요」는 잠깐만 보여 주고 사라짐 (오래 떠 있으면 나중에 옛 버전이 돼도 최신처럼 보임)
+    if (!quiet) {
+      const hm = new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+      verShow('ok', '✓ 모두 최신이에요 (' + hm + ' 확인)', '최신 버전 확인');
+      clearTimeout(verCheck.t);
+      verCheck.t = setTimeout(() => { const m = document.getElementById('verMsg'); if (m.classList.contains('ok')) m.hidden = true; }, 5000);
+    }
   }).catch(() => { if (!quiet) verShow('old', '인터넷 연결을 확인하고 다시 눌러 주세요.', '다시 확인'); });
 }
 verLine();
 document.getElementById('verBtn').onclick = verCheck;
 setTimeout(() => verCheck(true), 1500);
+// 켜 둔 채로 오래 있어도: 다시 볼 때(앱으로 돌아올 때)·30분마다 조용히 다시 확인 → 옛 버전이면 안내
+const verAgain = () => { if (!document.hidden && Date.now() - (verCheck.at || 0) > 10 * 60 * 1000) verCheck(true); };
+document.addEventListener('visibilitychange', verAgain);
+setInterval(verAgain, 30 * 60 * 1000);
 const cfgReady = !SERVER
   ? Promise.resolve(applyCfg(null))
   : window.CFG

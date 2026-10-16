@@ -14,7 +14,7 @@
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
 const SERVER_VER = 'v2.3';
-const PAGE_VER = '2.4'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const PAGE_VER = '2.5'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
