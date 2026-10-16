@@ -1949,7 +1949,7 @@ function drawEasy() {
     const mates = d.t.members.map(bare).filter(x => x !== name);
     const L = ezLegs(d);
     h += `<h2 class="ez-title">${esc(name)} 님,<br>${when} ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대</h2>
-      <div class="ez-sum">${[mates.length ? esc(mates.join(', ')) + ' 님과' : '', L.tot ? '총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''].filter(Boolean).join(' · ')}</div>`;
+      <div class="ez-sum">${[mates.length ? esc(mates.join(', ')) + ' 님과' : '', L.tot ? '총 경로 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''].filter(Boolean).join(' · ')}</div>`;
     h += ezDays(d);
     const hm = nowHm();
     const past = i => isToday && d.t.stops[i].time && d.t.stops[i].time < hm && i < d.t.stops.length - 1 && d.t.stops[i + 1].time && d.t.stops[i + 1].time <= hm;
@@ -1971,16 +1971,8 @@ function drawEasy() {
         ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">지사로 복귀 ${legTxt(L.back)}</div>` : ''}</div></div>`;
     });
     h += `</div>`;
-    const pts = [];
-    d.t.stops.forEach(s => {
-      const g = GEO[mapQuery(s)];
-      if (g && !(pts.length && ll(pts[pts.length - 1].g) === ll(g))) pts.push({ g, name: s.name });
-    });
-    let route = '';
-    if (pts.length) {
-      const all = ORIGIN && ORIGIN.lat ? [{ g: ORIGIN, name: BRANCH ? BRANCH[0] : ORIGIN.name, home: 1 }].concat(pts) : pts;
-      route = `<div class="ez-route"><b>하루 경로${L.tot ? ' · 총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''}</b>${dayRouteHtml(all)}</div>`;
-    }
+    // 총 경로(지사 출발 → 현장들 → 지사 복귀) km
+    const route = L.tot ? `<div class="ez-route"><b>총 경로 ${L.tot.toFixed(1)}km${L.unk ? '+' : ''}</b></div>` : '';
     h += ezFoot(route);
   } else {
     h += `<h2 class="ez-title">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
@@ -2580,8 +2572,8 @@ function drawLegs(d, pts) {
   }
   const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
   const route = pts.map(x => x.name).join(' → ');
-  el.innerHTML = `${dayRouteHtml(pts)}<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
-    ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
+  el.innerHTML = `<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
+    ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>총 경로</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
     ${skipped ? `<p class="note">위치를 모르는 ${skipped}현장은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
