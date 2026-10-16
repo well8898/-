@@ -18,7 +18,7 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
-const SERVER_VER = '10.16-승강기'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = '10.16b'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const ELV_URL = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
@@ -327,7 +327,8 @@ function setSiteAddr(name, area, text, origin, branch) {
   try {
     name = String(name || '').trim();
     text = String(text || '').trim().slice(0, 120);
-    if (!name || text.length < 2) return { ok: false, message: '주소를 입력해 주세요.' };
+    if (!name) return { ok: false, message: '현장 이름을 알 수 없어요. 일정표를 다시 올려 주세요.' };
+    if (text.length < 2) return { ok: false, message: '주소를 입력해 주세요.' };
     const o = origin && origin.lat ? origin : null;
     const J = juris_(branch || (o && o.name));
     const base = 'https://dapi.kakao.com/v2/local/search/';

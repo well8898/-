@@ -838,7 +838,7 @@ window.addEventListener(
     <div class="branch" id="branchRow"></div>
     <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
-    <p class="ver">화면 버전 10.16-승강기 · <span id="srvVer">서버 확인 중</span></p>
+    <p class="ver">화면 버전 10.16b · <span id="srvVer">서버 확인 중</span></p>
   </div></main>
 </div>
 
@@ -1199,10 +1199,20 @@ function parseStops(buf) {
           m[6] = u[2];
         }
       }
+      let area = m[3] && m[3] !== '주소불명' ? m[3] : '';
+      // 동 칸 없이 [종류][현장명](대수)만 있는 줄: 두 번째 괄호가 동이 아니라 현장명
+      if (!name && m[3]) {
+        name = m[3];
+        area = '';
+      } else if (area && !/(동|읍|면|리|가|\d)$/.test(area) && area.length > 6) {
+        // 동 자리에 긴 이름이 들어간 경우(예: 아파트 이름) → 현장명 앞에 붙임
+        name = (area + ' ' + name).trim();
+        area = '';
+      }
       return {
         time: m[1],
         kind: m[2],
-        area: m[3] && m[3] !== '주소불명' ? m[3] : '',
+        area,
         name,
         units: m[6] ? +m[6] : null,
         memo
@@ -2033,12 +2043,12 @@ function fixForm(i) {
       if (act === 'save') {
         if (inp.value.trim().length < 2) return msg('주소를 입력해 주세요.');
         msg('주소를 찾는 중…');
-        const r = await run('setSiteAddr', placeName(s.name), s.area || '', inp.value.trim(), ORIGIN, BRANCH ? BRANCH[0] : '');
+        const r = await run('setSiteAddr', placeName(s.name) || s.area || q, s.area || '', inp.value.trim(), ORIGIN, BRANCH ? BRANCH[0] : '');
         if (!r.ok) return msg(r.message || '저장하지 못했어요.');
         GEO[q] = r.place;
       } else {
         msg('지우는 중…');
-        const r = await run('clearSiteAddr', placeName(s.name), s.area || '');
+        const r = await run('clearSiteAddr', placeName(s.name) || s.area || q, s.area || '');
         if (!r.ok) return msg(r.message || '지우지 못했어요.');
         delete GEO[q];
       }
