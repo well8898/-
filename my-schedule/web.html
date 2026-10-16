@@ -1001,7 +1001,7 @@ window.addEventListener(
     <div class="vbox" id="verBox">
       <p class="ver"><span id="pageVer"></span><span id="appVer"></span> · <span id="srvVer">서버 확인 중</span></p>
       <p class="vmsg" id="verMsg" hidden></p>
-      <button type="button" class="vbtn" id="verBtn">최신인지 확인</button>
+      <button type="button" class="vbtn" id="verBtn">최신 버전 확인</button>
     </div>
   </div></main>
 </div>
@@ -2168,14 +2168,14 @@ const getApp = () => { const ab = window.AndroidApp; if (ab && ab.openUpdate) ab
 function verCheck(quiet) {
   quiet = quiet === true;
   const b = document.getElementById('verBtn');
-  if (!SERVER || GAS) { if (!quiet) verShow('ok', '이 화면은 따로 확인할 게 없어요', '최신인지 확인'); return; }
+  if (!SERVER || GAS) { if (!quiet) verShow('ok', '이 화면은 따로 확인할 게 없어요', '최신 버전 확인'); return; }
   if (!quiet) { b.textContent = '확인하는 중…'; b.disabled = true; }
   run('latestVer').then(v => {
     const sv = document.getElementById('srvVer'); if (sv && v.server) sv.textContent = '서버 ' + v.server.replace(/^v/, '');
     const av = appVerNow();
     if (verNewer(v.page, PAGE_VER)) return verShow('old', '화면이 새로 바뀌었어요. 「새로고침」을 눌러 주세요.', '새로고침', reloadPage);
     if (av && v.app && verNewer(v.app, av)) return verShow('old', '앱 새 버전 ' + v.app + '이 나왔어요 (지금 ' + av + '). 눌러서 받은 뒤 「설치」를 누르세요.', '앱 새 버전 받기', getApp);
-    if (!quiet) verShow('ok', '✓ 모두 최신이에요', '최신인지 확인');
+    if (!quiet) verShow('ok', '✓ 모두 최신이에요', '최신 버전 확인');
   }).catch(() => { if (!quiet) verShow('old', '인터넷 연결을 확인하고 다시 눌러 주세요.', '다시 확인'); });
 }
 verLine();
