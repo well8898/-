@@ -62,12 +62,101 @@ function getConfig() {
   }
 }
 
+// ── 지사별 관할구역 (한국승강기안전공단 지사 안내 기준) ──
+// '시도 시군구,시군구|시도 …'  시군구를 비우면 시도 전체. 창원시처럼 구까지 나뉜 곳은 '창원시 성산구'
+const JURIS = {
+  '서울남서지사': '서울 관악구,구로구,금천구,영등포구',
+  '서울동부지사': '서울 중구,동대문구,성동구,중랑구',
+  '서울서부지사': '서울 마포구,서대문구,은평구,용산구',
+  '서울북부지사': '서울 종로구,강북구,노원구,도봉구,성북구',
+  '서울강남지사': '서울 강남구',
+  '서울강동지사': '서울 강동구,송파구,광진구',
+  '서울서초지사': '서울 서초구,동작구',
+  '서울강서지사': '서울 강서구,양천구',
+  '부산서부지사': '부산 강서구,남구,동구,부산진구,사상구,사하구,서구,영도구,중구',
+  '부산동부지사': '부산 기장군,연제구,수영구,해운대구',
+  '부산북부지사': '부산 금정구,동래구,북구|경남 양산시',
+  '울산지사': '울산',
+  '경남동부지사': '경남 김해시,밀양시,창녕군,창원시 성산구,창원시 의창구,창원시 진해구',
+  '경남서부지사': '경남 거제시,고성군,통영시,함안군,의령군,창원시 마산합포구,창원시 마산회원구',
+  '진주출장소': '경남 거창군,남해군,사천시,산청군,진주시,하동군,함양군,합천군',
+  '대구서부지사': '대구 달서구,북구,서구,달성군|경북 고령군',
+  '대구동부지사': '대구 동구,수성구,중구,남구|경북 경산시,청도군',
+  '경북동부지사': '경북 경주시,영덕군,영양군,영천시,울릉군,울진군,청송군,포항시',
+  '경북서부지사': '경북 구미시,군위군,김천시,문경시,봉화군,성주군,안동시,상주시,영주시,예천군,의성군,칠곡군|대구 군위군',
+  '인천남부지사': '인천 미추홀구,남동구,동구,연수구,옹진군,중구',
+  '경기북부지사': '경기 가평군,구리시,남양주시,의정부시',
+  '양주출장소': '경기 양주시,동두천시,포천시,연천군',
+  '고양파주지사': '경기 고양시,파주시',
+  '인천동부지사': '인천 부평구|경기 부천시',
+  '안산지사': '경기 시흥시,안산시',
+  '인천서부지사': '경기 김포시|인천 계양구,서구,강화군',
+  '수원지사': '경기 수원시',
+  '성남지사': '경기 성남시,광주시,양평군,하남시',
+  '안양지사': '경기 과천시,광명시,군포시,안양시,의왕시',
+  '용인지사': '경기 용인시,이천시',
+  '평택안성지사': '경기 평택시,안성시',
+  '화성오산지사': '경기 화성시,오산시',
+  '강원지사': '강원 영월군,원주시,횡성군,정선군,태백시,평창군|경기 여주시|충북 단양군,제천시',
+  '강릉출장소': '강원 강릉시,고성군,동해시,삼척시,속초시,양양군',
+  '춘천출장소': '강원 양구군,인제군,철원군,춘천시,홍천군,화천군',
+  '대전지사': '대전|충남 금산군|충북 영동군,옥천군',
+  '세종지사': '세종|충남 계룡시,공주시,보령시,논산시,서천군,부여군,청양군',
+  '충북지사': '충북 괴산군,보은군,음성군,증평군,진천군,청주시,충주시',
+  '충남지사': '충남 당진시,서산시,아산시,예산군,태안군,홍성군',
+  '천안지사': '충남 천안시',
+  '광주지사': '광주 남구,동구,북구,서구|전남 담양군,화순군,장성군,곡성군',
+  '전북동부지사': '전북 남원시,무주군,순창군,완주군,임실군,장수군,진안군,전주시',
+  '전북서부지사': '전북 고창군,군산시,김제시,부안군,익산시,정읍시',
+  '전남동부지사': '전남 고흥군,광양시,구례군,순천시,여수시,보성군,장흥군',
+  '전남서부지사': '광주 광산구|전남 나주시,목포시,강진군,무안군,신안군,영광군,영암군,완도군,진도군,함평군,해남군',
+  '제주지사': '제주',
+};
+
+const SIDO = {
+  서울특별시: '서울', 부산광역시: '부산', 대구광역시: '대구', 인천광역시: '인천', 광주광역시: '광주',
+  대전광역시: '대전', 울산광역시: '울산', 세종특별자치시: '세종', 경기도: '경기', 강원도: '강원',
+  강원특별자치도: '강원', 충청북도: '충북', 충청남도: '충남', 전라북도: '전북', 전북특별자치도: '전북',
+  전라남도: '전남', 경상북도: '경북', 경상남도: '경남', 제주특별자치도: '제주',
+};
+
+// 지사 이름 → [[시도, 시군구(없으면 '')], …]  (관할 정보가 없는 지사·본부는 null)
+function juris_(branch) {
+  const t = JURIS[String(branch || '')];
+  if (!t) return null;
+  const out = [];
+  t.split('|').forEach(part => {
+    const i = part.indexOf(' ');
+    const sido = i < 0 ? part : part.slice(0, i);
+    const rest = i < 0 ? '' : part.slice(i + 1);
+    if (!rest) out.push([sido, '']);
+    else rest.split(',').forEach(g => out.push([sido, g.trim()]));
+  });
+  return out;
+}
+
+// 주소가 관할구역 안인지 ('경기도 고양시 …', '경기 고양시 …' 모두)
+function inJuris_(addr, J) {
+  if (!J) return true;
+  const w = String(addr || '').trim().split(/\s+/);
+  if (!w.length) return false;
+  const sido = SIDO[w[0]] || w[0].replace(/특별자치시|특별자치도|특별시|광역시|도$/, '');
+  const a = ' ' + w.slice(1).join(' ') + ' ';
+  return J.some(r => r[0] === sido && (!r[1] || a.indexOf(' ' + r[1] + ' ') >= 0));
+}
+
+// 검색 결과가 관할 안인지: 관할 정보가 있으면 관할로, 없으면 지사에서 REGION_KM 안
+function inArea_(x, o, J) {
+  if (J) return inJuris_(x.address_name, J) || inJuris_(x.road_address_name || (x.road_address && x.road_address.address_name), J);
+  return !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM;
+}
+
 // 지사 이름·주소 → { ok, origin: { lat, lng, name } }  (좌표는 스크립트 속성에 영구 저장)
 function getOrigin(name, address) {
   try {
     const p = branchPoint_(name, address);
     if (!p) throw new Error('지사 주소를 찾지 못했습니다: ' + address);
-    return { ok: true, origin: { lat: p.lat, lng: p.lng, name: name } };
+    return { ok: true, origin: { lat: p.lat, lng: p.lng, name: name }, juris: JURIS[name] || '' };
   } catch (e) {
     return { ok: false, message: e.message };
   }
@@ -135,31 +224,33 @@ function prefetchBranches_(branches) {
 function guessBranch(areas, branches) {
   try {
     const list = (Array.isArray(areas) ? areas : []).slice(0, 10);
-    // 동네 이름마다 전국의 같은 이름 후보 좌표
-    const cands = list.map(a => cached_('area:' + a, () => {
+    // 동네 이름마다 전국의 같은 이름 후보 (주소, 좌표)
+    const cands = list.map(a => cached_('area2:' + a, () => {
       const r = kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=30&query=' + encodeURIComponent(a));
       return (r.documents || [])
         .filter(d => (d.address_name || '').split(' ').pop() === a)
-        .map(d => [Number(d.y), Number(d.x)]);
+        .map(d => [Number(d.y), Number(d.x), d.address_name]);
     }) || []);
     prefetchBranches_(branches);
+    // 1순위: 그 동네들이 관할구역 안에 가장 많이 드는 지사, 2순위: 지사에서 35km 안에 있는 동네 수, 3순위: 거리 합
     let best = null;
     (Array.isArray(branches) ? branches : []).forEach(b => {
+      const J = juris_(b[0]);
       let p = null;
       try { p = branchPoint_(b[0], b[1]); } catch (e) { /* 건너뜀 */ }
-      if (!p) return;
-      let hits = 0, sum = 0;
+      if (!p && !J) return;
+      let inj = 0, hits = 0, sum = 0;
       cands.forEach(c => {
-        const m = c.length ? Math.min.apply(null, c.map(x => km_(p.lat, p.lng, x[0], x[1]))) : 999;
+        if (J && c.some(x => inJuris_(x[2], J))) inj++;
+        const m = p && c.length ? Math.min.apply(null, c.map(x => km_(p.lat, p.lng, x[0], x[1]))) : 999;
         if (m <= 35) hits++;
         sum += Math.min(m, 200);
       });
-      if (!best || hits > best.hits || (hits === best.hits && sum < best.sum)) {
-        best = { branch: b[0], hits: hits, sum: sum };
-      }
+      const better = !best || inj > best.inj || (inj === best.inj && (hits > best.hits || (hits === best.hits && sum < best.sum)));
+      if (better) best = { branch: b[0], inj: inj, hits: hits, sum: sum };
     });
-    if (!best || !best.hits) return { ok: false, message: '추측할 수 없음' };
-    return { ok: true, branch: best.branch, hits: best.hits };
+    if (!best || !(best.inj || best.hits)) return { ok: false, message: '추측할 수 없음' };
+    return { ok: true, branch: best.branch, hits: Math.max(best.inj, best.hits) };
   } catch (e) {
     return { ok: false, message: e.message };
   }
@@ -167,10 +258,11 @@ function guessBranch(areas, branches) {
 
 // sites: [{ q: 검색어, region, area: '삼계동', name: '김해북부두산위브아파트' }]  origin: 지사 좌표
 // → { ok, places: { 검색어: { lat, lng, name } } }   못 찾은 현장·관할 밖 결과는 빠짐
-function geocodeSites(sites, origin) {
+function geocodeSites(sites, origin, branch) {
   try {
     const places = {};
     const o = origin && origin.lat ? origin : null;
+    const J = juris_(branch || (o && o.name));
     (Array.isArray(sites) ? sites : []).slice(0, 60).forEach(s => {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
@@ -178,8 +270,8 @@ function geocodeSites(sites, origin) {
       const fx = siteFix_(s.name || q, s.area);
       if (fx) { places[q] = fx; return; }
       let p = null;
-      const ck = 'site3:' + q + '|' + (s.addr || '') + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
-      try { p = cached_(ck, () => findSite_(s, o)); } catch (e) { /* 이 현장만 건너뜀 */ }
+      const ck = 'site4:' + q + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+      try { p = cached_(ck, () => findSite_(s, o, J)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
     return { ok: true, places: places };
@@ -223,14 +315,15 @@ function siteFix_(name, area) {
 
 // 화면에서 호출: 현장 주소를 직접 지정 (도로명·지번 주소 또는 건물·상호 이름)
 // → { ok, place: { lat, lng, name, addr, fixed } }
-function setSiteAddr(name, area, text, origin) {
+function setSiteAddr(name, area, text, origin, branch) {
   try {
     name = String(name || '').trim();
     text = String(text || '').trim().slice(0, 120);
     if (!name || text.length < 2) return { ok: false, message: '주소를 입력해 주세요.' };
     const o = origin && origin.lat ? origin : null;
+    const J = juris_(branch || (o && o.name));
     const base = 'https://dapi.kakao.com/v2/local/search/';
-    const near = x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM;
+    const near = x => inArea_(x, o, J);
     let hit = null;
     const ad = kakaoGet_(base + 'address.json?size=5&query=' + encodeURIComponent(cleanAddr_(text)));
     const d = (ad.documents || []).find(near);
@@ -243,7 +336,7 @@ function setSiteAddr(name, area, text, origin) {
       const k = (kw.documents || []).find(near);
       if (k) hit = { y: Number(k.y), x: Number(k.x), a: k.road_address_name || k.address_name || text };
     }
-    if (!hit) return { ok: false, message: '그 주소를 지도에서 찾지 못했어요. 도로명·지번 주소로 다시 넣어 주세요.' };
+    if (!hit) return { ok: false, message: J ? '관할구역(' + JURIS[branch || o.name] + ') 안에서 그 주소를 찾지 못했어요. 도로명·지번 주소로 다시 넣어 주세요.' : '그 주소를 지도에서 찾지 못했어요. 도로명·지번 주소로 다시 넣어 주세요.' };
     hit.t = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
     const k = fixKey_(name, area);
     const prop = fixProp_(k);
@@ -284,8 +377,8 @@ function clearSiteAddr(name, area) {
   }
 }
 
-// 상호 검색 결과 중 일정표의 동·읍·면에 있고, 지사에서 가까운 곳 (REGION_KM 안)
-function findSite_(s, o) {
+// 상호 검색 결과 중 일정표의 동·읍·면에 있고, 지사 관할구역 안인 곳 (관할 정보가 없으면 REGION_KM 안)
+function findSite_(s, o, J) {
   const base = 'https://dapi.kakao.com/v2/local/search/';
   const area = String(s.area || '').trim();
   const name = String(s.name || '').trim();
@@ -293,22 +386,24 @@ function findSite_(s, o) {
   const ok = d => {
     const a = ' ' + (d.address_name || '') + ' ' + (d.road_address_name || '');
     if (area && a.indexOf(' ' + area) < 0) return false;
-    return !o || km_(o.lat, o.lng, Number(d.y), Number(d.x)) <= REGION_KM;
+    return inArea_(d, o, J);
   };
   // 실주소: 검사접수정보(정밀·설치·수시)에서 찾은 것 → 없으면 건물 주소록(정기 포함 전체)
   if (!s.addr) {
-    const cands = bookCandidates_(name, area);
+    const all = bookCandidates_(name, area);
+    const inj = all.filter(a => inJuris_(a, J));
+    const cands = J ? inj : all;
     for (let i = 0; i < Math.min(cands.length, 5); i++) {
-      const p = addrPoint_(cands[i], o);
+      const p = addrPoint_(cands[i], o, J);
       if (p) return { lat: p.lat, lng: p.lng, name: name, addr: cands[i] };
     }
   }
   if (s.addr) {
     const ad = kakaoGet_(base + 'address.json?size=3&query=' + encodeURIComponent(cleanAddr_(s.addr)));
-    const d = (ad.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+    const d = (ad.documents || []).find(x => inArea_(x, o, J));
     if (d) return { lat: Number(d.y), lng: Number(d.x), name: name, addr: s.addr };
     const kw = kakaoGet_(base + 'keyword.json?size=5&query=' + encodeURIComponent(cleanAddr_(s.addr)) + near);
-    const k = (kw.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+    const k = (kw.documents || []).find(x => inArea_(x, o, J));
     if (k) return { lat: Number(k.y), lng: Number(k.x), name: name, addr: s.addr };
   }
   const queries = [String(s.q || ''), area + ' ' + name, name].filter(Boolean);
@@ -365,11 +460,11 @@ function recptnList(st, en, branch) {
   }
 }
 
-// 주소 → 좌표 (지사에서 REGION_KM 안일 때만)
-function addrPoint_(addr, o) {
+// 주소 → 좌표 (관할 안일 때만. 관할 정보가 없으면 지사에서 REGION_KM 안)
+function addrPoint_(addr, o, J) {
   const base = 'https://dapi.kakao.com/v2/local/search/';
   const ad = kakaoGet_(base + 'address.json?size=3&query=' + encodeURIComponent(cleanAddr_(addr)));
-  const d = (ad.documents || []).find(x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM);
+  const d = (ad.documents || []).find(x => inArea_(x, o, J));
   return d ? { lat: Number(d.y), lng: Number(d.x) } : null;
 }
 
@@ -601,7 +696,7 @@ function withCoords_(key, data) {
       if (o.ok) origin = o.origin;
     }
     if (origin) data.origin = origin;
-    const r = geocodeSites(need, origin);
+    const r = geocodeSites(need, origin, data.branch && data.branch[0]);
     if (!r.ok) return data;
     targets.forEach(d => d.stops.forEach(s => {
       const p = r.places[s.name + '|' + (s.area || '')];

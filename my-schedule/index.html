@@ -724,6 +724,7 @@ label.ghost {
 .branch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .branch select{font:600 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:100%}
 .branch small{font-size:12px}
+.branch .juris{flex-basis:100%;color:var(--muted);line-height:1.4}
 .real{white-space:nowrap;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:0 5px;margin-left:4px}
 .maps.three{grid-template-columns:1fr 1fr 1fr}
 .leg .km small{font:400 12px var(--font-body);color:var(--muted)}
@@ -1206,6 +1207,7 @@ const BRANCHES = [
   ['제주지사', '제주 제주시 연삼로 473']
 ];
 let BRANCH = null; // [이름, 주소]
+const JURIS_TXT = {}; // 지사 → 관할구역 글 (서버에서 받아 옴)
 let BRANCH_SRC = ''; // 'title' | 'saved' | 'guess' | 'pick'
 const branchByName = n => BRANCHES.find(b => b[0] === n) || null;
 const province = () => (BRANCH ? BRANCH[1].split(' ')[0] : '');
@@ -1269,7 +1271,8 @@ function branchRow() {
   el.innerHTML = `<label for="branchSel">출발 지사</label>
     <select id="branchSel"><option value="">선택…</option>${BRANCHES.map(
       b => `<option${BRANCH && b[0] === BRANCH[0] ? ' selected' : ''}>${esc(b[0])}</option>`
-    ).join('')}</select><small id="branchNote">${why}</small>`;
+    ).join('')}</select><small id="branchNote">${why}</small>${
+      BRANCH && JURIS_TXT[BRANCH[0]] ? `<small class="juris">관할 ${esc(JURIS_TXT[BRANCH[0]].replace(/\|/g, ' · ').replace(/,/g, ', '))}</small>` : ''}`;
   $('branchSel').onchange = e => {
     setBranch(branchByName(e.target.value), 'pick');
     render();
@@ -1627,10 +1630,14 @@ async function dayExtras(d) {
     });
     if (BRANCH && !ORIGIN) {
       const o = await run('getOrigin', BRANCH[0], BRANCH[1]);
-      if (o && o.ok) ORIGIN = o.origin;
+      if (o && o.ok) {
+        ORIGIN = o.origin;
+        JURIS_TXT[BRANCH[0]] = o.juris || '';
+        branchRow();
+      }
     }
     if (need.length) {
-      const r = await run('geocodeSites', need, ORIGIN);
+      const r = await run('geocodeSites', need, ORIGIN, BRANCH ? BRANCH[0] : '');
       if (!r.ok) throw new Error(r.message);
       need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
     }
@@ -1748,7 +1755,7 @@ function fixForm(i) {
       if (act === 'save') {
         if (inp.value.trim().length < 2) return msg('주소를 입력해 주세요.');
         msg('주소를 찾는 중…');
-        const r = await run('setSiteAddr', placeName(s.name), s.area || '', inp.value.trim(), ORIGIN);
+        const r = await run('setSiteAddr', placeName(s.name), s.area || '', inp.value.trim(), ORIGIN, BRANCH ? BRANCH[0] : '');
         if (!r.ok) return msg(r.message || '저장하지 못했어요.');
         GEO[q] = r.place;
       } else {
