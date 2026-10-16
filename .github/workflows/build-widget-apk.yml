@@ -43,7 +43,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # 앱이 새 버전을 알아보는 데 쓰는 줄 (versionCode=N, versionName=X) — 지우지 말 것
+          VC=$(grep -oE 'versionCode [0-9]+' my-schedule/android/app/build.gradle | grep -oE '[0-9]+')
+          VN=$(grep -oE "versionName '[^']+'" my-schedule/android/app/build.gradle | cut -d"'" -f2)
           gh release delete widget-apk -y --cleanup-tag || true
           gh release create widget-apk schedule-widget.apk \
-            --target "$GITHUB_SHA" --title "오늘 현장 위젯 앱" \
-            --notes "휴대폰에서 schedule-widget.apk 를 눌러 받아 설치하세요. ($GITHUB_REF_NAME, ${GITHUB_SHA::7})"
+            --target "$GITHUB_SHA" --title "오늘 현장 위젯 앱 $VN" \
+            --notes "휴대폰에서 schedule-widget.apk 를 눌러 받아 설치하세요.
+
+          versionCode=$VC versionName=$VN ($GITHUB_REF_NAME, ${GITHUB_SHA::7})"

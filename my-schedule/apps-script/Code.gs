@@ -170,12 +170,111 @@ function geocodeSites(sites, origin) {
     (Array.isArray(sites) ? sites : []).slice(0, 60).forEach(s => {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
+      // 누군가 직접 넣어 둔 주소가 있으면 그것을 먼저
+      const fx = siteFix_(s.name || q, s.area);
+      if (fx) { places[q] = fx; return; }
       let p = null;
       const ck = 'site3:' + q + '|' + (s.addr || '') + '@' + (o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
       try { p = cached_(ck, () => findSite_(s, o)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
     return { ok: true, places: places };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// ── 현장 주소 직접 지정 (주소를 못 찾거나 틀린 현장을 한 번 고치면 모두 함께 씀) ──
+// 스크립트 속성 SITE_FIX_0 ~ SITE_FIX_7 에 { 건물키|동: { a: 주소, y: 위도, x: 경도, t: 날짜 } } 로 나눠 저장
+const FIX_SHARDS = 8;
+const FIX_MEMO = {};
+
+function fixKey_(name, area) {
+  return bookKey_(name) + '|' + String(area || '').trim();
+}
+
+function fixProp_(k) {
+  let v = 5381;
+  for (let i = 0; i < k.length; i++) v = (v * 33 + k.charCodeAt(i)) % 4294967296;
+  return 'SITE_FIX_' + (v % FIX_SHARDS);
+}
+
+function fixShard_(prop) {
+  if (!(prop in FIX_MEMO)) {
+    try {
+      FIX_MEMO[prop] = JSON.parse(PropertiesService.getScriptProperties().getProperty(prop) || '{}');
+    } catch (e) {
+      FIX_MEMO[prop] = {};
+    }
+  }
+  return FIX_MEMO[prop];
+}
+
+function siteFix_(name, area) {
+  const k = fixKey_(name, area);
+  if (k.length < 3) return null;
+  const f = fixShard_(fixProp_(k))[k];
+  return f ? { lat: f.y, lng: f.x, name: String(name || ''), addr: f.a, fixed: true } : null;
+}
+
+// 화면에서 호출: 현장 주소를 직접 지정 (도로명·지번 주소 또는 건물·상호 이름)
+// → { ok, place: { lat, lng, name, addr, fixed } }
+function setSiteAddr(name, area, text, origin) {
+  try {
+    name = String(name || '').trim();
+    text = String(text || '').trim().slice(0, 120);
+    if (!name || text.length < 2) return { ok: false, message: '주소를 입력해 주세요.' };
+    const o = origin && origin.lat ? origin : null;
+    const base = 'https://dapi.kakao.com/v2/local/search/';
+    const near = x => !o || km_(o.lat, o.lng, Number(x.y), Number(x.x)) <= REGION_KM;
+    let hit = null;
+    const ad = kakaoGet_(base + 'address.json?size=5&query=' + encodeURIComponent(cleanAddr_(text)));
+    const d = (ad.documents || []).find(near);
+    if (d) {
+      const road = d.road_address && d.road_address.address_name;
+      hit = { y: Number(d.y), x: Number(d.x), a: road || d.address_name || text };
+    } else {
+      const nq = o ? '&x=' + o.lng + '&y=' + o.lat + '&sort=distance' : '';
+      const kw = kakaoGet_(base + 'keyword.json?size=5&query=' + encodeURIComponent(text) + nq);
+      const k = (kw.documents || []).find(near);
+      if (k) hit = { y: Number(k.y), x: Number(k.x), a: k.road_address_name || k.address_name || text };
+    }
+    if (!hit) return { ok: false, message: '그 주소를 지도에서 찾지 못했어요. 도로명·지번 주소로 다시 넣어 주세요.' };
+    hit.t = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+    const k = fixKey_(name, area);
+    const prop = fixProp_(k);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      delete FIX_MEMO[prop];
+      const m = fixShard_(prop);
+      m[k] = hit;
+      PropertiesService.getScriptProperties().setProperty(prop, JSON.stringify(m));
+    } finally {
+      lock.releaseLock();
+    }
+    return { ok: true, place: { lat: hit.y, lng: hit.x, name: name, addr: hit.a, fixed: true } };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
+// 화면에서 호출: 직접 지정한 주소 지우기 (다시 자동으로 찾음)
+function clearSiteAddr(name, area) {
+  try {
+    const k = fixKey_(name, area);
+    const prop = fixProp_(k);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      delete FIX_MEMO[prop];
+      const m = fixShard_(prop);
+      delete m[k];
+      PropertiesService.getScriptProperties().setProperty(prop, JSON.stringify(m));
+    } finally {
+      lock.releaseLock();
+    }
+    return { ok: true };
   } catch (e) {
     return { ok: false, message: e.message };
   }
@@ -477,12 +576,21 @@ function withCoords_(key, data) {
     const tz = 'Asia/Seoul', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
     const targets = (data.days || []).filter(d => d.iso >= today && d.stops && d.stops.length).slice(0, 7);
     const need = [];
+    let changed = false;
+    // 직접 지정한 주소가 있으면 그것으로 (나중에 고친 주소도 위젯에 반영)
+    targets.forEach(d => d.stops.forEach(s => {
+      const fx = s.name ? siteFix_(s.name, s.area) : null;
+      if (fx && (s.lat !== fx.lat || s.lng !== fx.lng)) { s.lat = fx.lat; s.lng = fx.lng; s.addr = fx.addr; changed = true; }
+    }));
     targets.forEach(d => d.stops.forEach(s => {
       if (s.lat == null && s.name && !need.some(x => x.q === s.name + '|' + (s.area || ''))) {
         need.push({ q: s.name + '|' + (s.area || ''), area: s.area || '', name: s.name, region: '' });
       }
     }));
-    if (!need.length) return data;
+    if (!need.length) {
+      if (changed) PropertiesService.getScriptProperties().setProperty('W_' + key, JSON.stringify(data));
+      return data;
+    }
     let origin = null;
     if (data.branch && data.branch[0]) {
       const o = getOrigin(data.branch[0], data.branch[1] || '');

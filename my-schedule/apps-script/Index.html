@@ -735,11 +735,7 @@ label.ghost {
 .dayroute b{font-size:14px}
 .dayroute small{font-size:12.5px;color:var(--muted)}
 .dayroute .maps a{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.info{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:13px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 10px}
-.info span{color:var(--muted)}
-.info b{font-weight:600;overflow-wrap:anywhere}
 .maps button{font:600 13.5px var(--font-body);min-height:36px;border-radius:9px;background:var(--bg);color:var(--ink);border:1px solid var(--line);cursor:pointer}
-.maps .call{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .resume{background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
 .resume.old{border-color:var(--line)}
 .resume small{color:var(--muted);font-size:12.5px}
@@ -751,7 +747,12 @@ label.ghost {
 .ghost,.tab{min-width:0}
 .ghost{white-space:nowrap;font-size:clamp(12px,3.6vw,14px)}
 .others b{white-space:nowrap}
-.info .none{color:var(--muted);font-weight:400;font-family:var(--font-body)}
+.nofind{white-space:nowrap;font-size:11px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:0 5px;margin-left:4px}
+.fixaddr{font:600 12px var(--font-body);color:var(--accent);background:none;border:1px solid var(--accent);border-radius:7px;padding:2px 8px;margin-left:6px;cursor:pointer;white-space:nowrap}
+.fixaddr.soft{color:var(--muted);border-color:var(--line)}
+.fixbox{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px}
+.fixbox input{font:500 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--accent);border-radius:9px;padding:8px 10px;width:100%;box-sizing:border-box}
+.fixbox small{font-size:12px;color:var(--muted)}
 .tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
 .widget summary{font-weight:600;cursor:pointer}
@@ -1459,7 +1460,6 @@ function drawPanel(dx) {
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           ${othersHtml(d, s)}
-          <div id="info-${i}"></div>
           <div class="maps" id="maps-${i}"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오 길찾기</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버 길찾기</a></div>
         </div></li>`
         )
@@ -1489,14 +1489,8 @@ $('tabs').addEventListener('click', e => {
 $('panel').addEventListener('click', e => {
   const g = e.target.closest('[data-go]');
   if (g) go(g.dataset.go);
-  const ct = e.target.closest('.copytel');
-  if (ct) {
-    const t = ct.dataset.tel;
-    const done = () => (ct.textContent = '복사했어요');
-    (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(
-      () => (ct.textContent = t)
-    );
-  }
+  const fx = e.target.closest('[data-fix]');
+  if (fx) fixForm(+fx.dataset.fix);
 });
 // ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
 // 휴대폰인지 (앱 길안내 버튼은 휴대폰에서만)
@@ -1617,35 +1611,11 @@ function matchRecptn(d, s) {
   }
   return best && bs >= 4 ? best : null;
 }
-function telHref(t) {
-  const m = String(t || '').match(/[\d-]{7,}/);
-  return m ? m[0].replace(/-/g, '') : '';
-}
-function infoHtml(r) {
-  if (!r || !(r.mnt || r.mfr || r.form)) return '';
-  const first = t => String(t || '').split(/[~,/]/)[0].trim();
-  const tel = first(r.tel),
-    mtel = first(r.mfrTel);
-  const th = telHref(tel),
-    mh = telHref(mtel);
-  const noMnt = !r.mnt || /보수안함|없음/.test(r.mnt);
-  // 보수업체 번호가 공단 자료에 없으면: 업체 이름으로 번호 검색 버튼 + 제조사 대표번호
-  const search = !th && !noMnt
-    ? `<a href="https:\/\/search.naver.com/search.naver?query=${encodeURIComponent(r.mnt + ' 전화번호')}" target="_blank" rel="noopener">보수업체 번호 검색</a>`
-    : '';
-  return `<div class="info">${r.mnt ? `<span>보수업체</span><b>${esc(r.mnt)}</b>` : ''}<span>보수 전화</span><b class="mono">${th ? esc(r.tel) : '<span class="none">공단 자료에 번호 없음</span>'}</b>${r.mfr ? `<span>제조사</span><b>${esc(r.mfr)}</b>` : ''}${mtel ? `<span>제조사 전화</span><b class="mono">${esc(r.mfrTel)}</b>` : ''}${r.form ? `<span>형식</span><b>${esc(r.form)}</b>` : ''}</div>
-    <div class="maps">${th ? `<a class="call" href="tel:${th}" target="_blank" rel="noopener">보수업체 전화</a><button type="button" class="copytel" data-tel="${esc(tel)}">번호 복사</button>` : search}${!th && mh ? `<a href="tel:${mh}" target="_blank" rel="noopener">제조사 전화</a>` : ''}</div>`;
-}
 async function dayExtras(d) {
   const iso = d.iso;
   try {
     await cfgReady;
     await loadRecptn();
-    if (sel === iso)
-      d.t.stops.forEach((s, i) => {
-        const el = $('info-' + i);
-        if (el) el.innerHTML = infoHtml(matchRecptn(d, s));
-      });
     const need = [];
     d.t.stops.forEach(s => {
       const addr = realAddr(d, s);
@@ -1672,10 +1642,18 @@ async function dayExtras(d) {
     if (sel !== iso) return;
     d.t.stops.forEach((s, i) => {
       const g = GEO[mapQuery(s)];
-      if (!g) return;
       const el = $('addr-' + i),
         mp = $('maps-' + i);
-      if (el && g.addr) el.innerHTML = esc(g.addr) + ' <span class="real">실주소</span>';
+      // 위치를 못 찾았거나 틀린 현장은 주소를 직접 넣을 수 있음 (한 번 넣으면 모두 함께 씀)
+      if (!g) {
+        if (el) el.innerHTML = esc(s.area ? (REGION[s.area] || '') + ' ' + s.area : '주소 미기재') +
+          ' <span class="nofind">위치 못 찾음</span><button type="button" class="fixaddr" data-fix="' + i + '">주소 직접 넣기</button>';
+        return;
+      }
+      if (el)
+        el.innerHTML = (g.addr ? esc(g.addr) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>')
+          : esc(el.textContent.replace(/위치 고치기|위치 못 찾음|주소 직접 넣기/g, '').trim())) +
+          '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>';
       if (mp) {
         const q = g.addr
           ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
@@ -1746,6 +1724,50 @@ async function dayExtras(d) {
         '<p class="note" style="padding:14px">지도를 표시하지 못했어요.</p>';
     }
   }
+}
+// 현장 주소 직접 넣기 / 고치기 / 지우기
+function fixForm(i) {
+  const d = days.find(x => x.iso === sel);
+  const s = d && d.t && d.t.stops[i];
+  const el = $('addr-' + i);
+  if (!s || !el) return;
+  const old = $('fixbox-' + i);
+  if (old) return old.remove();
+  const g = GEO[mapQuery(s)];
+  const box = document.createElement('div');
+  box.className = 'fixbox';
+  box.id = 'fixbox-' + i;
+  box.innerHTML = `<input type="text" placeholder="도로명·지번 주소 또는 건물 이름" value="${esc(g && g.fixed ? g.addr || '' : '')}">
+    <div class="maps${g && g.fixed ? ' three' : ''}"><button type="button" data-act="save">저장</button><button type="button" data-act="cancel">취소</button>${g && g.fixed ? '<button type="button" data-act="clear">직접 넣은 주소 지우기</button>' : ''}</div>
+    <small>저장하면 이 현장(${esc(placeName(s.name))}${s.area ? ' · ' + esc(s.area) : ''})의 위치로 다른 분들도 함께 써요.</small>`;
+  el.after(box);
+  const inp = box.querySelector('input');
+  inp.focus();
+  const msg = t => (box.querySelector('small').textContent = t);
+  box.addEventListener('click', async e => {
+    const act = e.target.dataset && e.target.dataset.act;
+    if (!act) return;
+    if (act === 'cancel') return box.remove();
+    const q = mapQuery(s);
+    try {
+      if (act === 'save') {
+        if (inp.value.trim().length < 2) return msg('주소를 입력해 주세요.');
+        msg('주소를 찾는 중…');
+        const r = await run('setSiteAddr', placeName(s.name), s.area || '', inp.value.trim(), ORIGIN);
+        if (!r.ok) return msg(r.message || '저장하지 못했어요.');
+        GEO[q] = r.place;
+      } else {
+        msg('지우는 중…');
+        const r = await run('clearSiteAddr', placeName(s.name), s.area || '');
+        if (!r.ok) return msg(r.message || '지우지 못했어요.');
+        delete GEO[q];
+      }
+      box.remove();
+      dayExtras(d);
+    } catch (err) {
+      msg('실패: ' + (err.message || err));
+    }
+  });
 }
 // 하루 경로 내비: 지사 출발 → 현장 경유 → 마지막 현장 도착 (경유지는 앱 한도 5곳까지)
 function dayRouteHtml(pts) {

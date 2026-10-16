@@ -50,6 +50,7 @@ public class WidgetProvider extends AppWidgetProvider {
         new Thread(() -> {
             String err = null;
             JSONObject o = Data.cached(c);
+            Update.check(c, false);
             try {
                 if (!Data.url(c).isEmpty()) o = Data.fetch(c);
             } catch (Exception e) {
@@ -88,7 +89,10 @@ public class WidgetProvider extends AppWidgetProvider {
             } else {
                 v.setTextViewText(R.id.title, d.optString("title"));
                 String up = o.optString("updated");
-                v.setTextViewText(R.id.sub, note != null ? note : d.optString("sub") + (up.isEmpty() ? "" : " · " + up + " 저장"));
+                String nv = Update.available(c);
+                v.setTextViewText(R.id.sub, note != null ? note
+                        : nv != null ? "⬆ 앱 새 버전 " + nv + " · 앱을 열어 업데이트하세요"
+                        : d.optString("sub") + (up.isEmpty() ? "" : " · " + up + " 저장"));
             }
             v.setTextViewText(R.id.empty, hasUrl ? "표시할 현장이 없어요" : "앱을 열어 내 위젯 주소를 넣어 주세요");
 

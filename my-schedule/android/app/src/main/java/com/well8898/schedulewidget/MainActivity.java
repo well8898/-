@@ -24,6 +24,7 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
     private EditText input;
     private TextView status;
+    private Button update;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -35,6 +36,11 @@ public class MainActivity extends Activity {
         box.setPadding(pad, pad, pad, pad);
 
         box.addView(text("오늘 현장 위젯", 22, Color.WHITE, true));
+        // 새 버전이 있으면 맨 위에 받기 버튼
+        update = button("", 0xFF2E9E5B, v -> startActivity(new android.content.Intent(
+                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(Update.APK))));
+        update.setVisibility(View.GONE);
+        box.addView(update, lp(dp(10)));
         box.addView(text("웹앱 아래쪽 「홈 화면 위젯 주소」의 주소를 복사해서 아래에 붙여넣고 저장하세요.", 14, 0xFF8B95A5, false));
 
         input = new EditText(this);
@@ -56,11 +62,24 @@ public class MainActivity extends Activity {
         box.addView(text("위젯에서: 현장 줄이나 「티맵」을 누르면 길안내, 맨 위 제목을 누르면 새로고침. "
                 + "위젯 추가 버튼이 안 되면 홈 화면을 길게 눌러 위젯 → 오늘 현장을 고르세요.", 13, 0xFF8B95A5, false), lp(dp(24)));
 
+        box.addView(text("현재 버전 " + Update.currentName(this), 12, 0xFF5B6575, false), lp(dp(16)));
+
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(0xFF12161E);
         sv.addView(box);
         setContentView(sv);
         showSaved();
+        new Thread(() -> {
+            Update.check(this, true);
+            runOnUiThread(this::showUpdate);
+        }).start();
+    }
+
+    private void showUpdate() {
+        String nv = Update.available(this);
+        if (nv == null) return;
+        update.setText("⬆ 새 버전 " + nv + " 받기 (눌러서 받은 뒤 설치)");
+        update.setVisibility(View.VISIBLE);
     }
 
     @Override
