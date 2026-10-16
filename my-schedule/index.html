@@ -2184,7 +2184,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.7';
+const PAGE_VER = '2.8';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2912,7 +2912,9 @@ async function doShare(force) {
     const r = await run('shareWeek', BRANCH[0], { source: data.source, days: data.days }, force);
     if (r && r.ok) {
       shared = { at: r.at };
+      if (LINK) LINK.b = BRANCH[0];
       appWidgetUser(BRANCH[0]);
+      rememberName();
       return shareBox();
     }
     if (r && r.older && confirm(r.message + '\n그래도 이 일정표로 바꿀까요?')) return doShare(true);
@@ -2970,14 +2972,16 @@ function rememberName() {
   LINK.n = n;
   try {
     const q = new URLSearchParams(location.search);
-    if (q.get('n') === n) return;
+    if (q.get('n') === n && q.get('b') === LINK.b) return;
+    q.set('b', LINK.b);
     q.set('n', n);
     history.replaceState(null, '', location.pathname + '?' + q.toString());
   } catch (e) {}
 }
 function appWidgetUser(branch) {
   const ab = appBridge();
-  const b = branch || (BRANCH && BRANCH[0]) || (LINK && LINK.b) || '';
+  // 지사는 지금 보고 있는 공유 일정표의 지사(LINK.b)가 우선 — 예전에 골라 둔 지사(BRANCH)로 잘못 저장하지 않게
+  const b = branch || (LINK && LINK.b) || (BRANCH && BRANCH[0]) || '';
   if (!ab || !b || !curName()) return;
   render.synced = curName();
   try {
@@ -3398,6 +3402,19 @@ $('name').addEventListener('input', () => {
       const m = $('msg');
       m.className = 'msg err';
       m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
+      // 일정표가 있는 지사가 있으면 바로 고르게 (지사가 잘못 저장돼 있을 때 막히지 않게)
+      try {
+        const r = await run('listWeeks');
+        const list = ((r && r.ok && r.list) || []).filter(x => x.branch !== LINK.b);
+        if (list.length) {
+          m.textContent = LINK.b + '에는 아직 일정표가 없어요. 아래에서 지사를 골라 주세요.';
+          branchPick(list, b => {
+            const q = new URLSearchParams(location.search);
+            q.set('b', b.branch);
+            location.replace(location.pathname + '?' + q.toString());
+          });
+        }
+      } catch (e) {}
     }
     easyToggle();
   } else render();
