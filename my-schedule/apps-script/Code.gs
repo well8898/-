@@ -18,6 +18,7 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
+const SERVER_VER = '10.16-승강기'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const ELV_URL = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
@@ -60,7 +61,7 @@ function getConfig() {
     // 티맵 앱키는 '티맵 길안내' 버튼(티맵 앱 실행 링크)에도 씀
     let webUrl = '';
     try { webUrl = ScriptApp.getService().getUrl(); } catch (e) { /* 배포 전 */ }
-    return { ok: true, kakaoJsKey: key.trim(), tmapKey: (props.getProperty('TMAP_APP_KEY') || '').trim(), webUrl: webUrl };
+    return { ok: true, kakaoJsKey: key.trim(), tmapKey: (props.getProperty('TMAP_APP_KEY') || '').trim(), webUrl: webUrl, ver: SERVER_VER };
   } catch (e) {
     return { ok: false, message: e.message };
   }

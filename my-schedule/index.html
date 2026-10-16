@@ -764,6 +764,7 @@ label.ghost {
 .elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .elv .mr{background:var(--accent-soft);color:var(--accent)}
 .elv .mrl{background:var(--off-soft);color:var(--off)}
+.ver{font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;opacity:.8}
 .tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
 .widget summary{font-weight:600;cursor:pointer}
@@ -837,6 +838,7 @@ window.addEventListener(
     <div class="branch" id="branchRow"></div>
     <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
+    <p class="ver">화면 버전 10.16-승강기 · <span id="srvVer">서버 확인 중</span></p>
   </div></main>
 </div>
 
@@ -1730,6 +1732,8 @@ function run(fn, ...a) {
 }
 // 설정(지도 키 등): 웹앱이 화면과 함께 넣어 주면(window.CFG) 서버에 따로 묻지 않음
 const applyCfg = c => {
+  const sv = document.getElementById('srvVer');
+  if (sv) sv.textContent = c && c.ver ? '서버 ' + c.ver : SERVER ? '서버 예전 버전(Code.gs 새로 배포 필요)' : '서버 없음';
   if (c && c.ok) {
     kakaoJsKey = c.kakaoJsKey || '';
     tmapKey = c.tmapKey || '';
@@ -1737,7 +1741,7 @@ const applyCfg = c => {
   }
 };
 const cfgReady = !SERVER
-  ? Promise.resolve()
+  ? Promise.resolve(applyCfg(null))
   : window.CFG
     ? Promise.resolve(applyCfg(window.CFG))
     : run('getConfig').then(applyCfg).catch(() => {});
