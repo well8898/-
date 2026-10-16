@@ -971,6 +971,193 @@ function parseItems(items, yearHint) {
   // 주말처럼 아무것도 없는 날은 뺌
   return days.filter(d => d.teams.length || d.vacation.length || d.support.length);
 }
+// 구글 시트형 「주간 검사 일정표」(경남서부 등): 날짜마다 종류·현장명·대수·업체·지역·환산·비고 칸,
+// 조마다 현장 줄들 + 맨 아래 요약 줄(현장 수 · 검사원 이름 · 환산 합), 맨 아래 휴가·연차 칸.
+// 검사 종류는 「종류」 칸 색깔: 빨강 설치 · 초록 수시 · 노랑 정밀 · 흰색 정기
+// pdf.js는 띄어쓴 글자를 한 덩어리로 줌('엘지 수월') → 낱말마다 나누고 글자 폭 비율로 x 추정
+function gsSplit(items) {
+  const cw = ch => (/[가-힣]/.test(ch) ? 1 : /\s/.test(ch) ? 0.55 : /[0-9A-Za-z]/.test(ch) ? 0.5 : 0.31);
+  const out = [];
+  items.forEach(it => {
+    if (!/\s/.test(it.s.trim())) return out.push(it);
+    const chars = [...it.s];
+    const tot = chars.reduce((a, ch) => a + cw(ch), 0) || 1;
+    let acc = 0, cur = '', start = 0, curW = 0;
+    chars.forEach(ch => {
+      const w = (cw(ch) / tot) * it.w;
+      if (/\s/.test(ch)) {
+        if (cur) out.push({ x: it.x + start, y: it.y, w: curW, s: cur });
+        cur = '';
+        curW = 0;
+        acc += w;
+        return;
+      }
+      if (!cur) start = acc;
+      cur += ch;
+      curW += w;
+      acc += w;
+    });
+    if (cur) out.push({ x: it.x + start, y: it.y, w: curW, s: cur });
+  });
+  return out;
+}
+function isGsWeek(items) {
+  items = gsSplit(items);
+  return items.some(i => /검사조/.test(i.s)) && items.some(i => /^\s*현장명\s*$/.test(i.s)) && items.some(i => /^\s*환산\s*$/.test(i.s));
+}
+function parseGsWeek(items, rects, yearHint) {
+  items = gsSplit(items);
+  const near = (a, b, t) => Math.abs(a - b) <= t;
+  // 줄로 묶기 (y 차이 2 이하)
+  const rowsOf = its => {
+    const out = [];
+    [...its].sort((a, b) => a.y - b.y || a.x - b.x).forEach(it => {
+      const L = out[out.length - 1];
+      if (L && near(L.y, it.y, 2)) L.items.push(it);
+      else out.push({ y: it.y, items: [it] });
+    });
+    return out;
+  };
+  const textOf = its => {
+    let s = '', end = null;
+    [...its].sort((a, b) => a.x - b.x).forEach(p => {
+      if (end !== null && p.x - end > 1.5) s += ' ';
+      s += p.s;
+      end = p.x + p.w;
+    });
+    return s.replace(/\s+/g, ' ').trim();
+  };
+  // 머리글 줄: 종류 · 현장명 · 대수 · 업체 · 지역 · 환산 · 비고 (날짜마다 한 벌)
+  const kinds = items.filter(i => /^\s*종류\s*$/.test(i.s));
+  const hy = Math.min(...items.filter(i => /^\s*현장명\s*$/.test(i.s)).map(i => i.y));
+  const H = items.filter(i => near(i.y, hy, 2));
+  const kx = kinds.filter(i => near(i.y, hy, 2)).map(i => i.x).sort((a, b) => a - b);
+  if (!kx.length) throw new Error('일정표 머리글(종류·현장명…)을 찾지 못했어요.');
+  const hx = (name, k) => {
+    const lo = kx[k], hi = k + 1 < kx.length ? kx[k + 1] : Infinity;
+    const h = H.find(i => i.s.trim() === name && i.x > lo - 1 && i.x < hi - 1);
+    return h ? h.x : null;
+  };
+  const cols = kx.map((x, k) => {
+    const c = { k: x, name: hx('현장명', k), units: hx('대수', k), comp: hx('업체', k), area: hx('지역', k), hw: hx('환산', k), note: hx('비고', k) };
+    c.end = k + 1 < kx.length ? kx[k + 1] - 1.5 : Infinity;
+    // 칸 경계: 종류 칸은 현장명 글자 시작 전까지(종류 x + 14)
+    c.b = [x - 4, x + 14, c.units - 1, c.comp - 1.5, c.area - 1.5, c.hw - 1.5, c.note - 0.5, c.end];
+    return c;
+  });
+  // 날짜: 머리글 바로 위 줄들에서 「9월 14일(월)」을 x 순서대로
+  const Y = yearHint || new Date().getFullYear();
+  const top = items.filter(i => i.y < hy - 1 && i.y > hy - 12);
+  const dates = [];
+  rowsOf(top).forEach(r => {
+    const t = textOf(r.items);
+    for (const m of t.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*\(([월화수목금토일])\)/g)) dates.push(m);
+  });
+  if (!dates.length) throw new Error('날짜(예: 9월 14일(월))를 찾지 못했어요.');
+  const body = items.filter(i => i.y > hy + 2);
+  const rows = rowsOf(body);
+  // 한 줄을 날짜별 칸으로 나눔 → [종류, 현장명, 대수, 업체, 지역, 환산, 비고]
+  const cellsOf = (r, c) => {
+    const parts = [[], [], [], [], [], [], []];
+    r.items.forEach(it => {
+      if (it.x < c.b[0] || it.x >= c.b[7]) return;
+      let j = 0;
+      while (j < 6 && it.x >= c.b[j + 1]) j++;
+      // 대수 칸에 숫자가 아닌 글자가 넘어오면(긴 이름의 끝 ')' 등) 현장명 칸으로
+      if (j === 2 && !/^\d+$/.test(it.s.trim())) j = 1;
+      parts[j].push(it);
+    });
+    return parts.map(textOf);
+  };
+  const isNames = s => /^[가-힣]{2,4}(\([^)]*\))?\s*,/.test(s) || /^,$/.test(s);
+  const isSumCell = c => isNames(c[1]) || (/^\d+$/.test(c[0]) && /^[\d.]+$/.test(c[5]) && /^[\d.]+$/.test(c[6]) && !c[2]);
+  // 조 요약 줄 (모든 날짜 공통의 y)
+  const sumY = [];
+  rows.forEach(r => {
+    if (cols.some(c => isSumCell(cellsOf(r, c)))) {
+      const last = sumY[sumY.length - 1];
+      if (last && r.y - last.y2 <= 3) last.y2 = r.y, last.rows.push(r);
+      else sumY.push({ y: r.y, y2: r.y, rows: [r] });
+    }
+  });
+  if (!sumY.length) throw new Error('조별 요약 줄(검사원 이름)을 찾지 못했어요.');
+  const lastSum = sumY[sumY.length - 1].y2;
+  // 조 번호: 맨 왼쪽(첫 종류 칸 왼쪽)의 숫자
+  const labels = body.filter(i => i.x + i.w <= kx[0] - 1 && /^\s*\d{1,2}\s*$/.test(i.s)).map(i => ({ y: i.y, n: +i.s.trim() }));
+  // 종류 칸 색 → 검사 종류
+  const kindAt = (c, y) => {
+    const r = rects.find(q => q.x0 <= c.k + 3 && q.x1 >= c.k + 3 && q.x1 - q.x0 < 20 && q.y0 - 1 <= y + 2 && q.y1 + 1 >= y + 2);
+    if (!r) return '정';
+    const [R, G, B] = r.c;
+    if (R > 200 && G < 90 && B < 90) return '설';
+    if (R > 200 && G > 200 && B < 90) return '밀';
+    if (G > 160 && R < 190 && B < 130) return '수';
+    return '정';
+  };
+  const LEAVE = /연차|휴가|병가|휴직|출산|공가|경조|교육|출장/;
+  return cols.map((c, k) => {
+    const m = dates[k];
+    const date = m ? new Date(Y, +m[1] - 1, +m[2]) : null;
+    const teams = [];
+    let prev = hy + 2;
+    sumY.forEach(sb => {
+      const block = rows.filter(r => r.y > prev && r.y < sb.y - 0.5);
+      const sc = sb.rows.map(r => cellsOf(r, c)).reduce((a, b) => a.map((v, i) => [v, b[i]].filter(Boolean).join(' ')));
+      prev = sb.y2;
+      const lab = labels.filter(l => l.y > (block[0] ? block[0].y - 3 : sb.y - 40) && l.y < sb.y2 + 1).pop();
+      // 이름: '최상문, 김흥호 2박3일' → 멤버 + 메모
+      const raw = sc[1].replace(/\s*\d박\s*\d일\s*/g, ' ').trim();
+      const stay = (sc[1].match(/\d박\s*\d일/) || [''])[0];
+      const members = raw.split(',').map(x => x.trim().replace(/\s*\(\s*/, '(').replace(/\(([^)]*)$/, '($1)')).filter(x => /^[가-힣]{2,4}(\(.*\))?$/.test(x));
+      const stops = [];
+      block.forEach(r => {
+        const [kw, name, units, comp, area, hw, note] = cellsOf(r, c);
+        const u = /^\d+$/.test(units) ? +units : null;
+        const memo = [note].filter(x => x && !/^[\d.]+$/.test(x)).join(' ');
+        if (!name && u == null) {
+          if (memo && stops.length) stops[stops.length - 1].memo = [stops[stops.length - 1].memo, memo].filter(Boolean).join(' ');
+          return;
+        }
+        const last = stops[stops.length - 1];
+        // 업체·지역 없이 글만 있는 줄: 앞 현장의 메모(대수가 있으면 앞 현장 대수에 더함)
+        // '10호기' '11~12호기'처럼 호기만 적은 줄: 같은 현장의 나머지 호기
+        if (last && ((!comp && !area) || (/^[\d~,\s-]+호기$/.test(name) && (!area || area === last.area)))) {
+          if (u != null) last.units = (last.units || 0) + u;
+          last.memo = [last.memo, name, memo].filter(Boolean).join(' ');
+          return;
+        }
+        stops.push({ time: '', kind: kindAt(c, r.y), area: area || '', name: name || '(현장명 없음)', units: u, memo, company: comp || '' });
+      });
+      if (!members.length && !stops.length) return;
+      teams.push({
+        team: lab ? lab.n + '조' : '',
+        sites: /^\d+$/.test(sc[0]) ? +sc[0] : stops.length,
+        units: stops.reduce((a, x) => a + (x.units || 0), 0),
+        members,
+        stops,
+        note: stay
+      });
+    });
+    // 맨 아래 칸: 연차(이름, 이름) · 육아휴직(이름) · 오전반차(이름) …
+    const misc = rows.filter(r => r.y > lastSum + 2).map(r => cellsOf(r, c).slice(1).filter(Boolean).join(' ')).filter(Boolean);
+    const vacation = [], support = [];
+    misc.join(' ').replace(/([가-힣·\s]{2,}?)\(([^)]*)\)/g, (all, kind, who) => {
+      kind = kind.trim().split(/\s+/).pop();
+      const names = who.split(/[,\s]+/).filter(x => /^[가-힣]{2,4}$/.test(x));
+      if (!names.length) return all;
+      if (LEAVE.test(kind) && !/반차|반가/.test(kind)) names.forEach(n => vacation.push(n + '(' + kind + ')'));
+      else support.push(kind + ': ' + names.join(', '));
+      return all;
+    });
+    return {
+      label: m ? m[1] + '/' + m[2] + ' (' + m[3] + ')' : '',
+      iso: date ? fmt(date) : '',
+      teams,
+      vacation,
+      support
+    };
+  }).filter(d => d.iso && (d.teams.length || d.vacation.length));
+}
 function fmt(d) {
   return (
     d.getFullYear() +
@@ -2012,10 +2199,19 @@ async function pdfItems(buf) {
     'https:\/\/cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
   const items = [];
+  // 색칠된 칸(검사 종류 색 구분용)과 PDF 제목(예: 경남서부지사 2026년 일정표)
+  items.rects = [];
+  try {
+    const meta = await doc.getMetadata();
+    items.title = (meta && meta.info && meta.info.Title) || '';
+  } catch (e) {}
   let off = 0;
   for (let p = 1; p <= doc.numPages; p++) {
     const pg = await doc.getPage(p);
     const vp = pg.getViewport({ scale: 1 });
+    try {
+      await pdfRects(pg, vp, off, items.rects);
+    } catch (e) {}
     const tc = await pg.getTextContent();
     for (const it of tc.items) {
       if (!it.str || !it.str.trim()) continue;
@@ -2029,6 +2225,30 @@ async function pdfItems(buf) {
     off += vp.height;
   }
   return items;
+}
+// 페이지의 색칠된 사각형 → [{ x0, y0, x1, y1, c: [r, g, b] }] (흰색 제외, 위가 0인 좌표)
+async function pdfRects(pg, vp, off, out) {
+  const ol = await pg.getOperatorList();
+  const O = pdfjsLib.OPS;
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  let ctm = [1, 0, 0, 1, 0, 0], fill = [255, 255, 255], path = null;
+  const st = [];
+  ol.fnArray.forEach((f, i) => {
+    const a = ol.argsArray[i];
+    if (f === O.save) st.push([ctm, fill]);
+    else if (f === O.restore) [ctm, fill] = st.pop() || [ctm, fill];
+    else if (f === O.transform) ctm = mul(ctm, a);
+    else if (f === O.setFillRGBColor) fill = typeof a[0] === 'string' ? [1, 3, 5].map(k => parseInt(a[0].slice(k, k + 2), 16)) : [a[0], a[1], a[2]];
+    else if (f === O.setFillGray) fill = [a[0] * 255, a[0] * 255, a[0] * 255];
+    else if (f === O.constructPath && a[2]) {
+      const mm = a[2];
+      const p = [[mm[0], mm[2]], [mm[1], mm[3]]].map(([x, y]) => [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]]);
+      path = { x0: Math.min(p[0][0], p[1][0]), x1: Math.max(p[0][0], p[1][0]), y0: vp.height - Math.max(p[0][1], p[1][1]) + off, y1: vp.height - Math.min(p[0][1], p[1][1]) + off };
+    } else if (f === O.fill || f === O.eoFill || f === O.fillStroke || f === O.eoFillStroke) {
+      if (path && !(fill[0] > 250 && fill[1] > 250 && fill[2] > 250)) out.push({ ...path, c: fill });
+      path = null;
+    } else if (f === O.endPath) path = null;
+  });
 }
 function sheetItems(buf) {
   const wb = XLSX.read(buf, { type: 'array', cellDates: false });
@@ -2094,19 +2314,24 @@ async function load(file) {
     const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
     const t = items.find(i => /일정표/.test(i.s));
     const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
-    const ds = parseItems(items, yr ? +yr : yy ? 2000 + +yy : undefined);
+    // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
+    const gsw = isPdf && isGsWeek(items);
+    const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
+    const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
+    const ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
     if (!ds.some(d => d.teams.length))
       throw new Error(
         '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
       );
+    const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
     data = {
-      source: t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
+      source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
       days: ds
     };
     sel = null;
     msg.textContent = '';
     saveLast();
-    const fromTitle = branchFromText((t ? t.s : '') + ' ' + file.name);
+    const fromTitle = branchFromText((t ? t.s : '') + ' ' + (items.title || '') + ' ' + file.name);
     const saved = branchByName(store.get('sched.branch'));
     if (fromTitle) setBranch(fromTitle, 'title');
     else {
