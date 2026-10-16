@@ -780,6 +780,7 @@ label.ghost {
 .vmsg.old{border-color:#f59e0b;background:#fffbeb;color:#92400e}
 .vmsg.ok{color:#047857}
 .vbtn{font:600 14px var(--font-body,inherit);padding:9px 16px;border-radius:999px;border:1px solid var(--line,#d1d5db);background:transparent;color:inherit;cursor:pointer}
+.vbox #whoBtn{margin-left:6px}
 .vbtn.go{background:#3d5afe;border-color:#3d5afe;color:#fff;font-size:16px;padding:12px 22px}
 @media (prefers-color-scheme:dark){:root:not([data-theme='light']) .vmsg.old{background:#3a2a05;color:#fcd34d}}
 :root[data-theme='dark'] .vmsg.old{background:#3a2a05;color:#fcd34d}
@@ -1037,6 +1038,7 @@ window.addEventListener(
       <p class="ver"><span id="pageVer"></span><span id="appVer"></span> · <span id="srvVer">서버 확인 중</span></p>
       <p class="vmsg" id="verMsg" hidden></p>
       <button type="button" class="vbtn" id="verBtn">최신 버전 확인</button>
+      <button type="button" class="vbtn" id="whoBtn" hidden>다른 사람·지사 보기</button>
     </div>
   </div></main>
 </div>
@@ -2214,7 +2216,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.1';
+const PAGE_VER = '3.2';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2983,6 +2985,7 @@ function pickMore(upload) {
 }
 function rePickBranch() {
   store.set('sched.appBranch', '');
+  store.set('sched.name', '');
   location.replace(location.pathname + '?' + (APP ? 'app=1&' : '') + 'pick=1');
 }
 // 고른 지사에 아직 일정표가 없을 때: 바로 올리게
@@ -3516,6 +3519,9 @@ $('name').addEventListener('input', () => {
   const ez0 = store.get('sched.easy');
   document.body.classList.toggle('easy', ez0 ? ez0 === '1' : !!(LINK || APP));
   syncMode();
+  // 화면 아래 「다른 사람·지사 보기」: 지사·이름을 처음부터 다시 고르기
+  $('whoBtn').hidden = !(LINK || APP || QS.get('pick') === '1');
+  $('whoBtn').onclick = rePickBranch;
   // 「다른 지사 고르기」 (고르기 화면 어디서든)
   $('namePick').addEventListener('click', e => {
     if (e.target.closest('[data-act="branch"]')) rePickBranch();
