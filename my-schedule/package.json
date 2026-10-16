@@ -2,5 +2,10 @@
   "name": "my-schedule",
   "private": true,
   "description": "내 검사 일정 — Vercel 서버 (api/, lib/) + 화면 (index.html)",
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ioredis": "5.4.1"
+  }
 }

@@ -6,7 +6,7 @@
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도) — 카카오 디벨로퍼스 Web 도메인에 Vercel 주소 등록
  *   - TMAP_APP_KEY       : (선택) 티맵 앱키 — 구간 거리·시간을 티맵 추천경로로
  *   - DATA_GO_KR_KEY     : (선택) 공공데이터포털 인증키 — 검사접수정보·승강기 정보
- *   - 저장소: Upstash Redis (Vercel Marketplace에서 연결하면 KV_REST_API_URL / KV_REST_API_TOKEN 이 자동으로 생김)
+ *   - 저장소: Vercel Storage의 Redis(REDIS_URL) 또는 Upstash(KV_REST_API_URL·TOKEN / UPSTASH_REDIS_REST_URL·TOKEN)
  * ▶ 키는 저장소에 올리지 않음. 위 환경 변수에만 넣기
  */
 'use strict';
@@ -36,7 +36,24 @@ function redisConf_() {
   const token = envEnd_('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN');
   return url && token ? { url: url.replace(/\/$/, ''), token } : null;
 }
+// Vercel 'Redis'(Redis Cloud)를 연결하면 REDIS_URL 하나만 생김 → 그때는 일반 Redis 연결(ioredis)
+let IOREDIS = null;
+function ioredis_() {
+  const url = envEnd_('REDIS_URL', 'KV_URL');
+  if (!url) return null;
+  if (!IOREDIS) {
+    const Redis = require('ioredis');
+    IOREDIS = new Redis(url, { maxRetriesPerRequest: 2, connectTimeout: 8000, enableAutoPipelining: true });
+    IOREDIS.on('error', () => {}); // 끊김은 다음 요청에서 다시 연결
+  }
+  return IOREDIS;
+}
 async function redis_(cmds) {
+  const io = !redisConf_() && ioredis_();
+  if (io) {
+    const out = await io.pipeline(cmds.map(([op, ...a]) => [op.toLowerCase(), ...a.map(String)])).exec();
+    return out.map(([err, r]) => { if (err) throw new Error('저장소 오류: ' + err.message); return r; });
+  }
   const c = redisConf_();
   if (!c) {
     // 메모리 흉내: GET / SET (EX) / DEL / MGET
@@ -417,7 +434,7 @@ async function kakaoGet_(url) {
 // 화면 시작 시: 지도 키
 async function getConfig() {
   return { ok: true, kakaoJsKey: env_('KAKAO_JS_KEY'), tmapKey: env_('TMAP_APP_KEY'), webUrl: APP_URL,
-    ver: SERVER_VER + (redisConf_() ? '' : ' (저장소 연결 안 됨)') };
+    ver: SERVER_VER + (redisConf_() || envEnd_('REDIS_URL', 'KV_URL') ? '' : ' (저장소 연결 안 됨)') };
 }
 
 // ════════ 지사 좌표 ════════
