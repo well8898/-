@@ -91,9 +91,14 @@ public class WidgetProvider extends AppWidgetProvider {
             v.setOnClickPendingIntent(R.id.header, head);
             v.setOnClickPendingIntent(R.id.refresh, head);
 
+
+            // 하루 경로 (지사 → 현장들 → 마지막 현장). 티맵은 경유지 링크가 없어 빠짐
             String rk = o == null ? "" : o.optString("rk");
+            String rv = o == null ? "" : o.optString("rv");
             v.setViewVisibility(R.id.route, rk.isEmpty() ? View.GONE : View.VISIBLE);
+            v.setViewVisibility(R.id.route_naver, rv.isEmpty() ? View.GONE : View.VISIBLE);
             if (!rk.isEmpty()) v.setOnClickPendingIntent(R.id.route, view(c, 3, rk));
+            if (!rv.isEmpty()) v.setOnClickPendingIntent(R.id.route_naver, view(c, 6, rv));
             if (hasUrl) v.setOnClickPendingIntent(R.id.app, view(c, 4, Data.appUrl(c)));
             else v.setOnClickPendingIntent(R.id.app, head);
 
@@ -111,7 +116,7 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     private static PendingIntent view(Context c, int code, String url) {
-        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent i = new Intent(c, NavActivity.class).setData(Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return PendingIntent.getActivity(c, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 }

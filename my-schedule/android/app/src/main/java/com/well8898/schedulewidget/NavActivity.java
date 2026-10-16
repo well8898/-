@@ -43,7 +43,7 @@ public class NavActivity extends Activity {
         return null;
     }
 
-    /** 네이버 지도 앱(nmap://)이 없으면 웹 지도로 */
+    /** 네이버 지도 앱(nmap://)이 없으면 웹 지도로 (하루 경로는 도착지만) */
     static Uri fallback(Uri u) {
         if ("nmap".equals(u.getScheme())) {
             String name = u.getQueryParameter("dname");
