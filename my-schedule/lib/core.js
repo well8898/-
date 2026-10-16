@@ -13,7 +13,7 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.4';
+const SERVER_VER = 'v2.5';
 const PAGE_VER = '3.0'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
@@ -359,7 +359,7 @@ function dayView_(data, main, today, now) {
       kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units, nav: nav,
       km: main.legs ? main.legs[i] : null, leg: legText_(main.legs ? main.legs[i] : null, i, data.origin)
         // 마지막 현장: 지사로 돌아가는 거리도
-        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? ' / ' : '') + main.backKm + 'km→지사' : ''),
+        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? ' / ' : '') + '(복귀) ' + main.backKm + 'km→지사' : ''),
     };
   });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
