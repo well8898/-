@@ -771,6 +771,14 @@ label.ghost {
 .elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .elv .mr{background:var(--accent-soft);color:var(--accent)}
 .elv .mrl{background:var(--off-soft);color:var(--off)}
+.vbox{margin:18px 0 6px;text-align:center}
+.vbox .ver{margin:0 0 8px}
+.vmsg{margin:0 auto 10px;max-width:340px;padding:12px 14px;border-radius:14px;background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);font-size:15px;line-height:1.45;font-weight:600}
+.vmsg.old{border-color:#f59e0b;background:#fffbeb;color:#92400e}
+.vmsg.ok{color:#047857}
+.vbtn{font:600 14px var(--font-body,inherit);padding:9px 16px;border-radius:999px;border:1px solid var(--line,#d1d5db);background:transparent;color:inherit;cursor:pointer}
+.vbtn.go{background:#3d5afe;border-color:#3d5afe;color:#fff;font-size:16px;padding:12px 22px}
+@media (prefers-color-scheme:dark){.vmsg.old{background:#3a2a05;color:#fcd34d}}
 .ver{font-size:11px;color:var(--muted);text-align:center;margin:8px 0 0;opacity:.8}
 .tag{font-size:11.5px;font-weight:600;color:var(--off);background:var(--off-soft);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .widget{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13.5px}
@@ -793,7 +801,7 @@ label.ghost {
 .maps>:only-child{grid-column:1/-1}
 /* 쉬운 화면: 글씨 크게, 꼭 필요한 것만 */
 body.linkmode #startView .start>p,body.linkmode #startView .field,body.linkmode #pick,body.linkmode #drop,body.linkmode #resume{display:none!important}
-body.easy #branchRow,body.easy #widgetBox,body.easy .fixaddr,body.easy #srvVer{display:none!important}
+body.easy #branchRow,body.easy #widgetBox,body.easy .fixaddr{display:none!important}
 
 /* ── 시안 B: 하루 경로 ── */
 body{font-variant-numeric:tabular-nums}
@@ -988,7 +996,11 @@ window.addEventListener(
       <div class="branch" id="branchRow"></div>
       <details class="widget" id="widgetBox" hidden></details>
     </section>
-    <p class="ver">화면 버전 2.1 · <span id="srvVer">서버 확인 중</span></p>
+    <div class="vbox" id="verBox">
+      <p class="ver"><span id="pageVer"></span><span id="appVer"></span> · <span id="srvVer">서버 확인 중</span></p>
+      <p class="vmsg" id="verMsg" hidden></p>
+      <button type="button" class="vbtn" id="verBtn">최신인지 확인</button>
+    </div>
   </div></main>
 </div>
 
@@ -2116,13 +2128,57 @@ function run(fn, ...a) {
 // 설정(지도 키 등): 웹앱이 화면과 함께 넣어 주면(window.CFG) 서버에 따로 묻지 않음
 const applyCfg = c => {
   const sv = document.getElementById('srvVer');
-  if (sv) sv.textContent = c && c.ver ? '서버 ' + c.ver : SERVER ? '서버 예전 버전(Code.gs 새로 배포 필요)' : '서버 없음';
+  if (sv) sv.textContent = c && c.ver ? '서버 ' + c.ver.replace(/^v/, '') : SERVER ? '서버 예전 버전(Code.gs 새로 배포 필요)' : '서버 없음';
   if (c && c.ok) {
     kakaoJsKey = c.kakaoJsKey || '';
     tmapKey = c.tmapKey || '';
     webUrl = c.webUrl || '';
   }
 };
+// ════════ 최신 버전 확인 ════════
+// 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
+const PAGE_VER = '2.3';
+const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
+const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
+  const x = verNum(a), y = verNum(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; }
+  return false;
+};
+const APK_URL = 'https://github.com/well8898/-/releases/download/widget-apk/schedule-widget.apk';
+const appVerNow = () => { const ab = window.AndroidApp; try { return ab && ab.version ? ab.version() : ''; } catch (e) { return ''; } };
+function verLine() {
+  document.getElementById('pageVer').textContent = '화면 ' + PAGE_VER;
+  const av = appVerNow();
+  document.getElementById('appVer').textContent = av ? ' · 앱 ' + av : '';
+}
+function verShow(kind, text, btn, act) {
+  const m = document.getElementById('verMsg'), b = document.getElementById('verBtn');
+  m.hidden = !text; m.className = 'vmsg' + (kind ? ' ' + kind : ''); m.textContent = text || '';
+  b.textContent = btn; b.className = 'vbtn' + (act ? ' go' : ''); b.onclick = act || verCheck;
+  b.disabled = false;
+}
+const reloadPage = () => {
+  const q = new URLSearchParams(location.search); q.set('r', Date.now());
+  location.replace(location.pathname + '?' + q.toString());
+};
+const getApp = () => { const ab = window.AndroidApp; if (ab && ab.openUpdate) ab.openUpdate(); else location.href = APK_URL; };
+// quiet: 처음 열 때 자동 확인 — 옛 버전일 때만 안내
+function verCheck(quiet) {
+  quiet = quiet === true;
+  const b = document.getElementById('verBtn');
+  if (!SERVER || GAS) { if (!quiet) verShow('ok', '이 화면은 따로 확인할 게 없어요', '최신인지 확인'); return; }
+  if (!quiet) { b.textContent = '확인하는 중…'; b.disabled = true; }
+  run('latestVer').then(v => {
+    const sv = document.getElementById('srvVer'); if (sv && v.server) sv.textContent = '서버 ' + v.server.replace(/^v/, '');
+    const av = appVerNow();
+    if (verNewer(v.page, PAGE_VER)) return verShow('old', '화면이 새로 바뀌었어요. 「새로고침」을 눌러 주세요.', '새로고침', reloadPage);
+    if (av && v.app && verNewer(v.app, av)) return verShow('old', '앱 새 버전 ' + v.app + '이 나왔어요 (지금 ' + av + '). 눌러서 받은 뒤 「설치」를 누르세요.', '앱 새 버전 받기', getApp);
+    if (!quiet) verShow('ok', '✓ 모두 최신이에요', '최신인지 확인');
+  }).catch(() => { if (!quiet) verShow('old', '인터넷 연결을 확인하고 다시 눌러 주세요.', '다시 확인'); });
+}
+verLine();
+document.getElementById('verBtn').onclick = verCheck;
+setTimeout(() => verCheck(true), 1500);
 const cfgReady = !SERVER
   ? Promise.resolve(applyCfg(null))
   : window.CFG

@@ -185,5 +185,26 @@ public class MainActivity extends Activity {
         public String version() {
             return Update.currentName(MainActivity.this);
         }
+
+        /** 「최신인지 확인」: 깃허브에서 새 버전을 바로 확인 → window.onAppUpdate(새버전 또는 '', 지금버전) */
+        @JavascriptInterface
+        public void checkUpdate() {
+            new Thread(() -> {
+                Update.check(MainActivity.this, true);
+                String nv = Update.available(MainActivity.this);
+                runOnUiThread(() -> {
+                    showUpdate();
+                    web.evaluateJavascript("window.onAppUpdate&&window.onAppUpdate("
+                            + org.json.JSONObject.quote(nv == null ? "" : nv) + ","
+                            + org.json.JSONObject.quote(Update.currentName(MainActivity.this)) + ")", null);
+                });
+            }).start();
+        }
+
+        /** 새 버전 APK 받기 (브라우저로 내려받아 설치) */
+        @JavascriptInterface
+        public void openUpdate() {
+            runOnUiThread(() -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Update.APK))));
+        }
     }
 }

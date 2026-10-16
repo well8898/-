@@ -13,7 +13,8 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.2'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.3';
+const PAGE_VER = '2.3'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -358,7 +359,7 @@ function dayView_(data, main, today, now) {
       kind: kindNm[s.kind] || s.kind || '', units: s.units == null ? '' : s.units, nav: nav,
       km: main.legs ? main.legs[i] : null, leg: legText_(main.legs ? main.legs[i] : null, i, data.origin)
         // 마지막 현장: 지사로 돌아가는 거리도
-        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? ' · ' : '') + main.backKm + 'km→지사' : ''),
+        + (i === main.stops.length - 1 && main.backKm != null ? (main.legs && main.legs[i] != null ? '\n' : '') + main.backKm + 'km→지사' : ''),
     };
   });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
@@ -380,7 +381,7 @@ function dayView_(data, main, today, now) {
     // 위젯 칸용: h 시간, n 현장명, s 동·종류·대수, d 지난 현장이면 1 (흐리게 표시용)
     per['h' + (i + 1)] = l ? l.time : '';
     per['n' + (i + 1)] = l ? l.name : '';
-    per['s' + (i + 1)] = l ? [l.leg, l.area, (l.kind + ' ' + l.units).trim()].filter(Boolean).join(' · ') : '';
+    per['s' + (i + 1)] = l ? [l.leg.replace('\n', ' · '), l.area, (l.kind + ' ' + l.units).trim()].filter(Boolean).join(' · ') : '';
     per['d' + (i + 1)] = l && when === '오늘' && l.time && l.time < nowHm ? '1' : '0';
     const q = l ? encodeURIComponent(((l.area || '') + ' ' + l.name).trim()) : '';
     per['k' + (i + 1)] = l ? (l.nav ? l.nav.kakao : 'https://map.kakao.com/?eName=' + q) : '';
@@ -437,6 +438,20 @@ async function kakaoGet_(url) {
 async function getConfig() {
   return { ok: true, kakaoJsKey: env_('KAKAO_JS_KEY'), tmapKey: env_('TMAP_APP_KEY'), webUrl: APP_URL,
     ver: SERVER_VER + (redisConf_() || envEnd_('REDIS_URL', 'KV_URL') ? '' : ' (저장소 연결 안 됨)') };
+}
+
+// 최신 버전 확인: 화면·서버·앱(깃허브 릴리스 설명의 versionName=)
+let appVer_ = { at: 0, v: '' };
+async function latestVer() {
+  if (Date.now() - appVer_.at > 10 * 60 * 1000) {
+    try {
+      const r = await getText_('https://api.github.com/repos/well8898/-/releases/tags/widget-apk',
+        { headers: { 'User-Agent': 'my-schedule', Accept: 'application/vnd.github+json' } });
+      const m = r.code === 200 && /versionName=([\w.]+)/.exec(JSON.parse(r.text).body || '');
+      appVer_ = { at: Date.now(), v: m ? m[1] : appVer_.v };
+    } catch (e) { appVer_.at = Date.now(); }
+  }
+  return { page: PAGE_VER, server: SERVER_VER, app: appVer_.v };
 }
 
 // ════════ 지사 좌표 ════════
@@ -1143,7 +1158,7 @@ async function widget(key, fmt) {
 }
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
-const RPC = { listWeeks, getConfig, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
+const RPC = { listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, getWeek, saveWidget, saveWidgetKm, deleteWidget };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)

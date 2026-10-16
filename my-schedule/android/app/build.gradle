@@ -7,8 +7,8 @@ android {
         applicationId 'com.well8898.schedulewidget'
         minSdk 26
         targetSdk 34
-        versionCode 17
-        versionName '2.2'
+        versionCode 18
+        versionName '2.3'
     }
     // 매번 같은 서명이어야 새 버전을 덮어 설치할 수 있다 (개인용 사이드로드 앱)
     signingConfigs {

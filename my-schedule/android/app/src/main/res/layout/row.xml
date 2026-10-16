@@ -84,7 +84,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:fontFamily="@font/pretendard"
-            android:maxLines="1"
+            android:maxLines="2"
             android:textColor="@color/w_sub"
             android:textSize="10.5sp" />
     </LinearLayout>
