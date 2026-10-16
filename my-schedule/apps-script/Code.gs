@@ -951,3 +951,48 @@ function testBranchRecptn() {
   (all.list || []).forEach(x => { if (/고양|파주/.test(x.addr)) inst[x.inst] = (inst[x.inst] || 0) + 1; });
   Logger.log('주소가 고양·파주인 전체 접수의 검사 지사별 건수: ' + JSON.stringify(inst));
 }
+
+// ── 시험용: 승강기 정보 서비스(ElevatorInformationService)에 어떤 항목이 있는지 확인 ──
+// 편집기에서 testElevatorInfo 를 실행 → 보기 → 로그. MR/MRL(세부형식)·브레이크 같은 항목이 있는지 봄
+// 오퍼레이션 이름을 몰라서 흔한 이름들을 한꺼번에 시도하고, 응답이 온 것의 항목을 전부 찍음
+function testElevatorInfo() {
+  const key = (PropertiesService.getScriptProperties().getProperty('DATA_GO_KR_KEY') || '').trim();
+  if (!key) return Logger.log('스크립트 속성에 DATA_GO_KR_KEY 가 없습니다');
+  // 시험할 승강기 고유번호: 이번 주 검사접수 건에서 몇 개 + 예전에 본 번호
+  const nos = ['8019375', '2085183'];
+  try {
+    const tz = 'Asia/Seoul', d0 = new Date();
+    const st = Utilities.formatDate(d0, tz, 'yyyyMMdd');
+    const en = Utilities.formatDate(new Date(d0.getTime() + 7 * 864e5), tz, 'yyyyMMdd');
+    const r = UrlFetchApp.fetch('https://apis.data.go.kr/B553664/ElevatorRecptnService/getRecptnV1?serviceKey=' + encodeURIComponent(key)
+      + '&_type=json&numOfRows=5&pageNo=1&inspct_st_de=' + st + '&inspct_en_de=' + en, { muteHttpExceptions: true });
+    const its = (((JSON.parse(r.getContentText()).response || {}).body || {}).items || {}).item || [];
+    [].concat(its).forEach(x => { if (x.elvtrUniqueNo && nos.indexOf(String(x.elvtrUniqueNo)) < 0) nos.unshift(String(x.elvtrUniqueNo)); });
+  } catch (e) { Logger.log('검사접수에서 번호 가져오기 실패: ' + e.message); }
+  const no = nos[0];
+  Logger.log('시험 번호: ' + nos.slice(0, 3).join(', '));
+  const base = 'https://apis.data.go.kr/B553664/ElevatorInformationService/';
+  const ops = ['getElevatorViewM', 'getElevatorView', 'getElevatorList', 'getElevatorInfo', 'getElevatorInfoList',
+    'getElvtrInfo', 'getElvtrInfoList', 'getElevatorBasicInfo', 'getElevatorDetail', 'getElvtrDetail', 'getElevatorInformation'];
+  const params = ['elevator_no', 'elvtrUniqueNo', 'elevatorNo', 'elvtr_unique_no'];
+  const reqs = [];
+  ops.forEach(op => params.forEach(pm => reqs.push({ op: op, pm: pm,
+    url: base + op + '?serviceKey=' + encodeURIComponent(key) + '&numOfRows=3&pageNo=1&' + pm + '=' + no })));
+  const res = UrlFetchApp.fetchAll(reqs.map(q => ({ url: q.url, muteHttpExceptions: true })));
+  let found = 0;
+  res.forEach((r, i) => {
+    const t = r.getContentText();
+    const code = (t.match(/<resultCode>([^<]*)/) || [])[1] || '';
+    const msg = (t.match(/<resultMsg>([^<]*)/) || [])[1] || t.slice(0, 80).replace(/\s+/g, ' ');
+    const hasItem = /<item>/.test(t);
+    if (r.getResponseCode() === 404 || /API not found|Unexpected errors/i.test(t)) return; // 없는 오퍼레이션
+    Logger.log(reqs[i].op + ' ? ' + reqs[i].pm + '= → HTTP ' + r.getResponseCode() + ' · ' + code + ' ' + msg + (hasItem ? ' · 결과 있음' : ''));
+    if (hasItem && found < 2) {
+      found++;
+      const item = (t.match(/<item>([\s\S]*?)<\/item>/) || [])[1] || '';
+      Logger.log('── 항목 전체 (' + reqs[i].op + ') ──');
+      (item.match(/<([A-Za-z0-9_]+)>([^<]*)<\/\1>/g) || []).forEach(f => Logger.log('  ' + f.replace(/<\/[^>]+>$/, '').replace(/^<([^>]+)>/, '$1 = ')));
+    }
+  });
+  if (!found) Logger.log('결과가 있는 응답이 없습니다. 공공데이터포털 이 API 페이지의 「상세기능」 목록(오퍼레이션 이름·요청 변수)을 복사해서 보내 주세요.');
+}
