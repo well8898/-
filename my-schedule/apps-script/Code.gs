@@ -540,6 +540,7 @@ function widgetView_(data) {
     + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
   const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
     + ' ' + l.kind + ' ' + l.units), sub].join('\n');
+  const nowHm = Utilities.formatDate(now, tz, 'HH:mm');
   // 위젯 앱에서 줄마다 따로 쓰기 쉽게 l1~l8 (현장 한 줄씩), all (전체를 한 덩어리로)
   const rows = text.split('\n').slice(1, -1);
   const per = {};
@@ -547,6 +548,11 @@ function widgetView_(data) {
   for (let i = 0; i < 8; i++) {
     per['l' + (i + 1)] = rows[i] || '';
     const l = lines[i];
+    // 위젯 칸용: h 시간, n 현장명, s 동·종류·대수, d 지난 현장이면 1 (흐리게 표시용)
+    per['h' + (i + 1)] = l ? l.time : '';
+    per['n' + (i + 1)] = l ? l.name : '';
+    per['s' + (i + 1)] = l ? [l.area, (l.kind + ' ' + l.units).trim()].filter(Boolean).join(' · ') : '';
+    per['d' + (i + 1)] = l && when === '오늘' && l.time && l.time < nowHm ? '1' : '0';
     const q = l ? encodeURIComponent(((l.area || '') + ' ' + l.name).trim()) : '';
     per['k' + (i + 1)] = l ? (l.nav ? l.nav.kakao : 'https://map.kakao.com/?eName=' + q) : '';
     per['t' + (i + 1)] = l ? (l.nav ? l.nav.tmap : 'https://map.kakao.com/?eName=' + q) : '';
