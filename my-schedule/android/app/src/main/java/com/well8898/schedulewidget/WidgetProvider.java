@@ -100,9 +100,9 @@ public class WidgetProvider extends AppWidgetProvider {
             }
             v.setTextViewText(R.id.empty, hasUrl ? "이날은 검사 현장이 없어요" : "앱을 열어 이름을 골라 주세요");
 
-            // 제목 누르면 앱(그날), ↻ 는 기본 날로 돌아가며 새로고침
+            // 가운데 날짜를 누르면 앱(그날), ‹ › 날짜 넘기기, ↻ 는 기본 날로 돌아가며 새로고침
             String iso = d == null ? "" : d.optString("iso", o == null ? "" : o.optString("main"));
-            v.setOnClickPendingIntent(R.id.header, view(c, 2, "schedapp://day" + (iso.isEmpty() ? "" : "?d=" + iso)));
+            v.setOnClickPendingIntent(R.id.head_mid, view(c, 2, "schedapp://day" + (iso.isEmpty() ? "" : "?d=" + iso)));
             v.setOnClickPendingIntent(R.id.refresh, hasUrl
                     ? PendingIntent.getBroadcast(c, 1, new Intent(c, WidgetProvider.class).setAction(REFRESH),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
