@@ -17,7 +17,8 @@
    - Root Directory: `my-schedule`
    - Framework Preset: Other
    - 나머지는 그대로 두고 Deploy
-3. **배포할 브랜치**: Project → Settings → Git → Production Branch 를 `my-schedule` 로
+3. **배포할 브랜치**: Project → Settings → Environments → Production → Branch Tracking 을 `my-schedule` 로
+   (예전 화면은 Settings → Git → Production Branch. "No deployments found"가 나오면 `my-schedule` 브랜치에 새 커밋이 올라가 미리보기 배포가 한 번 생긴 뒤에 다시)
 4. **저장소 연결**: Project → Storage → Upstash(Redis) → Create → 이 프로젝트에 Connect
    - 연결하면 `KV_REST_API_URL`, `KV_REST_API_TOKEN` 환경 변수가 자동으로 생긴다
 5. **키 넣기**: Project → Settings → Environment Variables (앱스 스크립트 '스크립트 속성'에 있던 값 그대로)
