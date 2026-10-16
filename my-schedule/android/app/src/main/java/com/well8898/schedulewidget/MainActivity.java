@@ -69,10 +69,31 @@ public class MainActivity extends Activity {
         sv.addView(box);
         setContentView(sv);
         showSaved();
+        fromLink(getIntent());
         new Thread(() -> {
             Update.check(this, true);
             runOnUiThread(this::showUpdate);
         }).start();
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent i) {
+        super.onNewIntent(i);
+        fromLink(i);
+    }
+
+    // 웹앱에서 「위젯 앱에 바로 연결」을 누르면 주소를 받아 자동 저장 → 위젯 추가 창
+    private void fromLink(android.content.Intent i) {
+        android.net.Uri d = i == null ? null : i.getData();
+        if (d == null || !"schedwidget".equals(d.getScheme())) return;
+        String u = Data.normalize(d.getQueryParameter("u"));
+        if (u.isEmpty()) {
+            status.setText("연결 주소가 올바르지 않아요. 웹앱에서 다시 눌러 주세요.");
+            return;
+        }
+        input.setText(u);
+        save();
+        pin();
     }
 
     private void showUpdate() {

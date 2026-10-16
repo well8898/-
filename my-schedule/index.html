@@ -770,6 +770,25 @@ label.ghost {
 .widget summary{font-weight:600;cursor:pointer}
 .widget p{margin:8px 0;color:var(--muted);font-size:12.5px}
 .wurl{font:12px var(--font-mono);background:var(--bg);border-radius:8px;padding:8px;overflow-wrap:anywhere;user-select:all;margin-bottom:8px}
+.share,.homecard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:8px}
+.share h3,.homecard h3{margin:0;font-size:15px}
+.share p,.homecard p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+.share textarea{font:12px var(--font-mono);width:100%;box-sizing:border-box;min-height:90px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.share .ok{color:var(--accent);font-weight:600}
+.homecard ol{margin:0;padding-left:20px;line-height:1.7;font-size:15px}
+.homecard b{color:var(--accent)}
+.linkbtn{font:inherit;color:var(--accent);background:none;border:0;padding:0 8px 0 0;cursor:pointer;text-decoration:underline}
+.namepick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.namepick h3{grid-column:1/-1;margin:4px 0 0;font-size:18px}
+.namepick button{font:700 18px var(--font-body);padding:14px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+
+.maps .call{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.maps>:only-child{grid-column:1/-1}
+/* 쉬운 화면: 글씨 크게, 꼭 필요한 것만 */
+body.easy #panel{zoom:1.15}
+body.linkmode #startView .start>p,body.linkmode #startView .field,body.linkmode #pick,body.linkmode #drop,body.linkmode #resume{display:none!important}
+body.easy #repick,body.easy #branchRow,body.easy #widgetBox,body.easy #shareBox,body.easy .fixaddr,body.easy #srvVer{display:none!important}
+body.easy .homecard{zoom:1}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -819,7 +838,8 @@ window.addEventListener(
     <label class="big" id="pick" for="file" role="button" tabindex="0">일정표 파일 고르기</label>
     <div class="drop" id="drop">PC에서는 파일을 여기에 끌어다 놓아도 돼요</div>
     <div class="msg" id="msg"></div>
-    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 화면에서만 읽고 어디에도 보내지 않아요.</p>
+    <div class="namepick" id="namePick" hidden></div>
+    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 파일 고르기에서 다운로드 폴더(아이폰은 '파일' 앱)를 열면 보여요.<br>파일은 이 휴대폰에서 읽어요. '지사에 공유하기'를 누를 때만 일정 내용이 서버에 저장돼요.</p>
   </div>
 </section>
 
@@ -835,10 +855,12 @@ window.addEventListener(
   </header>
   <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
     <div class="week" id="week"></div>
+    <div class="homecard" id="homeCard" hidden></div>
     <div class="branch" id="branchRow"></div>
+    <section class="share" id="shareBox" hidden></section>
     <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
-    <p class="ver">화면 버전 10.16c · <span id="srvVer">서버 확인 중</span></p>
+    <p class="ver"><button type="button" class="linkbtn" id="easyTg" hidden></button>화면 버전 10.18 · <span id="srvVer">서버 확인 중</span></p>
   </div></main>
 </div>
 
@@ -1468,7 +1490,8 @@ function branchRow() {
     title: '일정표 제목에서 찾음',
     saved: '지난번에 고른 지사',
     guess: '현장 동네로 추측 · 틀리면 바꿔 주세요',
-    pick: '직접 고름'
+    pick: '직접 고름',
+    link: '공유 링크의 지사'
   }[BRANCH_SRC] || '어느 지사 일정표인지 골라 주세요';
   el.innerHTML = `<label for="branchSel">출발 지사</label>
     <select id="branchSel"><option value="">선택…</option>${BRANCHES.map(
@@ -1535,6 +1558,7 @@ function render() {
   if (!loaded) return;
   $('src').textContent = data.source || '검사 일정표';
   branchRow();
+  shareBox();
   if (SERVER) syncWidget();
   days = mine(name);
   if (!days.some(d => d.t || d.off)) {
@@ -2338,6 +2362,8 @@ function widgetBox() {
   el.hidden = false;
   el.innerHTML = `<summary>홈 화면 위젯 주소</summary>
     <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
+    ${/Android/.test(navigator.userAgent) ? `<p>위젯 앱(오늘 현장)을 설치했다면 아래 버튼 하나로 연결돼요. 주소를 복사할 필요 없어요.</p>
+    <div class="maps"><a class="call" target="_top" href="intent://set?u=${encodeURIComponent(u)}#Intent;scheme=schedwidget;package=com.well8898.schedulewidget;end">위젯 앱에 바로 연결</a></div>` : ''}
     <div class="wurl" id="wUrl">${esc(u)}</div>
     <div class="maps three"><button type="button" data-copy="${esc(u)}">JSON 주소 복사</button><button type="button" data-copy="${esc(u + '&fmt=text')}">글자 주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
   el.querySelectorAll('[data-copy]').forEach(b => {
@@ -2358,6 +2384,134 @@ function widgetBox() {
     store.set('sched.wkey', '');
     widgetSig = '';
     syncWidget();
+  };
+}
+
+// ── 지사 공유 · 이름 링크 (어르신들은 파일 없이 링크만 누르면 됨) ──
+const LINK = window.LINK || null;
+let shared = null; // { at } 공유한 뒤
+function allNames() {
+  const s = new Set();
+  data.days.forEach(d => d.teams.forEach(t => t.members.forEach(m => bare(m) && s.add(bare(m)))));
+  return [...s].sort((a, b) => a.localeCompare(b, 'ko'));
+}
+function linkFor(n) {
+  if (!webUrl || !BRANCH) return '';
+  return webUrl + '?b=' + encodeURIComponent(BRANCH[0]) + (n ? '&n=' + encodeURIComponent(n) : '');
+}
+function copyText(t, btn, area) {
+  const done = () => (btn.textContent = '복사했어요 ✓');
+  (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(() => {
+    if (area) {
+      area.focus();
+      area.select();
+      try {
+        if (document.execCommand('copy')) return done();
+      } catch (e) {}
+    }
+    btn.textContent = '선택됨 · 길게 눌러 복사';
+  });
+}
+function shareBox() {
+  const el = $('shareBox');
+  if (!el) return;
+  if (!SERVER || !data || LINK || !BRANCH) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  if (!shared) {
+    el.innerHTML = `<h3>지사 사람들도 이 일정표로 보게 하기</h3>
+      <p>한 사람이 공유하면, 다른 분들은 파일 없이 <b>링크만 눌러</b> 자기 일정을 봐요. 어르신들께 좋아요.<br>
+      공유하면 이 일정표(조·현장·이름)가 <b>${esc(BRANCH[0])}</b> 공유용으로 서버에 저장돼요.</p>
+      <div class="maps"><button type="button" class="call" id="shareGo">${esc(BRANCH[0])}에 공유하기</button></div>
+      <p id="shareMsg"></p>`;
+    $('shareGo').onclick = () => doShare(false);
+    return;
+  }
+  const names = allNames();
+  const one = linkFor('');
+  const msg = `[${BRANCH[0]} 이번 주 검사 일정]\n아래 링크를 누르고 내 이름을 고르면 내 일정만 보여요.\n${one}`;
+  const each = names.map(n => n + ': ' + linkFor(n)).join('\n');
+  el.innerHTML = `<h3><span class="ok">✓ 공유했어요</span> · 이제 단톡방에 링크를 보내 주세요</h3>
+    <p><b>방법 1 (간단)</b> 링크 하나를 지사 단톡방에 올리면, 각자 눌러서 이름만 고르면 돼요. 다음 주에 새 일정표를 공유하면 같은 링크로 새 일정이 나와요.</p>
+    <textarea id="shareOne" readonly>${esc(msg)}</textarea>
+    <div class="maps"><button type="button" class="call" id="copyOne">단톡방용 글 복사</button></div>
+    <details><summary>방법 2 · 사람마다 이름이 들어간 링크 (이름 고르기도 어려우신 분께 1:1로)</summary>
+      <textarea id="shareEach" readonly>${esc(each)}</textarea>
+      <div class="maps"><button type="button" id="copyEach">전체 복사</button></div></details>`;
+  $('copyOne').onclick = e => copyText(msg, e.target, $('shareOne'));
+  $('copyEach').onclick = e => copyText(each, e.target, $('shareEach'));
+}
+async function doShare(force) {
+  const m = $('shareMsg');
+  if (m) m.textContent = '공유하는 중…';
+  try {
+    await cfgReady;
+    const r = await run('shareWeek', BRANCH[0], { source: data.source, days: data.days }, force);
+    if (r && r.ok) {
+      shared = { at: r.at };
+      return shareBox();
+    }
+    if (r && r.older && confirm(r.message + '\n그래도 이 일정표로 바꿀까요?')) return doShare(true);
+    if (m) m.textContent = (r && r.message) || '공유하지 못했어요.';
+  } catch (e) {
+    if (m) m.textContent = '공유하지 못했어요: ' + (e.message || e);
+  }
+}
+// 이름 링크로 열었는데 이름이 없으면: 큰 이름 버튼으로 고르기
+function namePick(names, wk) {
+  const el = $('namePick');
+  el.hidden = false;
+  el.innerHTML = `<h3>내 이름을 눌러 주세요</h3>` + names.map(n => `<button type="button" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      $('name').value = b.dataset.n;
+      store.set('sched.name', b.dataset.n);
+      el.hidden = true;
+      data = wk;
+      startShared();
+    };
+  });
+}
+function startShared() {
+  setBranch(branchByName(LINK.b), 'link');
+  sel = null;
+  render();
+  if (data && !curName()) return;
+  homeCard();
+}
+// 홈 화면 아이콘 만들기 안내 (처음 한 번)
+function homeCard() {
+  const el = $('homeCard');
+  if (!el || !LINK || store.get('sched.homeDone')) return;
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua);
+  const kakao = /KAKAOTALK/i.test(ua);
+  el.hidden = false;
+  el.innerHTML = `<h3>📱 다음부터 바로 열리게 홈 화면에 아이콘 만들기</h3>
+    <ol>${kakao ? `<li>오른쪽 아래(또는 위) <b>⋮</b> 또는 <b>공유</b> → <b>다른 브라우저로 열기</b></li>` : ''}
+    ${ios
+      ? `<li>사파리 아래쪽 <b>공유 버튼(□↑)</b>을 누르세요</li><li><b>홈 화면에 추가</b> → 오른쪽 위 <b>추가</b></li>`
+      : `<li>크롬 오른쪽 위 <b>⋮</b>(점 세 개)를 누르세요</li><li><b>홈 화면에 추가</b> → <b>추가</b></li>`}</ol>
+    <p>이제 홈 화면의 아이콘만 누르면 이번 주 내 일정이 나와요. 새 일정표도 자동으로 바뀌어요.</p>
+    <div class="maps"><button type="button" id="homeDone">다 했어요 · 안내 닫기</button></div>`;
+  $('homeDone').onclick = () => {
+    store.set('sched.homeDone', '1');
+    el.hidden = true;
+  };
+}
+function easyToggle() {
+  const b = $('easyTg');
+  if (!b) return;
+  const on = document.body.classList.contains('easy');
+  b.hidden = false;
+  b.textContent = on ? '자세히 보기' : '쉬운 화면';
+  b.onclick = () => {
+    const nx = !document.body.classList.contains('easy');
+    document.body.classList.toggle('easy', nx);
+    store.set('sched.easy', nx ? '1' : '0');
+    easyToggle();
   };
 }
 
@@ -2566,6 +2720,7 @@ async function load(file) {
       days: ds
     };
     sel = null;
+    shared = null;
     msg.textContent = '';
     saveLast();
     const fromTitle = branchFromText((t ? t.s : '') + ' ' + (items.title || '') + ' ' + file.name);
@@ -2655,7 +2810,37 @@ $('name').addEventListener('input', () => {
   store.set('sched.name', $('name').value.trim());
   render();
 });
-render();
+if (LINK) {
+  // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
+  document.body.classList.add('linkmode');
+  document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
+  const ez = store.get('sched.easy');
+  document.body.classList.toggle('easy', ez ? ez === '1' : LINK.easy !== false);
+  if (LINK.n) {
+    $('name').value = LINK.n;
+    store.set('sched.name', LINK.n);
+  }
+  const sh = window.SHARED;
+  if (sh && sh.days && sh.days.length) {
+    const wk = { source: sh.source || LINK.b + ' 공유 일정표', days: sh.days };
+    data = wk;
+    const names = allNames();
+    if (curName() && names.includes(curName())) startShared();
+    else {
+      // 이름부터 고르기 (큰 버튼)
+      $('name').value = '';
+      data = null;
+      render();
+      namePick(names, wk);
+    }
+  } else {
+    render();
+    const m = $('msg');
+    m.className = 'msg err';
+    m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
+  }
+  easyToggle();
+} else render();
 // 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
 if (window.START_DAY && !data && $('resumeGo')) {
   $('resumeGo').click();

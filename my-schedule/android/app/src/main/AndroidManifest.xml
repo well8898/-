@@ -9,10 +9,17 @@
         android:usesCleartextTraffic="false">
 
         <activity android:name=".MainActivity" android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 웹앱의 「위젯 앱에 바로 연결」: schedwidget://set?u=위젯주소 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="schedwidget" android:host="set" />
             </intent-filter>
         </activity>
 

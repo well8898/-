@@ -18,7 +18,7 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
-const SERVER_VER = '10.17'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = '10.18'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const ELV_URL = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
@@ -31,7 +31,16 @@ function doGet(e) {
   // 설정을 화면에 바로 넣어 getConfig 왕복을 없앰 ('//'는 앱스 스크립트가 주석으로 잘라서 '\/'로)
   let inject = 'window.CFG=' + JSON.stringify(getConfig()).replace(/</g, '\\u003c').replace(/\//g, '\\/') + ';';
   if (/^\d{4}-\d{2}-\d{2}$/.test(day)) inject += 'window.START_DAY="' + day + '";';
-  html = html.replace('<head>', '<head><script>' + inject + '</script>');
+  // 이름 링크 (?b=지사&n=이름): 지사에 공유된 일정표를 바로 넣어 파일 올리기 없이 시작
+  const lb = e && e.parameter ? String(e.parameter.b || '').trim() : '';
+  const ln = e && e.parameter ? String(e.parameter.n || '').trim().slice(0, 20) : '';
+  if (lb) {
+    const wk = getWeek(lb);
+    inject += 'window.LINK=' + JSON.stringify({ b: lb, n: ln, easy: String(e.parameter.easy || '1') !== '0' })
+      .replace(/</g, '\\u003c').replace(/\//g, '\\/') + ';';
+    if (wk.ok) inject += 'window.SHARED=' + JSON.stringify(wk).replace(/</g, '\\u003c').replace(/\//g, '\\/') + ';';
+  }
+  html = html.replace('<head>', () => '<head><script>' + inject + '</script>'); // 함수로: 이름에 $가 있어도 안전
   return HtmlService.createHtmlOutput(html)
     .setTitle('내 검사 일정')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
@@ -769,6 +778,66 @@ function kakaoGet_(url) {
 //  ?w=키            → JSON (KWGT 등 위젯 앱용)
 //  ?w=키&fmt=text   → 줄글 (주소 내용을 그대로 띄우는 위젯 앱용)
 // ════════════════════════════════════════════════════
+
+// ── 지사 공유 일정표: 한 사람이 올리면 지사 사람들은 이름 링크로 바로 봄 ──
+const BRANCH_RE = /^[가-힣]{2,12}(지사|출장소)$/;
+function weekKey_(branch) {
+  const d = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, branch, Utilities.Charset.UTF_8);
+  return 'S_' + d.slice(0, 6).map(b => ((b + 256) % 256).toString(16).padStart(2, '0')).join('');
+}
+
+// 화면에서 호출: 읽은 일정표(전체 조)를 지사 공유용으로 저장. 더 지난 주 일정표로는 덮어쓰지 않음(force 제외)
+function shareWeek(branch, data, force) {
+  const lock = LockService.getScriptLock();
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) throw new Error('지사를 먼저 골라 주세요.');
+    if (!data || !Array.isArray(data.days) || !data.days.length) throw new Error('일정표가 비어 있어요.');
+    lock.waitLock(10000);
+    const props = PropertiesService.getScriptProperties();
+    const k = weekKey_(branch);
+    const last = data.days.map(d => d.iso).sort().pop();
+    const old = JSON.parse(props.getProperty(k) || 'null');
+    if (old && old.last > last && !force) {
+      return { ok: false, older: true, message: '지사에 이미 더 최근 일정표(' + old.source + ')가 올라가 있어요.' };
+    }
+    const json = JSON.stringify({ source: data.source || '', days: data.days });
+    const z = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes());
+    const parts = [];
+    for (let i = 0; i < z.length; i += 8000) parts.push(z.slice(i, i + 8000));
+    if (parts.length > 12) throw new Error('일정표가 너무 커서 공유하지 못했어요.');
+    const put = {};
+    parts.forEach((x, i) => (put[k + '_' + i] = x));
+    put[k] = JSON.stringify({ branch: branch, n: parts.length, at: Date.now(), source: data.source || '', last: last });
+    props.setProperties(put);
+    if (old) for (let i = parts.length; i < old.n; i++) props.deleteProperty(k + '_' + i);
+    return { ok: true, at: Date.now() };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e) { /* 잠금 없음 */ }
+  }
+}
+
+// 지사에 공유된 일정표 → { ok, source, days, at }
+function getWeek(branch) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) return { ok: false, message: '지사 이름이 올바르지 않아요.' };
+    const props = PropertiesService.getScriptProperties();
+    const k = weekKey_(branch);
+    const meta = JSON.parse(props.getProperty(k) || 'null');
+    if (!meta) return { ok: false, message: branch + '에 공유된 일정표가 아직 없어요.' };
+    let z = '';
+    for (let i = 0; i < meta.n; i++) z += props.getProperty(k + '_' + i) || '';
+    const json = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(z), 'application/x-gzip')).getDataAsString('UTF-8');
+    const d = JSON.parse(json);
+    return { ok: true, branch: branch, source: d.source, days: d.days, at: meta.at, last: meta.last };
+  } catch (e) {
+    return { ok: false, message: '공유 일정표를 읽지 못했어요: ' + e.message };
+  }
+}
+
 const W_KEY_RE = /^[a-z0-9]{12,32}$/;
 
 // 화면에서 호출: 내 일정 저장 (주 단위, 내 것만)
