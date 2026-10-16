@@ -120,7 +120,7 @@ const SIDO = {
   전라남도: '전남', 경상북도: '경북', 경상남도: '경남', 제주특별자치도: '제주',
 };
 
-// 지사 이름 → [[시도, 시군구(없으면 '')], …]  (관할 정보가 없는 지사·본부는 null)
+// 지사 이름 → [[시도, 시군구(없으면 '')], …]  (관할 정보가 없으면 null)
 function juris_(branch) {
   const t = JURIS[String(branch || '')];
   if (!t) return null;
