@@ -1070,3 +1070,30 @@ function testElevatorInfo() {
   });
   if (!found) Logger.log('결과가 있는 응답이 없습니다. 공공데이터포털 이 API 페이지의 「상세기능」 목록(오퍼레이션 이름·요청 변수)을 복사해서 보내 주세요.');
 }
+
+// ── 시험용: 내 위젯 일정의 현장들로 승강기 정보(siteElevators)가 어떻게 찾아지는지 로그로 확인 ──
+// 편집기에서 testSiteElevators 실행 → 실행 로그를 복사해서 보내 주세요
+function testSiteElevators() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const keys = Object.keys(props).filter(k => k.indexOf('W_') === 0);
+  if (!keys.length) return Logger.log('저장된 위젯 일정이 없습니다. 웹앱에서 일정표를 한 번 올려 주세요.');
+  const data = JSON.parse(props[keys[0]]);
+  const branch = data.branch && data.branch[0];
+  Logger.log('지사: ' + branch + ' · 관할: ' + (JURIS[branch] || '없음') + ' · DATA_GO_KR_KEY: ' + (props.DATA_GO_KR_KEY ? '있음' : '없음'));
+  const stops = [];
+  (data.days || []).forEach(d => (d.stops || []).forEach(s => { if (stops.length < 8 && !stops.some(x => x.name === s.name)) stops.push(s); }));
+  const J = juris_(branch);
+  stops.forEach(s => {
+    const k = bookKey_(s.name), f = bookFile_(k);
+    let m = {};
+    try {
+      const r = UrlFetchApp.fetch(ELV_URL + f, { muteHttpExceptions: true });
+      Logger.log('— ' + s.name + ' (' + (s.area || '동 없음') + ') · 키 ' + k + ' · 조각 ' + f + ' HTTP ' + r.getResponseCode());
+      m = (JSON.parse(r.getContentText('UTF-8')) || {})[k] || {};
+    } catch (e) { Logger.log('   조각 읽기 실패: ' + e.message); }
+    const addrs = Object.keys(m);
+    Logger.log('   설치현황 주소 ' + addrs.length + '곳' + addrs.slice(0, 4).map(a => '\n     · ' + a + ' (' + m[a].length + '대, 관할 ' + (inJuris_(a, J) ? 'O' : 'X') + ')').join(''));
+  });
+  const r = siteElevators(stops.map(s => ({ q: s.name, name: s.name, area: s.area || '', addr: s.addr || '', nos: [] })), branch);
+  Logger.log('결과: ' + JSON.stringify(r).slice(0, 1500));
+}
