@@ -1,0 +1,32 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.well8898.schedulewidget'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.well8898.schedulewidget'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    // 매번 같은 서명이어야 새 버전을 덮어 설치할 수 있다 (개인용 사이드로드 앱)
+    signingConfigs {
+        fixed {
+            storeFile file('widget.keystore')
+            storePassword 'schedule'
+            keyAlias 'widget'
+            keyPassword 'schedule'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.fixed
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
