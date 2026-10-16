@@ -2101,7 +2101,7 @@ function elvToday(v, d, s) {
 }
 function elvRows(L, cls) {
   return L.map(
-    x => `<tr class="${cls || ''}"><td>${esc(x.ho || '')}</td><td>${x.mr === 'Y' ? '<span class="mr">MR</span>' : x.mr === 'N' ? '<span class="mrl">MRL</span>' : ''}</td><td>${esc(x.model || '')}</td><td>${esc(x.cap || '')}</td><td>${esc(x.year || '')}</td></tr>`
+    x => `<tr class="${cls || ''}"><td>${esc(x.ho || '')}</td><td>${x.mr === 'Y' ? '<span class="mr">MR</span>' : x.mr === 'N' ? '<span class="mrl">MRL</span>' : ''}</td><td>${esc(/확인불가|^-+$/.test(x.model || '') ? '–' : x.model || '')}</td><td>${esc(x.cap || '')}</td><td>${esc(x.year || '')}</td></tr>`
   ).join('');
 }
 function elvHtml(v, d, s, i) {
@@ -2111,7 +2111,7 @@ function elvHtml(v, d, s, i) {
   const mr = L.filter(x => x.mr === 'Y').length,
     mrl = L.filter(x => x.mr === 'N').length;
   const uniq = f => L.map(f).filter((x, k, a) => x && a.indexOf(x) === k);
-  const models = uniq(x => x.model);
+  const models = uniq(x => x.model).filter(m => !/확인불가|^-+$/.test(m));
   const years = uniq(x => x.year).sort();
   const floors = uniq(x => x.floors).map(Number).filter(Boolean);
   const spec = [
