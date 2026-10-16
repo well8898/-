@@ -90,6 +90,8 @@ public class WidgetProvider extends AppWidgetProvider {
                 v.setTextViewText(R.id.title, d.optString("title"));
                 String up = o.optString("updated");
                 String nv = Update.available(c);
+                // 새 버전 안내는 초록색으로 눈에 띄게
+                v.setTextColor(R.id.sub, note == null && nv != null ? 0xFF7CE0A3 : 0xFF8B95A5);
                 v.setTextViewText(R.id.sub, note != null ? note
                         : nv != null ? "⬆ 앱 새 버전 " + nv + " · 앱을 열어 업데이트하세요"
                         : d.optString("sub") + (up.isEmpty() ? "" : " · " + up + " 저장"));
