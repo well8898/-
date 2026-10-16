@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
                 JSONObject o = Data.fetch(this);
                 msg = o.optBoolean("ok", true) ? "저장했어요 ✓  " + o.optString("title") : o.optString("title") + " — " + o.optString("text");
             } catch (Exception e) {
-                msg = "저장은 했는데 서버에 연결하지 못했어요. 웹앱 배포가 「모든 사용자」인지 확인해 주세요.";
+                msg = "저장은 했는데 일정을 받지 못했어요: " + Data.why(e);
             }
             String m = msg;
             runOnUiThread(() -> {

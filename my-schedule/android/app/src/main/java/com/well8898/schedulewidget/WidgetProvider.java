@@ -44,7 +44,7 @@ public class WidgetProvider extends AppWidgetProvider {
             try {
                 if (!Data.url(c).isEmpty()) o = Data.fetch(c);
             } catch (Exception e) {
-                err = "연결 실패 · 제목을 눌러 다시 시도";
+                err = "연결 실패(" + Data.why(e) + ") · 제목을 눌러 다시 시도";
             }
             render(c, o, err);
             if (pr != null) pr.finish();
@@ -52,6 +52,18 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     static void render(Context c, JSONObject o, String note) {
+        try {
+            draw(c, o, note);
+        } catch (Exception e) {
+            AppWidgetManager m = AppWidgetManager.getInstance(c);
+            RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget);
+            v.setTextViewText(R.id.title, "위젯 오류");
+            v.setTextViewText(R.id.sub, String.valueOf(e));
+            m.updateAppWidget(new ComponentName(c, WidgetProvider.class), v);
+        }
+    }
+
+    private static void draw(Context c, JSONObject o, String note) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, WidgetProvider.class));
         boolean hasUrl = !Data.url(c).isEmpty();
@@ -90,7 +102,7 @@ public class WidgetProvider extends AppWidgetProvider {
             v.setRemoteAdapter(R.id.list, svc);
             v.setEmptyView(R.id.list, R.id.empty);
             v.setPendingIntentTemplate(R.id.list, PendingIntent.getActivity(c, 5,
-                    new Intent(Intent.ACTION_VIEW).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    new Intent(c, NavActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE));
             m.updateAppWidget(id, v);
         }

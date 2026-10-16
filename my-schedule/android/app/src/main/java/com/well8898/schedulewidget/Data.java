@@ -64,19 +64,25 @@ final class Data {
         if (u.isEmpty()) throw new IllegalStateException("주소 없음");
         HttpURLConnection con = (HttpURLConnection) new URL(u).openConnection();
         con.setConnectTimeout(15000);
-        con.setReadTimeout(30000);
+        con.setReadTimeout(40000);
         con.setInstanceFollowRedirects(true);
         try (InputStream in = con.getInputStream()) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
-            String body = out.toString("UTF-8");
+            String body = out.toString("UTF-8").trim();
+            if (!body.startsWith("{")) throw new IllegalStateException("웹앱 응답이 일정 데이터가 아님 · 배포 액세스가 「모든 사용자」인지 확인");
             JSONObject o = new JSONObject(body);
             prefs(c).edit().putString("json", body).putLong("at", System.currentTimeMillis()).apply();
             return o;
         } finally {
             con.disconnect();
         }
+    }
+
+    static String why(Exception e) {
+        String m = e.getMessage();
+        return m == null || m.isEmpty() ? e.getClass().getSimpleName() : m;
     }
 
     static final class Row {

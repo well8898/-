@@ -16,6 +16,11 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".NavActivity" android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:noHistory="true" android:excludeFromRecents="true"
+            android:taskAffinity="" />
+
         <receiver android:name=".WidgetProvider" android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
