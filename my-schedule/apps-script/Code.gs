@@ -1002,7 +1002,7 @@ function dayView_(data, main, today, now) {
     // 위젯 칸용: h 시간, n 현장명, s 동·종류·대수, d 지난 현장이면 1 (흐리게 표시용)
     per['h' + (i + 1)] = l ? l.time : '';
     per['n' + (i + 1)] = l ? l.name : '';
-    per['s' + (i + 1)] = l ? [l.area, (l.kind + ' ' + l.units).trim(), l.leg].filter(Boolean).join(' · ') : '';
+    per['s' + (i + 1)] = l ? [l.leg, l.area, (l.kind + ' ' + l.units).trim()].filter(Boolean).join(' · ') : '';
     per['d' + (i + 1)] = l && when === '오늘' && l.time && l.time < nowHm ? '1' : '0';
     const q = l ? encodeURIComponent(((l.area || '') + ' ' + l.name).trim()) : '';
     per['k' + (i + 1)] = l ? (l.nav ? l.nav.kakao : 'https://map.kakao.com/?eName=' + q) : '';
