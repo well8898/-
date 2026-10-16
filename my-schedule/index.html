@@ -857,6 +857,15 @@ body.easy{background:var(--surface)}
 .pick button:last-child{border-bottom:0}
 .pick i{font-style:normal;width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:15px;flex:none}
 .pick-q{font:500 16px var(--font-body);width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;background:var(--surface);color:var(--ink)}
+.pick-sub{font-size:15px;color:var(--muted);line-height:1.5;margin:8px 0 0}
+.pick button span{display:flex;flex-direction:column;gap:2px}
+.pick-tag{font-size:12.5px;font-weight:700;color:var(--naver)}
+.pick-more{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.pick-alt{display:block;text-align:center;font:600 16px var(--font-body);color:var(--accent);background:none;border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer}
+.namepick .big{margin-top:16px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:50;max-width:calc(100% - 32px);background:var(--ink);color:var(--bg);font:600 15px var(--font-body);padding:12px 16px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .2s,transform .2s}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
 .pick-h{font-size:27px;font-weight:800;letter-spacing:-.7px;line-height:1.28;margin:6px 0 0}
 #namePick{display:block}
 
@@ -2184,7 +2193,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '2.8';
+const PAGE_VER = '2.9';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2907,11 +2916,13 @@ function shareBox() {
 async function doShare(force) {
   const m = $('shareMsg');
   if (m) m.textContent = '공유하는 중…';
+  const d = data, br = BRANCH[0];
   try {
     await cfgReady;
-    const r = await run('shareWeek', BRANCH[0], { source: data.source, days: data.days }, force);
+    const r = await run('shareWeek', br, { source: d.source, days: d.days }, force);
     if (r && r.ok) {
       shared = { at: r.at };
+      if (LINK) toast('✓ ' + br + '에 공유했어요. 지사 분들도 이 일정표로 봐요.');
       if (LINK) LINK.b = BRANCH[0];
       appWidgetUser(BRANCH[0]);
       rememberName();
@@ -2919,20 +2930,66 @@ async function doShare(force) {
     }
     if (r && r.older && confirm(r.message + '\n그래도 이 일정표로 바꿀까요?')) return doShare(true);
     if (m) m.textContent = (r && r.message) || '공유하지 못했어요.';
+    else toast((r && r.message) || '공유하지 못했어요.');
   } catch (e) {
     if (m) m.textContent = '공유하지 못했어요: ' + (e.message || e);
+    else toast('공유하지 못했어요: ' + (e.message || e));
   }
 }
-// 이름 링크로 열었는데 이름이 없으면: 큰 이름 버튼으로 고르기
-function branchPick(list, done) {
+// 지사 고르기: 전국 모든 지사 (일정표가 올라온 지사가 위에, 「일정표 있음」 표시)
+function branchPick(shared, done) {
   const el = $('namePick');
   document.body.classList.add('linkmode');
   el.hidden = false;
+  const has = new Set(shared.map(x => x.branch));
+  const all = BRANCHES.map(b => b[0]);
+  shared.forEach(x => { if (!all.includes(x.branch)) all.push(x.branch); });
+  const order = all.filter(n => has.has(n)).concat(all.filter(n => !has.has(n)));
   el.innerHTML =
-    `<div class="pick-h">어느 지사인가요?</div><div class="pick">${list
-      .map((x, i) => `<button type="button" data-i="${i}"><i>${esc(x.branch[0])}</i>${esc(x.branch)}</button>`)
+    `<div class="pick-h">어느 지사인가요?</div>
+    <p class="pick-sub">내 지사를 골라 주세요. 아직 일정표가 없는 지사는 직접 올릴 수 있어요.</p>
+    <input class="pick-q" id="pickQ" placeholder="지사 이름 찾기 (예: 경남, 서울)" autocomplete="off">
+    <div class="pick">${order
+      .map(n => `<button type="button" data-b="${esc(n)}"><i>${esc(n[0])}</i><span>${esc(n)}${has.has(n) ? '<small class="pick-tag">일정표 있음</small>' : ''}</span></button>`)
       .join('')}</div>`;
-  el.querySelectorAll('button').forEach(b => (b.onclick = () => ((el.hidden = true), done(list[+b.dataset.i]))));
+  $('pickQ').oninput = e =>
+    el.querySelectorAll('.pick button').forEach(b => (b.hidden = !b.dataset.b.includes(e.target.value.trim())));
+  el.querySelectorAll('.pick button').forEach(b => (b.onclick = () => ((el.hidden = true), done({ branch: b.dataset.b }))));
+}
+// 고르기 화면 아래: 「새 일정표 올리기」「다른 지사 고르기」
+function pickMore(upload) {
+  return `<div class="pick-more">${upload ? '<label class="pick-alt" for="file" role="button" tabindex="0">내 이름이 없어요 · 새 일정표 올리기</label>' : ''}<button type="button" class="pick-alt" data-act="branch">다른 지사 고르기</button></div>`;
+}
+function rePickBranch() {
+  store.set('sched.appBranch', '');
+  location.replace(location.pathname + '?' + (APP ? 'app=1&' : '') + 'pick=1');
+}
+// 고른 지사에 아직 일정표가 없을 때: 바로 올리게
+function noWeek() {
+  render();
+  $('msg').textContent = '';
+  const el = $('namePick');
+  el.hidden = false;
+  el.innerHTML = `<div class="pick-h">${esc(LINK.b)}에<br>아직 일정표가 없어요</div>
+    <p class="pick-sub">이번 주 검사 일정표(엑셀·PDF)를 올리면 ${esc(LINK.b)} 분들 모두 이 앱에서 자기 일정을 볼 수 있어요.</p>
+    <label class="big" for="file" role="button" tabindex="0">일정표 올리기</label>
+    <p class="hint">카카오톡으로 받은 파일은 먼저 '저장'한 뒤, 다운로드 폴더에서 고르세요.</p>
+    ${pickMore(false)}`;
+}
+// 화면 아래 잠깐 뜨는 알림
+function toast(t) {
+  let el = $('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.textContent = t;
+  el.classList.add('on');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('on'), 4000);
 }
 function namePick(names, wk) {
   const el = $('namePick');
@@ -2940,7 +2997,8 @@ function namePick(names, wk) {
   el.innerHTML =
     `<div class="pick-h">누구의 일정을<br>볼까요?</div>` +
     (names.length > 8 ? `<input class="pick-q" id="pickQ" placeholder="이름 찾기" autocomplete="off">` : '') +
-    `<div class="pick">${names.map(n => `<button type="button" data-n="${esc(n)}"><i>${esc(n[0])}</i>${esc(n)}</button>`).join('')}</div>`;
+    `<div class="pick">${names.map(n => `<button type="button" data-n="${esc(n)}"><i>${esc(n[0])}</i>${esc(n)}</button>`).join('')}</div>` +
+    (LINK ? pickMore(true) : '');
   if ($('pickQ'))
     $('pickQ').oninput = e =>
       el.querySelectorAll('.pick button').forEach(b => (b.hidden = !b.dataset.n.includes(e.target.value.trim())));
@@ -3209,6 +3267,7 @@ function loadLibs() {
   if (!data) loadLibs().catch(() => {});
 });
 async function load(file) {
+  const prev = data;
   const msg = $('msg');
   msg.className = 'msg';
   msg.textContent = file.name + ' 읽는 중…';
@@ -3256,16 +3315,43 @@ async function load(file) {
     saveLast();
     const fromTitle = branchFromText((t ? t.s : '') + ' ' + (items.title || '') + ' ' + file.name);
     const saved = branchByName(store.get('sched.branch'));
+    // 지사: 일정표 제목 → 앱에서 고른 지사 → 지난번 지사 → 현장 동네로 추측
+    const linkB = LINK ? branchByName(LINK.b) : null;
     if (fromTitle) setBranch(fromTitle, 'title');
+    else if (linkB) setBranch(linkB, 'link');
     else {
       setBranch(saved, saved ? 'saved' : '');
       guessBranch();
     }
-    render();
-    window.scrollTo({ top: 0 });
+    if (LINK && BRANCH) {
+      LINK.b = BRANCH[0];
+      store.set('sched.appBranch', BRANCH[0]);
+    }
     // 올리면 바로 지사에 공유 (지사를 알 때만. 더 최근 일정표가 있으면 묻고)
-    if (SERVER && BRANCH && !LINK) doShare(false);
+    if (SERVER && BRANCH) doShare(false);
+    if (LINK) {
+      // 앱·링크: 이 일정표에 내 이름이 있으면 바로, 없으면 이름 고르기
+      const names = allNames();
+      if (curName() && names.includes(curName())) {
+        $('namePick').hidden = true;
+        startShared();
+      } else {
+        const wk = data;
+        $('name').value = '';
+        data = null;
+        render();
+        namePick(names, wk);
+      }
+    } else render();
+    window.scrollTo({ top: 0 });
   } catch (e) {
+    if (LINK && prev) {
+      // 보던 일정은 그대로 두고 알림만
+      data = prev;
+      render();
+      toast(e.message || '파일을 읽지 못했어요.');
+      return;
+    }
     if (data) {
       data = null;
       render();
@@ -3348,22 +3434,21 @@ $('name').addEventListener('input', () => {
   const ez0 = store.get('sched.easy');
   document.body.classList.toggle('easy', ez0 ? ez0 === '1' : !!(LINK || APP));
   syncMode();
-  // 앱 안에서 지사 정보가 없으면: 일정이 공유된 지사 중에서 고르기 (하나면 바로)
+  // 「다른 지사 고르기」 (고르기 화면 어디서든)
+  $('namePick').addEventListener('click', e => {
+    if (e.target.closest('[data-act="branch"]')) rePickBranch();
+  });
+  // 앱 안에서 지사 정보가 없으면: 전국 지사 중에서 고르기 (일정표가 올라온 지사가 위에)
   if ((APP || QS.get('pick') === '1') && !LINK && API) {
+    let list = [];
     try {
       const r = await run('listWeeks');
-      const list = (r && r.ok && r.list) || [];
-      const saved = store.get('sched.appBranch');
-      let b = list.find(x => x.branch === saved) || (list.length === 1 ? list[0] : null);
-      if (!b && list.length) b = await new Promise(res => branchPick(list, res));
-      if (b) {
-        store.set('sched.appBranch', b.branch);
-        LINK = { b: b.branch, n: '', easy: true };
-      } else {
-        $('msg').className = 'msg err';
-        $('msg').textContent = '아직 일정표가 공유된 지사가 없어요. 지사에서 누군가 일정표를 올리면 여기에 나와요.';
-      }
+      list = (r && r.ok && r.list) || [];
     } catch (e) {}
+    const saved = store.get('sched.appBranch');
+    const b = branchByName(saved) ? { branch: saved } : await new Promise(res => branchPick(list, res));
+    store.set('sched.appBranch', b.branch);
+    LINK = { b: b.branch, n: '', easy: true };
   }
   if (LINK) {
     // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
@@ -3397,25 +3482,7 @@ $('name').addEventListener('input', () => {
         render();
         namePick(names, wk);
       }
-    } else {
-      render();
-      const m = $('msg');
-      m.className = 'msg err';
-      m.textContent = LINK.b + '에 공유된 일정표가 아직 없어요. 일정표를 올리는 분께 "지사에 공유하기"를 눌러 달라고 해 주세요.';
-      // 일정표가 있는 지사가 있으면 바로 고르게 (지사가 잘못 저장돼 있을 때 막히지 않게)
-      try {
-        const r = await run('listWeeks');
-        const list = ((r && r.ok && r.list) || []).filter(x => x.branch !== LINK.b);
-        if (list.length) {
-          m.textContent = LINK.b + '에는 아직 일정표가 없어요. 아래에서 지사를 골라 주세요.';
-          branchPick(list, b => {
-            const q = new URLSearchParams(location.search);
-            q.set('b', b.branch);
-            location.replace(location.pathname + '?' + q.toString());
-          });
-        }
-      } catch (e) {}
-    }
+    } else noWeek();
     easyToggle();
   } else render();
   // 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로
