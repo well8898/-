@@ -13,7 +13,7 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.0'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.1'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -363,7 +363,7 @@ function dayView_(data, main, today, now) {
   const places = new Set(main.stops.map(s => s.name)).size;
   const title = (when ? when + ' ' : '') + main.label + (main.team ? ' · ' + main.team : '');
   const back = main.backKm != null ? ' (복귀 ' + main.backKm + ')' : '';
-  const sub = places + '곳 · ' + units + '대' + (main.legKm ? ' · 총 ' + main.legKm + 'km' + back : main.km ? ' · ' + main.km + 'km' : '')
+  const sub = places + '현장 ' + units + '대' + (main.legKm ? ' · 총 ' + main.legKm + 'km' + back : main.km ? ' · ' + main.km + 'km' : '')
     + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
   const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
     + ' ' + l.kind + ' ' + l.units), sub].join('\n');
@@ -385,7 +385,7 @@ function dayView_(data, main, today, now) {
     per['t' + (i + 1)] = l ? (l.nav ? l.nav.tmap : 'https://map.kakao.com/?eName=' + q) : '';
     per['v' + (i + 1)] = l ? (l.nav ? l.nav.naver : 'https://map.naver.com/p/search/' + q) : '';
   }
-  if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '곳 더';
+  if (rows.length > 8) per.l8 = '외 ' + (rows.length - 7) + '현장 더';
   // 하루 경로 (지사 출발 → 현장들 → 마지막 현장): 카카오 rk, 네이버 rv
   let rk = '', rv = '';
   const pts = lines.filter(l => l.nav).map(l => ({ n: l.name, lat: main.stops[l.no - 1].lat, lng: main.stops[l.no - 1].lng }));
@@ -407,7 +407,7 @@ function dayView_(data, main, today, now) {
 // 줄에 붙일 구간 거리 글자: 첫 현장은 '지사→12.3km', 다음부터 '↑4.0km'(바로 위 현장에서), 같은 곳이면 '같은 곳'
 function legText_(km, i, origin) {
   if (km == null) return '';
-  if (km === 0) return '같은 곳';
+  if (km === 0) return '같은 현장';
   return (i === 0 && origin ? '지사→' : '↑') + km + 'km';
 }
 

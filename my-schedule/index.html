@@ -846,6 +846,63 @@ body.easy{background:var(--surface)}
 .pick-q{font:500 16px var(--font-body);width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;background:var(--surface);color:var(--ink)}
 .pick-h{font-size:27px;font-weight:800;letter-spacing:-.7px;line-height:1.28;margin:6px 0 0}
 #namePick{display:block}
+
+/* 요일 탭(곳·대) · 이번 주 · 자세히 (시안) */
+#week,.bar-sub{display:none!important}
+.tabs{display:flex!important;gap:0;overflow:visible;border-bottom:1px solid var(--line);padding:0;margin-top:8px}
+.dtab{flex:1;min-width:0;background:none;border:0;cursor:pointer;padding:7px 0 8px;color:#9ca3af;line-height:1.3;font-family:var(--font-body);text-align:center}
+.dtab b{display:block;font-size:14px;font-weight:700}
+.dtab i{display:block;font-style:normal;font-size:11.5px;font-weight:600;white-space:nowrap}
+.dtab.wk b{font-size:12.5px}
+.dtab[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+.dtab.off b,.dtab.off i{color:#e11d48}
+.dtab.none{opacity:.6}
+.ez-days{gap:0}
+.tot3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 8px}
+.tot3 div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 6px;text-align:center}
+.tot3 b{display:block;font-size:24px;font-weight:800;letter-spacing:-.5px}.tot3 span{font-size:12.5px;color:var(--muted)}
+.ewk{display:flex;flex-direction:column}
+.ewk-r{display:flex;align-items:center;gap:14px;background:none;border:0;border-bottom:1px solid var(--line);padding:15px 6px;text-align:left;cursor:pointer;font-family:var(--font-body);color:var(--ink)}
+.ewk-r.today{background:var(--accent-soft);border-radius:14px;border-bottom-color:transparent}
+.ewk-d{width:50px;flex:none;text-align:center}.ewk-d b{display:block;font-size:21px;font-weight:800}.ewk-d small{font-size:12.5px;color:var(--muted);font-weight:600}
+.ewk-c{flex:1;min-width:0}.ewk-c b{display:block;font-size:18px;font-weight:800}.ewk-c small{display:block;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.ewk-r.off .ewk-d b,.ewk-r.off .ewk-c b{color:#e11d48}
+.ewk-a{color:#c0c6cf;font-size:22px}
+.ez-route{margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
+.ez-route>b{font-size:17px;font-weight:800}
+.ez-route .dayroute{background:none;border:0;padding:0;margin-top:2px}
+.ez-route .dayroute>b{display:none}
+.ez-route .dayroute small{display:block;color:var(--muted);font-size:13.5px;margin:2px 0 10px}
+.maps.rt a,.maps a.bk,.maps a.bn,.maps a.bt{border:0;font-weight:700}
+.maps a.bk{background:var(--kakao);color:#191919}.maps a.bn{background:var(--naver);color:#fff}.maps a.bt{background:var(--tmap);color:#fff}
+.ez-foot{margin-top:18px}
+.ez-file{display:block;text-align:center;border:1px solid var(--line);border-radius:14px;padding:14px;font:600 16px var(--font-body);color:var(--ink);cursor:pointer;background:var(--surface)}
+/* 자세히 */
+.dz-h h2{margin:6px 0 2px;font-size:23px;font-weight:800;letter-spacing:-.6px}
+.dz-h p{margin:0;font-size:14px;color:var(--muted)}
+.kmap{border-radius:16px!important;overflow:hidden}
+.legs{background:none!important;border:0!important;padding:0!important}
+.legs h3{font-size:15px!important}
+.leg .km{font-weight:800}
+.tl-item::before{background:var(--line-b)!important;width:3px!important}
+.tl-no{background:var(--line-b)!important;color:#fff!important}
+.tl-card{border:0!important;box-shadow:none!important;background:none!important;padding:0 0 6px!important}
+.tl-card .nm{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.wd{border-bottom:1px solid var(--line);padding:12px 2px}
+.wd-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;width:100%;background:none;border:0;padding:0;cursor:pointer;font-family:var(--font-body);color:var(--ink);text-align:left}
+.wd-h b{font-size:16px;font-weight:800}.wd-h span{font-size:13px;color:var(--muted)}
+.wd.off .wd-h b{color:#e11d48}
+.wd ul{margin:6px 0 0;padding:0;list-style:none;font-size:14.5px}
+.wd li{display:flex;gap:10px;padding:3px 0}.wd li i{font-style:normal;color:var(--muted);width:42px;flex:none}.wd li span{flex:1;min-width:0}.wd li em{font-style:normal;color:var(--muted);font-size:13px}
+/* 맨 아래 정리 칸 */
+.setbox{display:flex;flex-direction:column;gap:10px;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)}
+.set-h{margin:0;font-size:14px;color:var(--muted);font-weight:700}
+.set-it{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:15px}
+.set-it span{display:block;font-size:13px;color:var(--muted)}
+.set-it .go{color:var(--line-b);font-weight:700;cursor:pointer;white-space:nowrap}
+body.easy .set-h,body.easy #fileRow,body.easy #branchRow,body.easy #widgetBox{display:none!important}
+body.easy .setbox{border:0;padding:0}
+body.easy .tot3 div{background:var(--bg);border:0}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -914,11 +971,15 @@ window.addEventListener(
   <main class="gutter"><div class="col" style="display:flex;flex-direction:column;gap:14px">
     <div class="week" id="week"></div>
     <div class="homecard" id="homeCard" hidden></div>
-    <div class="branch" id="branchRow"></div>
-    <section class="share" id="shareBox" hidden></section>
-    <details class="widget" id="widgetBox" hidden></details>
     <section class="panel" id="panel" role="tabpanel"></section>
-    <p class="ver">화면 버전 2.0 · <span id="srvVer">서버 확인 중</span></p>
+    <section class="setbox" id="setBox">
+      <h3 class="set-h">일정표 · 지사 · 위젯</h3>
+      <section class="share" id="shareBox" hidden></section>
+      <div class="set-it" id="fileRow"></div>
+      <div class="branch" id="branchRow"></div>
+      <details class="widget" id="widgetBox" hidden></details>
+    </section>
+    <p class="ver">화면 버전 2.1 · <span id="srvVer">서버 확인 중</span></p>
   </div></main>
 </div>
 
@@ -1426,7 +1487,7 @@ function briefText(d, name) {
   let s =
     (ar.length ? ar.join('·') + '에서 ' : '') +
     pl.length +
-    '곳, 승강기 ' +
+    '현장, 승강기 ' +
     sumUnits(st) +
     '대를 봐요. ';
   if (first) s += first.time + ' ' + first.name + '에서 시작';
@@ -1636,43 +1697,29 @@ function render() {
     sel = defaultDay(days);
   const work = days.filter(d => d.t);
   $('week').innerHTML =
-    `<span>이번 주 근무 <b>${work.length}</b>일</span><span>현장 <b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>곳</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
-  $('tabs').innerHTML =
-    `<button class="tab" role="tab" type="button" data-iso="week" aria-selected="${sel === 'week'}"><span class="dw">이번 주</span><span class="dd">전체</span><span class="st">${work.reduce((a, d) => a + places(d.t.stops).length, 0)}곳</span></button>` +
-    days
-      .map(d => {
-        const { md, dow } = mdow(d);
-        const cls = d.t ? '' : d.off ? ' off' : ' none';
-        const st = d.t ? places(d.t.stops).length + '곳' : d.off ? '휴가' : '–';
-        return `<button class="tab${cls}${d.iso === todayIso ? ' today' : ''}" role="tab" type="button" data-iso="${d.iso}" aria-selected="${d.iso === sel}">
-      <span class="dw">${d.iso === todayIso ? '오늘' : dow}</span><span class="dd">${md}</span><span class="st">${st}</span></button>`;
-      })
-      .join('');
+    `<span>이번 주 근무 <b>${work.length}</b>일</span><span><b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>현장</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
+  $('tabs').innerHTML = dayTabs(false);
+  $('fileRow').innerHTML = `<div><b>${esc(data.source || '검사 일정표')}</b><span>${days.length ? mdow(days[0]).md + ' ~ ' + mdow(days[days.length - 1]).md : ''}</span></div><label class="go" for="file" role="button" tabindex="0">바꾸기</label>`;
   drawPanel();
 }
 function drawWeek() {
-  let h = `<div class="dayhead"><h2>이번 주<span>날짜를 누르면 하루 일정으로</span></h2></div>`;
+  const work = days.filter(d => d.t);
+  const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
+    wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
+  let h = `<section class="dz-h"><h2>${esc(curName())} 님 이번 주</h2><p>${esc(data.source || '검사 일정표')}</p></section>
+    <div class="tot3"><div><b>${work.length}</b><span>근무(일)</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
   days.forEach(d => {
     const { md, dow } = mdow(d);
-    const pill = d.t
-      ? `<span class="pill">${esc(d.t.team)} · ${places(d.t.stops).length}곳</span>`
-      : d.off
-        ? '<span class="pill off">휴가</span>'
-        : '<span class="pill none">배정 없음</span>';
-    h += `<section class="wday"><button class="wday-h" type="button" data-go="${d.iso}"><strong>${md}<span>${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span></strong>${pill}</button>`;
+    const km = d.t ? ezLegs(d) : null;
+    const info = d.t
+      ? `${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대 · ${esc(d.t.team)}${km && km.tot ? ' · ' + km.tot.toFixed(1) + 'km' : ''}`
+      : d.off ? '휴가' : '배정 없음';
+    h += `<section class="wd${d.t ? '' : ' off'}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${dow} ${md}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>`;
     if (d.t)
-      h += `<ul class="wlist">${d.t.stops
-        .map(
-          s => `<li><span class="t">${esc(s.time)}</span>
-      <div style="min-width:0"><div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
-        <div class="meta">${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span>${s.area ? esc(s.area) : '주소 미기재'}</span></div>${othersHtml(d, s)}</div>
-      <span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></li>`
-        )
+      h += `<ul>${d.t.stops
+        .map(s => `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`)
         .join('')}</ul>`;
-    else
-      h += `<div class="wlist flat">${d.off ? '휴가' : '배정된 현장 없음'}</div>`;
-    if (d.sup.length)
-      h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
+    if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
     h += '</section>';
   });
   return h;
@@ -1720,19 +1767,8 @@ function drawPanel(dx) {
   if (d.t) {
     const b = briefText(d, name);
     const m = daySum(d);
-    h += `<section class="sum">
-      <div class="sum-top"><span class="sum-date">${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''}</span>
-        <span class="sum-team">${esc(d.t.team)}</span></div>
-      <ul class="sum-list">${d.t.stops
-        .map(
-          x =>
-            `<li><span class="st">${esc(x.time)}</span>` +
-            `<span class="sn">${esc(placeName(x.name))}<span class="sa">${esc(x.area || '')}</span></span>` +
-            `<span class="sk">${esc(KIND[x.kind] || x.kind || '')}${x.units != null ? ' ' + x.units : ''}</span></li>`
-        )
-        .join('')}</ul>
-      <div class="sum-foot">${m.sites}곳 · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대${b.mates.length ? ' · 동행 ' + esc(b.mates.join(', ')) : ''}</div>
-    </section>
+    h += `<section class="dz-h"><h2>${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''} · ${m.sites}현장 ${sumUnits(d.t.stops)}대</h2>
+      <p>${esc(d.t.team)}${b.mates.length ? ' · ' + esc(b.mates.join(', ')) + ' 님과' : ''} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
       <ol class="tl">${d.t.stops
@@ -1744,7 +1780,7 @@ function drawPanel(dx) {
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           <div class="elv" id="elv-${i}"></div>
           ${othersHtml(d, s)}
-          <div class="maps" id="maps-${i}"><a href="${mapUrl(s)}" target="_blank" rel="noopener">카카오 길찾기</a><a href="${naverUrl(s)}" target="_blank" rel="noopener">네이버 길찾기</a></div>
+          <div class="maps" id="maps-${i}"><a class="bk" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오</a><a class="bn" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버</a></div>
         </div></li>`
         )
         .join('')}</ol>`;
@@ -1757,6 +1793,53 @@ function drawPanel(dx) {
   p.innerHTML = h;
   if (SERVER && d.t) dayExtras(d);
 }
+// 요일 탭: 요일 + 그날 현장 수 · 승강기 대수 (휴가는 빨간 "휴가"). 맨 앞 「이번 주」는 한 주 합계
+function dayTabs(easy) {
+  const work = days.filter(d => d.t);
+  const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
+    wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
+  const attr = easy ? 'data-day' : 'data-iso';
+  return (
+    `<button class="dtab wk" role="tab" type="button" ${attr}="week" aria-selected="${sel === 'week'}"><b>이번 주</b><i>${wp}현장</i><i>${wu}대</i></button>` +
+    days
+      .filter(d => d.t || d.off || !easy)
+      .map(d => {
+        const lab = d.iso === todayIso ? '오늘' : mdow(d).dow;
+        const sub = d.t ? `<i>${places(d.t.stops).length}현장</i><i>${sumUnits(d.t.stops)}대</i>` : d.off ? '<i>휴가</i><i>&nbsp;</i>' : '<i>–</i><i>&nbsp;</i>';
+        return `<button class="dtab${d.t ? '' : d.off ? ' off' : ' none'}" role="tab" type="button" ${attr}="${d.iso}" aria-selected="${d.iso === sel}"><b>${lab}</b>${sub}</button>`;
+      })
+      .join('')
+  );
+}
+// 쉬운 화면 · 이번 주: 큰 숫자 3칸 + 날마다 한 줄
+function drawEasyWeek() {
+  const name = curName();
+  const work = days.filter(d => d.t);
+  const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
+    wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
+  let h = `<div class="ez-date">${mdow(days[0]).md} ~ ${mdow(days[days.length - 1]).md}</div>
+    <h2 class="ez-title">${esc(name)} 님,<br>이번 주 ${wp}현장 ${wu}대</h2>
+    <div class="ez-days" role="tablist">${dayTabs(true)}</div>
+    <div class="tot3"><div><b>${work.length}</b><span>근무(일)</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>
+    <div class="ewk">`;
+  days.forEach(d => {
+    if (!d.t && !d.off) return;
+    const { md, dow } = mdow(d);
+    const first = d.t ? d.t.stops[0] : null;
+    const more = d.t ? places(d.t.stops).length - 1 : 0;
+    h += `<button type="button" class="ewk-r${d.iso === todayIso ? ' today' : ''}${d.t ? '' : ' off'}" data-day="${d.iso}">
+      <span class="ewk-d"><b>${dow}</b><small>${d.iso === todayIso ? '오늘' : md}</small></span>
+      <span class="ewk-c"><b>${d.t ? places(d.t.stops).length + '현장 ' + sumUnits(d.t.stops) + '대' : '휴가'}</b>
+      <small>${first ? esc((first.time ? first.time + ' ' : '') + placeName(first.name)) + (more > 0 ? ' 외 ' + more + '현장' : '') : '푹 쉬세요'}</small></span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
+  });
+  h += `</div>` + ezFoot(null);
+  return h;
+}
+// 쉬운 화면 아래: 하루 경로(합계 km) + 일정표 바꾸기
+function ezFoot(route) {
+  return `${route || ''}<div class="ez-foot"><label class="ez-file" for="file" role="button" tabindex="0">일정표 바꾸기</label></div>`;
+}
+
 // ════ 쉬운 화면 (시안 B: 하루 경로) ════
 let ezOpen = {}; // iso → 펼친 현장 번호
 const EZ_LOADED = {};
@@ -1794,7 +1877,7 @@ function ezLegs(d) {
   }
   return { out, back, tot, unk };
 }
-const legTxt = x => (!x ? '' : x.same ? '같은 곳' : x.km.toFixed(1) + 'km' + (x.mn != null ? ' · ' + x.mn + '분' : ''));
+const legTxt = x => (!x ? '' : x.same ? '같은 현장' : x.km.toFixed(1) + 'km' + (x.mn != null ? ' · ' + x.mn + '분' : ''));
 function ezNav(s) {
   const g = GEO[mapQuery(s)];
   const dest = g && g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : placeName(s.name);
@@ -1829,7 +1912,12 @@ function ezDetail(d, s, i) {
 function drawEasy() {
   const p = $('panel');
   if (!days.length) return;
-  if (sel === 'week' || !days.some(x => x.iso === sel)) sel = defaultDay(days);
+  if (sel !== 'week' && !days.some(x => x.iso === sel)) sel = defaultDay(days);
+  if (sel === 'week') {
+    p.innerHTML = drawEasyWeek();
+    p.querySelectorAll('[data-day]').forEach(b => (b.onclick = () => go(b.dataset.day)));
+    return;
+  }
   const d = days.find(x => x.iso === sel);
   const name = curName();
   const { md, dow } = mdow(d);
@@ -1839,8 +1927,8 @@ function drawEasy() {
   if (d.t) {
     const mates = d.t.members.map(bare).filter(x => x !== name);
     const L = ezLegs(d);
-    h += `<h2 class="ez-title">${esc(name)} 님,<br>${when} ${places(d.t.stops).length}곳을 가요</h2>
-      <div class="ez-sum">${mates.length ? esc(mates.join(', ')) + ' 님과 · ' : ''}승강기 ${sumUnits(d.t.stops)}대${L.tot ? ' · 총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''}</div>`;
+    h += `<h2 class="ez-title">${esc(name)} 님,<br>${when} ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대</h2>
+      <div class="ez-sum">${[mates.length ? esc(mates.join(', ')) + ' 님과' : '', L.tot ? '총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''].filter(Boolean).join(' · ')}</div>`;
     h += ezDays(d);
     const hm = nowHm();
     const past = i => isToday && d.t.stops[i].time && d.t.stops[i].time < hm && i < d.t.stops.length - 1 && d.t.stops[i + 1].time && d.t.stops[i + 1].time <= hm;
@@ -1866,15 +1954,17 @@ function drawEasy() {
       const g = GEO[mapQuery(s)];
       if (g && !(pts.length && ll(pts[pts.length - 1].g) === ll(g))) pts.push({ g, name: s.name });
     });
-    if (pts.length > 1) {
+    let route = '';
+    if (pts.length) {
       const all = ORIGIN && ORIGIN.lat ? [{ g: ORIGIN, name: BRANCH ? BRANCH[0] : ORIGIN.name, home: 1 }].concat(pts) : pts;
-      h += `<div class="ez-route">${dayRouteHtml(all)}</div>`;
+      route = `<div class="ez-route"><b>하루 경로${L.tot ? ' · 총 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''}</b>${dayRouteHtml(all)}</div>`;
     }
+    h += ezFoot(route);
   } else {
     h += `<h2 class="ez-title">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
     h += ezDays(d);
     const nx = days.find(x => x.t && x.iso > d.iso);
-    h += `<div class="ez-rest">${nx ? `<p>다음 근무 · ${mdow(nx).md} (${mdow(nx).dow}) ${places(nx.t.stops).length}곳</p><button type="button" class="ez-btn" data-go="${nx.iso}">다음 근무일 보기</button>` : '<p>이 일정표에 남은 근무가 없어요</p>'}</div>`;
+    h += `<div class="ez-rest">${nx ? `<p>다음 근무 · ${mdow(nx).md} (${mdow(nx).dow}) ${places(nx.t.stops).length}현장</p><button type="button" class="ez-btn" data-go="${nx.iso}">다음 근무일 보기</button>` : '<p>이 일정표에 남은 근무가 없어요</p>'}</div>` + ezFoot(null);
   }
   p.innerHTML = h;
   p.querySelectorAll('[data-day]').forEach(b => (b.onclick = () => go(b.dataset.day)));
@@ -1896,11 +1986,7 @@ function drawEasy() {
   }
 }
 function ezDays(d) {
-  const list = days.filter(x => x.t || x.off);
-  if (list.length < 2) return '';
-  return `<div class="ez-days" role="tablist">${list
-    .map(x => `<button type="button" role="tab" data-day="${x.iso}" aria-selected="${x.iso === d.iso}" class="${x.t ? '' : 'off'}">${x.iso === todayIso ? '오늘' : mdow(x).dow}</button>`)
-    .join('')}</div>`;
+  return `<div class="ez-days" role="tablist">${dayTabs(true)}</div>`;
 }
 // 쉬운 화면용: 위치·구간 거리·승강기 정보를 불러옴 (다 되면 다시 그림)
 async function easyLoad(d) {
@@ -1943,13 +2029,13 @@ function go(iso, dx) {
   if (!iso || iso === sel) return;
   sel = iso;
   $('tabs')
-    .querySelectorAll('.tab')
+    .querySelectorAll('.dtab')
     .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
   drawPanel(dx);
   window.scrollTo({ top: 0 });
 }
 $('tabs').addEventListener('click', e => {
-  const t = e.target.closest('.tab');
+  const t = e.target.closest('.dtab');
   if (t) go(t.dataset.iso);
 });
 $('panel').addEventListener('click', e => {
@@ -2228,14 +2314,14 @@ async function dayExtras(d) {
         const de = encodeURIComponent(dest.replace(/,/g, ' '));
         if (IS_MOBILE) {
           mp.innerHTML =
-            `<a href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오 길찾기</a>` +
-            `<a href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule" target="_blank" rel="noopener">네이버 길찾기</a>` +
-            `<a href="${tmapUrl(de, g)}" target="_blank" rel="noopener">티맵 길찾기</a>`;
+            `<a class="bt" href="${tmapUrl(de, g)}">티맵</a>` +
+            `<a class="bk" href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오</a>` +
+            `<a class="bn" href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule">네이버</a>`;
           mp.classList.add('three');
         } else {
           mp.innerHTML =
-            `<a href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오 길찾기</a>` +
-            `<a href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버 길찾기</a>`;
+            `<a class="bk" href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오맵</a>` +
+            `<a class="bn" href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버지도</a>`;
         }
       }
     });
@@ -2443,8 +2529,8 @@ function dayRouteHtml(pts) {
   if (start) naver += `&slat=${start.g.lat}&slng=${start.g.lng}&sname=${lab(start)}`;
   via.forEach((x, i) => (naver += `&v${i + 1}lat=${x.g.lat}&v${i + 1}lng=${x.g.lng}&v${i + 1}name=${lab(x)}`));
   naver += '&appname=elevator.schedule';
-  return `<div class="dayroute"><b>하루 경로 길찾기</b><small>${start ? esc(start.name) + ' 출발 → ' : ''}경유 ${via.length}곳 → ${esc(placeName(end.name))} 도착${cut ? ' · 경유지는 앞의 5곳까지만' : ''}</small>
-    <div class="maps"><a href="${kakao}" target="_blank" rel="noopener">카카오 하루 길찾기</a>${IS_MOBILE ? `<a href="${naver}" target="_blank" rel="noopener">네이버 하루 길찾기</a>` : ''}</div></div>`;
+  return `<div class="dayroute"><b>하루 경로 길찾기</b><small>${start ? esc(start.name) + ' 출발 → ' : ''}경유 ${via.length}현장 → ${esc(placeName(end.name))} 도착${cut ? ' · 경유지는 앞의 5현장까지만' : ''}</small>
+    <div class="maps rt"><a class="bk" href="${kakao}" target="_blank" rel="noopener">하루 경로 카카오</a>${IS_MOBILE ? `<a class="bn" href="${naver}">하루 경로 네이버</a>` : ''}</div></div>`;
 }
 function drawLegs(d, pts) {
   const el = $('dlegs');
@@ -2476,7 +2562,7 @@ function drawLegs(d, pts) {
     ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>합계</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
-    ${skipped ? `<p class="note">위치를 모르는 현장 ${skipped}곳은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
+    ${skipped ? `<p class="note">위치를 모르는 ${skipped}현장은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
   $('copyRoute').onclick = () => {
     const t = $('routeText').textContent;
     const done = () => {
