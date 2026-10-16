@@ -26,7 +26,10 @@ function doGet(e) {
   let html = pageHtml_();
   // 위젯에서 현장을 눌러 열 때 ?d=2026-10-16 → 그날 하루 보기로 시작
   const day = e && e.parameter && String(e.parameter.d || '');
-  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) html = html.replace('<head>', '<head><script>window.START_DAY="' + day + '";</script>');
+  // 설정을 화면에 바로 넣어 getConfig 왕복을 없앰 ('//'는 앱스 스크립트가 주석으로 잘라서 '\/'로)
+  let inject = 'window.CFG=' + JSON.stringify(getConfig()).replace(/</g, '\\u003c').replace(/\//g, '\\/') + ';';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) inject += 'window.START_DAY="' + day + '";';
+  html = html.replace('<head>', '<head><script>' + inject + '</script>');
   return HtmlService.createHtmlOutput(html)
     .setTitle('내 검사 일정')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
@@ -44,7 +47,7 @@ function pageHtml_() {
     throw new Error('Index 파일이 없고 GitHub에서도 화면을 읽지 못했습니다: ' + PAGE_URL);
   }
   const html = res.getContentText('UTF-8');
-  try { cache.put('page', html, 600); } catch (e) { /* 너무 크면 캐시 생략 */ }
+  try { cache.put('page', html, 3600); } catch (e) { /* 너무 크면 캐시 생략 */ }
   return html;
 }
 
@@ -263,14 +266,17 @@ function geocodeSites(sites, origin, branch) {
     const places = {};
     const o = origin && origin.lat ? origin : null;
     const J = juris_(branch || (o && o.name));
-    (Array.isArray(sites) ? sites : []).slice(0, 60).forEach(s => {
+    const list = (Array.isArray(sites) ? sites : []).slice(0, 60);
+    const ckOf = s => 'site4:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+    prefetchBook_(list.filter(s => !s.addr && !siteFix_(s.name || s.q, s.area)).map(ckOf), list);
+    list.forEach(s => {
       const q = String((s && s.q) || '').trim();
       if (!q || q in places) return;
       // 누군가 직접 넣어 둔 주소가 있으면 그것을 먼저
       const fx = siteFix_(s.name || q, s.area);
       if (fx) { places[q] = fx; return; }
       let p = null;
-      const ck = 'site4:' + q + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+      const ck = ckOf(s);
       try { p = cached_(ck, () => findSite_(s, o, J)); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) places[q] = p;
     });
@@ -377,6 +383,47 @@ function clearSiteAddr(name, area) {
   }
 }
 
+// 화면에서 호출: 하루 보기에 필요한 것을 한 번에 — 현장 위치 찾기 + 방문 순서대로 구간 거리
+// (예전엔 geocodeSites → routeLegs 를 따로 불러 왕복이 여러 번이었음)
+// order: 방문 순서 [{ q, lat?, lng? }] (화면이 이미 아는 좌표는 같이 보냄)
+// → { ok, places: { q: {lat,lng,…} }, legs: { '위도,경도>위도,경도': { km, min } }, src }
+function dayBundle(need, origin, branch, order) {
+  try {
+    const g = geocodeSites(need || [], origin, branch);
+    if (!g.ok) return g;
+    const key = p => Number(p.lat).toFixed(5) + ',' + Number(p.lng).toFixed(5);
+    const stops = [];
+    (Array.isArray(order) ? order : []).forEach(x => {
+      const p = x && x.lat != null ? x : g.places[x && x.q];
+      if (!p || !p.lat) return;
+      const last = stops[stops.length - 1];
+      if (last && key(last) === key(p)) return; // 같은 건물 연속은 하나로
+      stops.push({ lat: Number(p.lat), lng: Number(p.lng) });
+    });
+    const o = origin && origin.lat ? { lat: Number(origin.lat), lng: Number(origin.lng) } : null;
+    const pts = o ? [o].concat(stops, [o]) : stops;
+    const keys = [], pairs = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const k = key(pts[i]) + '>' + key(pts[i + 1]);
+      if (keys.indexOf(k) >= 0) continue;
+      keys.push(k);
+      pairs.push([pts[i].lat, pts[i].lng, pts[i + 1].lat, pts[i + 1].lng]);
+    }
+    const legs = {};
+    let src = '';
+    if (pairs.length) {
+      const r = routeLegs(pairs);
+      if (r.ok) {
+        keys.forEach((k, i) => (legs[k] = { km: r.km[i], min: r.min ? r.min[i] : null }));
+        src = r.src;
+      }
+    }
+    return { ok: true, places: g.places, legs: legs, src: src };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
 // 상호 검색 결과 중 일정표의 동·읍·면에 있고, 지사 관할구역 안인 곳 (관할 정보가 없으면 REGION_KM 안)
 function findSite_(s, o, J) {
   const base = 'https://dapi.kakao.com/v2/local/search/';
@@ -470,13 +517,41 @@ function addrPoint_(addr, o, J) {
 
 const BOOK_SHARDS = {}; // 한 번 실행 동안 받은 주소록 조각
 
+// 캐시에 없는 현장들이 쓸 주소록 조각을 한꺼번에(병렬) 받아 둠 — 하나씩 받으면 조각마다 0.3~0.5초
+function prefetchBook_(cacheKeys, list) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const hashed = cacheKeys.map(k => Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, k, Utilities.Charset.UTF_8)));
+    const hit = cache.getAll(hashed);
+    const files = [];
+    list.forEach((s, i) => {
+      if (i >= hashed.length || hit[hashed[i]]) return;
+      const f = bookFile_(bookKey_(s.name || ''));
+      if (f && !BOOK_SHARDS[f] && files.indexOf(f) < 0) files.push(f);
+    });
+    if (!files.length) return;
+    const res = UrlFetchApp.fetchAll(files.map(f => ({ url: BOOK_URL + f, muteHttpExceptions: true })));
+    res.forEach((r, i) => {
+      try {
+        if (r.getResponseCode() === 200) BOOK_SHARDS[files[i]] = JSON.parse(r.getContentText('UTF-8'));
+      } catch (e) { /* 그 조각은 나중에 하나씩 */ }
+    });
+  } catch (e) { /* 미리 받기 실패해도 하나씩 받으면 됨 */ }
+}
+
+// 주소록 키 → 조각 파일 이름 (data/bld/NNN.json)
+function bookFile_(k) {
+  if (!k || k.length < 2) return '';
+  let v = 5381;
+  for (let i = 0; i < k.length; i++) v = (v * 33 + k.charCodeAt(i)) % 4294967296;
+  return ('00' + (v % 128)).slice(-3) + '.json';
+}
+
 // 건물 주소록에서 건물명으로 주소 후보 (일정표의 동이 들어간 주소를 앞으로)
 function bookCandidates_(name, area) {
   const k = bookKey_(name);
   if (k.length < 2) return [];
-  let v = 5381;
-  for (let i = 0; i < k.length; i++) v = (v * 33 + k.charCodeAt(i)) % 4294967296;
-  const file = ('00' + (v % 128)).slice(-3) + '.json';
+  const file = bookFile_(k);
   let shard = BOOK_SHARDS[file];
   if (!shard) {
     try {

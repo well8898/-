@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#1f5fbf">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
 :root {
@@ -831,9 +831,6 @@ window.addEventListener(
   </div></main>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 function parseItems(items, yearHint) {
   const Y = yearHint || new Date().getFullYear();
@@ -1703,17 +1700,19 @@ function run(fn, ...a) {
       [fn](...a)
   );
 }
-const cfgReady = SERVER
-  ? run('getConfig')
-      .then(c => {
-        if (c && c.ok) {
-          kakaoJsKey = c.kakaoJsKey || '';
-          tmapKey = c.tmapKey || '';
-          webUrl = c.webUrl || '';
-        }
-      })
-      .catch(() => {})
-  : Promise.resolve();
+// 설정(지도 키 등): 웹앱이 화면과 함께 넣어 주면(window.CFG) 서버에 따로 묻지 않음
+const applyCfg = c => {
+  if (c && c.ok) {
+    kakaoJsKey = c.kakaoJsKey || '';
+    tmapKey = c.tmapKey || '';
+    webUrl = c.webUrl || '';
+  }
+};
+const cfgReady = !SERVER
+  ? Promise.resolve()
+  : window.CFG
+    ? Promise.resolve(applyCfg(window.CFG))
+    : run('getConfig').then(applyCfg).catch(() => {});
 function loadKakao() {
   if (!kakaoReady)
     kakaoReady = cfgReady.then(() => {
@@ -1750,10 +1749,18 @@ const ll = g => (+g.lat).toFixed(5) + ',' + (+g.lng).toFixed(5);
 // 승강기검사접수정보(공공데이터)에서 현장 실주소 찾기 — 웹앱에 DATA_GO_KR_KEY가 있을 때
 let RECPTN = null,
   RECPTN_KEY = '';
+let recptnP = null;
 async function loadRecptn() {
   const ds = data.days.map(d => d.iso.replace(/-/g, '')).sort();
   const k = ds[0] + ds[ds.length - 1] + (BRANCH ? BRANCH[0] : '');
   if (RECPTN_KEY === k) return;
+  // 동시에 여러 번 불려도 요청은 하나
+  if (recptnP && recptnP.k === k) return recptnP;
+  recptnP = loadRecptn1(ds, k);
+  recptnP.k = k;
+  return recptnP;
+}
+async function loadRecptn1(ds, k) {
   try {
     const r = await run('recptnList', ds[0], ds[ds.length - 1], BRANCH ? BRANCH[0] : '');
     RECPTN = r && r.ok ? r.list : [];
@@ -1793,38 +1800,90 @@ function matchRecptn(d, s) {
   }
   return best && bs >= 4 ? best : null;
 }
+// 하루치 위치 찾기 목록 (아직 모르는 현장만)
+function needFor(d) {
+  const need = [];
+  d.t.stops.forEach(s => {
+    if (placeName(s.name).length < 2) return;
+    const q = mapQuery(s);
+    if (!(q in GEO) && !need.some(x => x.q === q))
+      need.push({
+        q,
+        addr: realAddr(d, s),
+        area: s.area,
+        region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
+        name: placeName(s.name)
+      });
+  });
+  return need;
+}
+// 지사 좌표 (한 번만, 여러 곳에서 동시에 불러도 요청은 하나)
+let originP = null;
+function ensureOrigin() {
+  if (!BRANCH || ORIGIN) return Promise.resolve();
+  const b = BRANCH[0];
+  if (!originP || originP.b !== b) {
+    originP = run('getOrigin', BRANCH[0], BRANCH[1])
+      .then(o => {
+        if (o && o.ok && BRANCH && BRANCH[0] === b) {
+          ORIGIN = o.origin;
+          JURIS_TXT[b] = o.juris || '';
+          branchRow();
+        }
+      })
+      .catch(() => {})
+      .finally(() => (originP = null));
+    originP.b = b;
+  }
+  return originP;
+}
+// 하루치 위치 + 구간 거리를 서버에 한 번에 물어 GEO·LEGS 를 채움 (서버가 예전 버전이면 위치만)
+async function fetchDay(d) {
+  const need = needFor(d);
+  const order = d.t.stops
+    .filter(s => placeName(s.name).length >= 2)
+    .map(s => {
+      const q = mapQuery(s),
+        g = GEO[q];
+      return g ? { q, lat: g.lat, lng: g.lng } : { q };
+    });
+  if (!need.length) return;
+  let r = null;
+  try {
+    r = await run('dayBundle', need, ORIGIN, BRANCH ? BRANCH[0] : '', order);
+  } catch (e) {
+    r = null; // 서버에 dayBundle 이 아직 없음
+  }
+  if (!r) r = await run('geocodeSites', need, ORIGIN, BRANCH ? BRANCH[0] : '');
+  if (!r.ok) throw new Error(r.message);
+  need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
+  Object.keys(r.legs || {}).forEach(k => {
+    LEGS[k] = r.legs[k].km;
+    MINS[k] = r.legs[k].min;
+  });
+  if (r.src) ROUTE_SRC = r.src;
+}
+// 지금 날짜를 다 그린 뒤, 남은 근무일도 미리 찾아 둠 (날짜를 넘길 때 바로 뜨게)
+let prefetching = false;
+async function prefetchDays() {
+  if (prefetching || !SERVER) return;
+  prefetching = true;
+  try {
+    for (const d of days.filter(x => x.t && x.iso >= todayIso && x.iso !== sel)) {
+      if (!needFor(d).length) continue;
+      await fetchDay(d).catch(() => {});
+    }
+  } finally {
+    prefetching = false;
+  }
+}
 async function dayExtras(d) {
   const iso = d.iso;
   try {
     await cfgReady;
-    await loadRecptn();
-    const need = [];
-    d.t.stops.forEach(s => {
-      const addr = realAddr(d, s);
-      if (placeName(s.name).length < 2) return;
-      const q = mapQuery(s);
-      if (!(q in GEO) && !need.some(x => x.q === q))
-        need.push({
-          q,
-          addr,
-          area: s.area,
-          region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
-          name: placeName(s.name)
-        });
-    });
-    if (BRANCH && !ORIGIN) {
-      const o = await run('getOrigin', BRANCH[0], BRANCH[1]);
-      if (o && o.ok) {
-        ORIGIN = o.origin;
-        JURIS_TXT[BRANCH[0]] = o.juris || '';
-        branchRow();
-      }
-    }
-    if (need.length) {
-      const r = await run('geocodeSites', need, ORIGIN, BRANCH ? BRANCH[0] : '');
-      if (!r.ok) throw new Error(r.message);
-      need.forEach(x => (GEO[x.q] = r.places[x.q] || null));
-    }
+    // 공단 접수자료(실주소)와 지사 좌표는 서로 기다리지 않고 동시에
+    await Promise.all([loadRecptn(), ensureOrigin()]);
+    await fetchDay(d);
     if (sel !== iso) return;
     d.t.stops.forEach((s, i) => {
       const g = GEO[mapQuery(s)];
@@ -1900,6 +1959,7 @@ async function dayExtras(d) {
     if (sel !== iso) return;
     drawLegs(d, pts);
     drawDayMap(stops);
+    setTimeout(prefetchDays, 300);
   } catch (e) {
     if (sel === iso && $('dlegs'))
       $('dlegs').innerHTML =
@@ -2108,13 +2168,18 @@ function syncWidget() {
         };
       })
     };
-    const sig = JSON.stringify(payload);
+    const raw = JSON.stringify(payload);
+    let h = 0;
+    for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) | 0;
+    const sig = widgetKeyGet() + ':' + h;
+    if (!widgetSig) widgetSig = store.get('sched.wsig') || '';
     if (sig === widgetSig) return widgetBox();
     try {
       await cfgReady;
       const r = await run('saveWidget', widgetKeyGet(), payload);
       if (r && r.ok) {
         widgetSig = sig;
+        store.set('sched.wsig', sig);
         widgetKmSent = {};
         // 저장 전에 계산된 하루 km도 보냄
         Object.keys(widgetKmTot).forEach(iso => widgetKm(iso, widgetKmTot[iso], false));
@@ -2299,11 +2364,38 @@ function sheetItems(buf) {
   );
 }
 
+// 파일 읽기 도구(pdf.js·SheetJS)는 처음 화면을 막지 않게 나중에 받음
+let libsReady = null;
+function loadLibs() {
+  if (!libsReady) {
+    const one = src =>
+      new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = src;
+        sc.onload = res;
+        sc.onerror = () => rej(new Error('불러오기 실패: ' + src));
+        document.head.appendChild(sc);
+      });
+    const cdn = 'https:\/\/cdnjs.cloudflare.com/ajax/libs/';
+    libsReady = Promise.all([one(cdn + 'pdf.js/3.11.174/pdf.min.js'), one(cdn + 'xlsx/0.18.5/xlsx.full.min.js')]).catch(e => {
+      libsReady = null;
+      throw e;
+    });
+  }
+  return libsReady;
+}
+// 첫 화면(파일 고르기)이면 쉬는 시간에 미리 받아 둠
+(window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => {
+  if (!data) loadLibs().catch(() => {});
+});
 async function load(file) {
   const msg = $('msg');
   msg.className = 'msg';
   msg.textContent = file.name + ' 읽는 중…';
   try {
+    try {
+      await loadLibs();
+    } catch (e) {}
     if (typeof pdfjsLib === 'undefined' || typeof XLSX === 'undefined')
       throw new Error(
         '파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.'
