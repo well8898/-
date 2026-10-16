@@ -18,7 +18,7 @@ const REGION_KM = 50;      // 지사에서 이 거리(km) 밖의 검색 결과�
 const PAGE_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/apps-script/Index.html';
 // 건물 주소록: 승강기 설치 현황(공공데이터) → 건물명별 주소, 128조각으로 나눈 JSON
-const SERVER_VER = '10.16b'; // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = '10.16c'; // 화면 아래에 표시 — 배포가 최신인지 확인용
 const ELV_URL = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = 'https://raw.githubusercontent.com/well8898/-/'
   + 'my-schedule/my-schedule/data/bld/';
@@ -42,14 +42,16 @@ function pageHtml_() {
     return HtmlService.createHtmlOutputFromFile('Index').getContent();
   } catch (e) { /* Index 파일 없음 → GitHub */ }
   const cache = CacheService.getScriptCache();
-  const hit = cache.get('page');
+  // 서버 버전이 바뀌면(새로 배포하면) 저장해 둔 화면을 버리고 GitHub에서 새로 받음
+  const pk = 'page:' + SERVER_VER;
+  const hit = cache.get(pk);
   if (hit) return hit;
   const res = UrlFetchApp.fetch(PAGE_URL, { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) {
     throw new Error('Index 파일이 없고 GitHub에서도 화면을 읽지 못했습니다: ' + PAGE_URL);
   }
   const html = res.getContentText('UTF-8');
-  try { cache.put('page', html, 3600); } catch (e) { /* 너무 크면 캐시 생략 */ }
+  try { cache.put(pk, html, 3600); } catch (e) { /* 너무 크면 캐시 생략 */ }
   return html;
 }
 
