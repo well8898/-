@@ -2318,7 +2318,17 @@ async function load(file) {
     const gsw = isPdf && isGsWeek(items);
     const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
     const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
-    const ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
+    let ds;
+    try {
+      ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
+    } catch (e1) {
+      // 양식 구분이 애매하면 다른 방식으로도 한 번 더
+      try {
+        ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
+      } catch (e2) {
+        throw e1;
+      }
+    }
     if (!ds.some(d => d.teams.length))
       throw new Error(
         '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
