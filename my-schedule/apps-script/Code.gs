@@ -454,7 +454,7 @@ function siteElevators(list, branch) {
       } else if (s.area) addrs = addrs.filter(a => a.indexOf(s.area) >= 0);
       // 같은 이름 건물이 여러 곳이면 틀릴 수 있어 한 곳일 때만
       const nos = (addrs.length === 1 ? m[addrs[0]] : []).concat(s.nos || []);
-      want[s.q] = nos.filter((x, i) => x && nos.indexOf(x) === i).slice(0, 30);
+      want[s.q] = nos.filter((x, i) => x && nos.indexOf(x) === i).slice(0, 60);
     });
     // 2) 번호마다 승강기 정보 (6시간 캐시, 없는 것만 한꺼번에)
     const all = [];
@@ -462,7 +462,7 @@ function siteElevators(list, branch) {
     const cache = CacheService.getScriptCache();
     const hit = all.length ? cache.getAll(all.map(n => 'elv1:' + n)) : {};
     const info = {};
-    const miss = all.filter(n => { const h = hit['elv1:' + n]; if (h) info[n] = JSON.parse(h); return !h; }).slice(0, 80);
+    const miss = all.filter(n => { const h = hit['elv1:' + n]; if (h) info[n] = JSON.parse(h); return !h; }).slice(0, 150);
     const base = 'https://apis.data.go.kr/B553664/ElevatorInformationService/getElevatorViewM?serviceKey=' + encodeURIComponent(key) + '&elevator_no=';
     const rs = miss.length ? UrlFetchApp.fetchAll(miss.map(n => ({ url: base + n, muteHttpExceptions: true }))) : [];
     const put = {};
@@ -487,7 +487,8 @@ function siteElevators(list, branch) {
         n: L.length, mr: L.filter(v => v.mr === 'Y').length, mrl: L.filter(v => v.mr === 'N').length,
         forms: uniq(v => v.form), kinds: uniq(v => v.kind), caps: uniq(v => v.cap),
         floors: uniq(v => v.floors), years: uniq(v => v.year).sort(),
-        list: L.map(v => ({ no: v.no, ho: v.ho, mr: v.mr, form: v.form, cap: v.cap, year: v.year }))
+        list: L.map(v => ({ no: v.no, ho: v.ho, mr: v.mr, form: v.form, cap: v.cap, year: v.year, model: v.model, floors: v.floors }))
+          .sort((a, b) => (parseInt(a.ho, 10) || 999) - (parseInt(b.ho, 10) || 999))
       };
     });
     return { ok: true, info: out };

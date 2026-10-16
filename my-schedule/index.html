@@ -750,7 +750,16 @@ label.ghost {
 .fixbox{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px}
 .fixbox input{font:500 14px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--accent);border-radius:9px;padding:8px 10px;width:100%;box-sizing:border-box}
 .fixbox small{font-size:12px;color:var(--muted)}
-.elv{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:12.5px;color:var(--muted)}
+.elv{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+.elv-sum{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.elv .cnt{font-size:12px;font-weight:700;color:var(--ink)}
+.elv .cnt.all{font-weight:600;color:var(--muted)}
+.elv .model{font:600 11.5px var(--font-mono);background:var(--bg);color:var(--ink);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.elv-tg,.elv-more{font:600 12px var(--font-body);color:var(--accent);background:none;border:0;padding:2px 2px;cursor:pointer;white-space:nowrap}
+.elv-tb table{border-collapse:collapse;width:100%;font-size:12.5px;color:var(--ink)}
+.elv-tb th{color:var(--muted);font-weight:500;font-size:11.5px;text-align:left;padding:4px 3px}
+.elv-tb td{border-top:1px solid var(--line);padding:5px 3px;text-align:left}
+.elv-tb tr.dim td{opacity:.55}
 .elv:empty{display:none}
 .elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .elv .mr{background:var(--accent-soft);color:var(--accent)}
@@ -1671,6 +1680,24 @@ $('panel').addEventListener('click', e => {
   if (g) go(g.dataset.go);
   const fx = e.target.closest('[data-fix]');
   if (fx) fixForm(+fx.dataset.fix);
+  // 승강기 호기별 표 펼치기 · 건물 나머지 보기
+  const tg = e.target.closest('[data-elv]');
+  if (tg) {
+    const tb = $('elvtb-' + tg.dataset.elv);
+    if (tb) {
+      tb.hidden = !tb.hidden;
+      tg.textContent = tb.hidden ? '호기별 ▾' : '접기 ▴';
+    }
+  }
+  const mo = e.target.closest('[data-elvrest]');
+  if (mo) {
+    const tb = $('elvtb-' + mo.dataset.elvrest);
+    const r = tb && tb.querySelector('.elv-rest');
+    if (r) {
+      r.hidden = !r.hidden;
+      mo.textContent = r.hidden ? mo.textContent.replace('접기', '보기') : mo.textContent.replace('보기', '접기');
+    }
+  }
 });
 // ---------- 지도 핀 · 이동거리 (Apps Script 웹앱으로 열었을 때만) ----------
 // 휴대폰인지 (앱 길안내 버튼은 휴대폰에서만)
@@ -2041,20 +2068,76 @@ async function loadElv(d) {
     d.t.stops.forEach((s, i) => {
       const el = $('elv-' + i),
         v = ELV[mapQuery(s)];
-      if (el && v) el.innerHTML = elvHtml(v);
+      if (el && v && v.list && v.list.length) el.innerHTML = elvHtml(v, d, s, i);
     });
   } catch (e) {
     /* 서버에 siteElevators 가 없거나 실패하면 표시만 안 함 */
   }
 }
-function elvHtml(v) {
-  const yr = v.years.length ? (v.years.length > 1 ? v.years[0] + '~' + v.years[v.years.length - 1] : v.years[0]) + '년' : '';
-  const bits = [v.forms.join('·'), v.caps.join('·'), v.floors.length ? Math.max(...v.floors.map(Number)) + '층' : '', yr].filter(Boolean);
+// 일정표 메모·현장명의 호기 번호: '32,34,36,38호기' '1~5호기' '6-10호기' → Set
+function hoSet(t) {
+  const out = new Set();
+  String(t || '').replace(/([\d\s,~\-]+)호기/g, (all, nums) => {
+    nums.split(',').forEach(part => {
+      const m = part.trim().match(/^(\d+)\s*[~\-]\s*(\d+)$/);
+      if (m) for (let k = +m[1]; k <= +m[2] && k - +m[1] < 100; k++) out.add(String(k));
+      else if (/^\d+$/.test(part.trim())) out.add(String(+part.trim()));
+    });
+    return all;
+  });
+  return out.size ? out : null;
+}
+// 오늘 검사할 승강기: 그날 검사접수된 번호 → 메모의 호기 → 모르면 null(건물 전체)
+function elvToday(v, d, s) {
+  const day = d.iso.replace(/-/g, ''),
+    n = normNm(s.name);
+  const rs = new Set(
+    (RECPTN || [])
+      .filter(r => r.no && r.d === day && normNm(r.nm) === n && (!s.area || r.addr.includes(s.area)))
+      .map(r => r.no)
+  );
+  let t = rs.size ? v.list.filter(x => rs.has(x.no)) : null;
+  if (!t || !t.length) {
+    const hs = hoSet((s.memo || '') + ' ' + s.name);
+    t = hs ? v.list.filter(x => hs.has(String(parseInt(x.ho, 10)))) : null;
+  }
+  return t && t.length ? t : null;
+}
+function elvRows(L, cls) {
+  return L.map(
+    x => `<tr class="${cls || ''}"><td>${esc(x.ho || '')}</td><td>${x.mr === 'Y' ? '<span class="mr">MR</span>' : x.mr === 'N' ? '<span class="mrl">MRL</span>' : ''}</td><td>${esc(x.model || '')}</td><td>${esc(x.cap || '')}</td><td>${esc(x.year || '')}</td></tr>`
+  ).join('');
+}
+function elvHtml(v, d, s, i) {
+  const all = v.list || [];
+  const today = elvToday(v, d, s);
+  const L = today || all;
+  const mr = L.filter(x => x.mr === 'Y').length,
+    mrl = L.filter(x => x.mr === 'N').length;
+  const uniq = f => L.map(f).filter((x, k, a) => x && a.indexOf(x) === k);
+  const models = uniq(x => x.model);
+  const years = uniq(x => x.year).sort();
+  const floors = uniq(x => x.floors).map(Number).filter(Boolean);
+  const spec = [
+    uniq(x => x.form).join('·'),
+    uniq(x => x.cap).join('·'),
+    floors.length ? Math.max(...floors) + '층' : '',
+    years.length ? (years.length > 1 ? years[0] + '~' + years[years.length - 1] : years[0]) + '년' : ''
+  ].filter(Boolean);
+  const rest = today ? all.filter(x => !today.includes(x)) : [];
   return (
-    (v.mr ? `<span class="mr">MR ${v.mr}</span>` : '') +
-    (v.mrl ? `<span class="mrl">MRL ${v.mrl}</span>` : '') +
-    (bits.length ? `<span class="spec">${esc(bits.join(' · '))}</span>` : '') +
-    (v.n && v.mr + v.mrl < v.n ? `<span class="spec">· ${v.n}대 조회</span>` : '')
+    `<div class="elv-sum">` +
+    (today ? `<span class="cnt">오늘 ${today.length}대</span>` : `<span class="cnt all">건물 전체 ${all.length}대</span>`) +
+    (mr ? `<span class="mr">MR ${mr}</span>` : '') +
+    (mrl ? `<span class="mrl">MRL ${mrl}</span>` : '') +
+    models.slice(0, 3).map(m => `<span class="model">${esc(m)}</span>`).join('') +
+    (models.length > 3 ? `<span class="model">+${models.length - 3}</span>` : '') +
+    (L.length ? `<button type="button" class="elv-tg" data-elv="${i}">호기별 ▾</button>` : '') +
+    `</div>` +
+    `<div class="spec">${esc(spec.join(' · '))}${today && all.length > today.length ? ` · 건물 전체 ${all.length}대` : ''}${today ? '' : ' · 건물 전체 기준'}</div>` +
+    `<div class="elv-tb" id="elvtb-${i}" hidden><table><tr><th>호기</th><th>기계실</th><th>모델</th><th>인승</th><th>설치</th></tr>${elvRows(L)}` +
+    (rest.length ? `<tbody class="elv-rest" hidden>${elvRows(rest, 'dim')}</tbody>` : '') +
+    `</table>${rest.length ? `<button type="button" class="elv-more" data-elvrest="${i}">건물 나머지 ${rest.length}대 보기</button>` : ''}</div>`
   );
 }
 // 하루 경로 내비: 지사 출발 → 현장 경유 → 마지막 현장 도착 (경유지는 앱 한도 5곳까지)
