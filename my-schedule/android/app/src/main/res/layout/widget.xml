@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 홈 화면 위젯 4×3 — 시안 B. 맨 위 ‹ 날짜 › (가운데를 누르면 앱), 아래 하루 경로 카카오·네이버 · ↻ 새로고침 -->
+<!-- 홈 화면 위젯 4×3 — 시안 B. 맨 위 ‹ 날짜 › (가운데를 누르면 앱), 아래 총 경로 km · ↻ 새로고침 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -106,31 +106,13 @@
             android:layout_width="0dp"
             android:layout_height="32dp"
             android:layout_weight="1"
-            android:autoSizeMaxTextSize="12.5sp"
-            android:autoSizeMinTextSize="8sp"
-            android:autoSizeTextType="uniform"
             android:background="@drawable/row"
             android:fontFamily="@font/pretendard"
             android:gravity="center"
             android:maxLines="1"
-            android:text="하루 경로 카카오"
-            android:textColor="@color/w_btn_ink"
-            android:textStyle="bold" />
-        <TextView
-            android:id="@+id/route_naver"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_marginStart="6dp"
-            android:layout_weight="1"
-            android:autoSizeMaxTextSize="12.5sp"
-            android:autoSizeMinTextSize="8sp"
-            android:autoSizeTextType="uniform"
-            android:background="@drawable/row"
-            android:fontFamily="@font/pretendard"
-            android:gravity="center"
-            android:maxLines="1"
-            android:text="하루 경로 네이버"
-            android:textColor="@color/w_btn_ink"
+            android:text="총 경로"
+            android:textColor="@color/w_ink"
+            android:textSize="13.5sp"
             android:textStyle="bold" />
         <TextView
             android:id="@+id/refresh"

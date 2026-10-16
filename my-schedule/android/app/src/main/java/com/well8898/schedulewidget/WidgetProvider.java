@@ -113,13 +113,11 @@ public class WidgetProvider extends AppWidgetProvider {
                     new Intent(c, WidgetProvider.class).setAction(NEXT), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
 
 
-            // 하루 경로 (지사 → 현장들 → 마지막 현장). 티맵은 경유지 링크가 없어 빠짐
-            String rk = d == null ? "" : d.optString("rk");
-            String rv = d == null ? "" : d.optString("rv");
-            v.setViewVisibility(R.id.route, rk.isEmpty() ? View.GONE : View.VISIBLE);
-            v.setViewVisibility(R.id.route_naver, rv.isEmpty() ? View.GONE : View.VISIBLE);
-            if (!rk.isEmpty()) v.setOnClickPendingIntent(R.id.route, view(c, 3, rk));
-            if (!rv.isEmpty()) v.setOnClickPendingIntent(R.id.route_naver, view(c, 6, rv));
+            // 아래 줄: 총 경로 (지사 출발 → 현장들 → 지사 복귀) km. 누르면 앱
+            double tot = d == null ? 0 : d.optDouble("total", 0);
+            v.setTextViewText(R.id.route, tot > 0 ? "총 경로 " + (Math.round(tot * 10) / 10.0) + "km" : "총 경로 계산 전");
+            v.setViewVisibility(R.id.route, hasUrl ? View.VISIBLE : View.GONE);
+            v.setOnClickPendingIntent(R.id.route, view(c, 3, "schedapp://day" + (iso.isEmpty() ? "" : "?d=" + iso)));
 
             // 현장 목록: 줄을 누르면 그 줄의 길안내 주소를 연다
             Intent svc = new Intent(c, RowService.class).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
