@@ -875,6 +875,7 @@ body.easy{background:var(--surface)}
 .sheet h2 b{color:var(--accent)}
 .sh-src{margin:0;font-size:15px;font-weight:600;background:var(--bg);border-radius:12px;padding:10px 12px}
 .sh-why{margin:0;font-size:14px;color:var(--muted)}
+.sh-warn{margin:0;font-size:14.5px;line-height:1.5;color:#7a5300;background:#fff7e6;border-radius:10px;padding:9px 11px}
 .sh-note{margin:0 0 4px;font-size:14px;color:var(--muted);line-height:1.5}
 .sh-go{font:700 18px var(--font-body);background:var(--accent);color:#fff;border:0;border-radius:14px;padding:16px;cursor:pointer}
 .sh-x{font:600 16px var(--font-body);background:none;border:0;color:var(--muted);padding:10px;cursor:pointer}
@@ -2214,7 +2215,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.4';
+const PAGE_VER = '3.5';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2977,11 +2978,53 @@ function branchPick(shared, done) {
       .join('')}</div>`;
   $('pickQ').oninput = e =>
     el.querySelectorAll('.pick button').forEach(b => (b.hidden = !b.dataset.b.includes(e.target.value.trim())));
-  el.querySelectorAll('.pick button').forEach(b => (b.onclick = () => ((el.hidden = true), done({ branch: b.dataset.b }))));
+  el.querySelectorAll('.pick button').forEach(
+    b =>
+      (b.onclick = async () => {
+        // 한 번 고르면 고정 → 고르기 전에 한 번 확인
+        if (!(await askLock(b.dataset.b))) return;
+        store.set('sched.branchLock', b.dataset.b);
+        el.hidden = true;
+        done({ branch: b.dataset.b });
+      })
+  );
 }
+// 지사 고정: 처음 한 번 고르면 바꿀 수 없음 (담당자는 화면 아래 버전 글씨를 5번 눌러 풀기)
+const lockedBranch = () => store.get('sched.branchLock') || '';
+function askLock(name) {
+  return new Promise(done => {
+    const el = document.createElement('div');
+    el.className = 'sheet-bg';
+    el.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lkH">
+      <h2 id="lkH"><b>${esc(name)}</b>가<br>맞나요?</h2>
+      <p class="sh-note">한 번 고르면 <b>나중에 바꿀 수 없어요.</b> 내 지사가 맞는지 확인해 주세요.</p>
+      <button type="button" class="sh-go" data-a="ok">네, ${esc(name)}예요</button>
+      <button type="button" class="sh-x" data-a="no">다시 고르기</button></div>`;
+    const close = v => (el.remove(), done(v));
+    el.onclick = e => {
+      const t = e.target.closest('[data-a]');
+      if (t) close(t.dataset.a === 'ok');
+      else if (e.target === el) close(false);
+    };
+    document.body.appendChild(el);
+    el.querySelector('[data-a="ok"]').focus();
+  });
+}
+// 담당자용: 버전 글씨(또는 고르기 화면 제목)를 2.5초 안에 5번 누르면 지사 고정 풀기
+document.addEventListener('click', e => {
+  if (!e.target.closest('.vbox .ver, .pick-h') || !lockedBranch()) return;
+  const now = Date.now();
+  const tp = (window.__taps = (window.__taps || []).filter(t => now - t < 2500).concat(now));
+  if (tp.length < 5) return;
+  window.__taps = [];
+  if (confirm('담당자용: 지사 고정을 풀고 지사를 다시 고를까요?')) {
+    store.set('sched.branchLock', '');
+    rePickBranch();
+  }
+});
 // 고르기 화면 아래: 「새 일정표 올리기」「다른 지사 고르기」
 function pickMore(upload) {
-  return `<div class="pick-more">${upload ? '<label class="pick-alt" for="file" role="button" tabindex="0">내 이름이 없어요 · 새 일정표 올리기</label>' : ''}<button type="button" class="pick-alt" data-act="branch">다른 지사 고르기</button></div>`;
+  return `<div class="pick-more">${upload ? '<label class="pick-alt" for="file" role="button" tabindex="0">내 이름이 없어요 · 새 일정표 올리기</label>' : ''}${lockedBranch() ? '' : '<button type="button" class="pick-alt" data-act="branch">다른 지사 고르기</button>'}</div>`;
 }
 function rePickBranch() {
   store.set('sched.appBranch', '');
@@ -3001,7 +3044,7 @@ function noWeek() {
     ${pickMore(false)}`;
 }
 // 올리기 확인: 「이 일정표를 ○○지사에 올릴까요?」 → 고른 지사 [이름, 주소] 또는 취소면 null
-function askBranch(b, src, why) {
+function askBranch(b, src, why, opt = {}) {
   return new Promise(done => {
     const el = document.createElement('div');
     el.className = 'sheet-bg';
@@ -3014,9 +3057,10 @@ function askBranch(b, src, why) {
         <h2 id="shH">이 일정표를<br><b>${esc(b[0])}</b>에 올릴까요?</h2>
         <p class="sh-src">${esc(src || '')}</p>
         ${why ? `<p class="sh-why">${esc(why)}</p>` : ''}
+        ${opt.other ? `<p class="sh-warn">파일 이름·제목은 <b>${esc(opt.other)}</b>예요. 내 지사에만 올릴 수 있으니 ${esc(b[0])} 일정표가 맞는지 확인해 주세요.</p>` : ''}
         <p class="sh-note">올리면 ${esc(b[0])} 분들이 모두 이 일정표로 봐요. 지사마다 일정표는 하나라서 전에 올린 것은 바뀌어요.</p>
         <button type="button" class="sh-go" data-a="go">${esc(b[0])}에 올리기</button>
-        <button type="button" class="pick-alt" data-a="pick">다른 지사에 올리기</button>
+        ${opt.locked ? '' : '<button type="button" class="pick-alt" data-a="pick">다른 지사에 올리기</button>'}
         <button type="button" class="sh-x" data-a="x">취소</button></div>`;
       el.querySelector('[data-a="go"]').focus();
     };
@@ -3085,6 +3129,8 @@ function namePick(names, wk) {
   });
 }
 function startShared() {
+  // 예전부터 쓰던 분도 지금 지사로 고정
+  if (!lockedBranch() && branchByName(LINK.b)) store.set('sched.branchLock', LINK.b);
   setBranch(branchByName(LINK.b), 'link');
   sel = null;
   render();
@@ -3398,7 +3444,11 @@ async function load(file) {
     if (SERVER) {
       // 올리기 전에 어느 지사로 등록할지 한 번 확인 (다른 지사 일정표로 덮어쓰지 않게)
       const why = { title: '일정표 제목·파일 이름에서 찾은 지사예요', link: '지금 보고 있는 지사예요', saved: '지난번에 고른 지사예요', guess: '현장 동네로 추측한 지사예요' }[BRANCH_SRC] || '';
-      const b = await askBranch(BRANCH, data.source, why);
+      // 지사가 고정돼 있으면 내 지사에만 올림 (다른 지사 일정표를 덮어쓰지 않게)
+      const own = branchByName(lockedBranch());
+      const other = own && BRANCH && BRANCH[0] !== own[0] ? BRANCH[0] : '';
+      if (own) setBranch(own, 'link');
+      const b = await askBranch(BRANCH, data.source, own ? '' : why, own ? { locked: true, other } : {});
       if (!b) {
         // 취소: 올리지 않고 보던 화면 그대로
         data = prev;
@@ -3530,11 +3580,13 @@ $('name').addEventListener('input', () => {
       const r = await run('listWeeks');
       list = (r && r.ok && r.list) || [];
     } catch (e) {}
-    const saved = store.get('sched.appBranch');
+    const saved = lockedBranch() || store.get('sched.appBranch');
     const b = branchByName(saved) ? { branch: saved } : await new Promise(res => branchPick(list, res));
     store.set('sched.appBranch', b.branch);
     LINK = { b: b.branch, n: '', easy: true };
   }
+  // 지사가 고정돼 있으면 링크에 다른 지사가 와도 내 지사로
+  if (LINK && lockedBranch() && branchByName(lockedBranch()) && LINK.b !== lockedBranch()) LINK.b = lockedBranch();
   if (LINK) {
     // 이름 링크: 지사에 공유된 일정표로 바로 시작 (쉬운 화면이 기본)
     document.body.classList.add('linkmode');
