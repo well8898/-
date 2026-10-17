@@ -774,6 +774,8 @@ label.ghost {
 .elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .elv .mr{background:var(--accent-soft);color:var(--accent)}
 .elv .mrl{background:var(--off-soft);color:var(--off)}
+.disc{margin:20px auto 0;max-width:420px;font-size:12.5px;line-height:1.6;color:var(--muted);text-align:center}
+.namepick .disc{margin:10px 0 0;text-align:left;font-size:13px}
 .vbox{margin:18px 0 6px;text-align:center}
 .vbox .ver{margin:0 0 8px}
 .vmsg{margin:0 auto 10px;max-width:340px;padding:12px 14px;border-radius:14px;background:var(--card,#fff);border:1px solid var(--line,#e5e7eb);font-size:15px;line-height:1.45;font-weight:600}
@@ -1042,6 +1044,7 @@ window.addEventListener(
       <div class="branch" id="branchRow"></div>
       <details class="widget" id="widgetBox" hidden></details>
     </section>
+    <p class="disc">한국승강기안전공단 공식 앱이 아니에요.<br>조합원의 업무를 돕기 위해 개인이 만든 앱이라 부족한 점이 있을 수 있어요. 너그러이 이해해 주세요.</p>
     <div class="vbox" id="verBox">
       <p class="ver"><span id="pageVer"></span><span id="appVer"></span> · <span id="srvVer">서버 확인 중</span></p>
       <p class="vmsg" id="verMsg" hidden></p>
@@ -2237,7 +2240,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.6';
+const PAGE_VER = '3.7';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2995,6 +2998,7 @@ function branchPick(shared, done) {
     `<div class="pick-h">어느 지사인가요?</div>
     <p class="pick-sub">내 지사를 골라 주세요. 아직 일정표가 없는 지사는 직접 올릴 수 있어요.</p>
     <input class="pick-q" id="pickQ" placeholder="지사 이름 찾기 (예: 경남, 서울)" autocomplete="off">
+    <p class="disc">한국승강기안전공단 공식 앱이 아니에요. 조합원의 업무를 돕기 위해 개인이 만든 앱이라 부족한 점이 있을 수 있어요. 너그러이 이해해 주세요.</p>
     <div class="pick">${order
       .map(n => `<button type="button" data-b="${esc(n)}"><i>${esc(n[0])}</i><span>${esc(n)}${has.has(n) ? '<small class="pick-tag">일정표 있음</small>' : ''}</span></button>`)
       .join('')}</div>`;
@@ -3134,7 +3138,8 @@ function authScreen() {
         <p class="pick-sub">공단 직원만 쓸 수 있어요. 회사 메일로 6자리 인증번호를 보내 드려요.</p>
         <label class="auth-mail"><input id="auId" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="메일 아이디" value="${esc(mail.split('@')[0])}"><span>@${esc(authDomain)}</span></label>
         <button type="button" class="big" id="auSend">인증번호 받기</button>
-        <p class="msg" id="auMsg" role="status"></p>`;
+        <p class="msg" id="auMsg" role="status"></p>
+        <p class="disc">한국승강기안전공단 공식 앱이 아니에요.<br>조합원의 업무를 돕기 위해 개인이 만든 앱이라 부족한 점이 있을 수 있어요. 너그러이 이해해 주세요.</p>`;
       const go = async () => {
         const id = $('auId').value.trim().split('@')[0].toLowerCase();
         if (!id) return say('메일 아이디를 넣어 주세요.', true);
