@@ -75,6 +75,9 @@ final class Data {
     static JSONObject fetch(Context c) throws Exception {
         String u = url(c);
         if (u.isEmpty()) throw new IllegalStateException("주소 없음");
+        // 회사 메일 인증 열쇠 (앱 화면에서 인증하면 setAuth 로 받아 둠)
+        String tok = prefs(c).getString("tok", "");
+        if (!tok.isEmpty() && u.contains("/api/w")) u += (u.contains("?") ? "&" : "?") + "t=" + Uri.encode(tok);
         HttpURLConnection con = (HttpURLConnection) new URL(u).openConnection();
         con.setConnectTimeout(15000);
         con.setReadTimeout(40000);

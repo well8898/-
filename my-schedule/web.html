@@ -863,12 +863,20 @@ body.easy{background:var(--surface)}
 .pick button:last-child{border-bottom:0}
 .pick i{font-style:normal;width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:15px;flex:none}
 .pick-q{font:500 16px var(--font-body);width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px;background:var(--surface);color:var(--ink)}
+.auth-mail{display:flex;align-items:center;margin:16px 0 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;overflow:hidden}
+.auth-mail:focus-within{border-color:var(--accent)}
+.auth-mail input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:600 18px var(--font-body);padding:15px 14px;outline:none}
+.auth-mail span{flex:none;color:var(--muted);font:600 16px var(--font-body);padding-right:14px}
+.auth-code{display:block;width:100%;box-sizing:border-box;margin:16px 0 12px;text-align:center;letter-spacing:10px;font:800 30px var(--font-body);color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:12px}
+.auth-code:focus{outline:none;border-color:var(--accent)}
 .pick-sub{font-size:15px;color:var(--muted);line-height:1.5;margin:8px 0 0}
 .pick button span{display:flex;flex-direction:column;gap:2px}
 .pick-tag{font-size:12.5px;font-weight:700;color:var(--naver)}
 .pick-more{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .pick-alt{display:block;text-align:center;font:600 16px var(--font-body);color:var(--accent);background:none;border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer}
 .namepick .big{margin-top:16px}
+.namepick button.big{background:var(--accent);color:var(--accent-ink);border:0;font-size:17px;padding:0}
+.namepick button.big:disabled{opacity:.6}
 .sheet-bg{position:fixed;inset:0;z-index:40;background:rgba(10,15,25,.45);display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:100%;max-width:520px;max-height:92vh;overflow:auto;box-sizing:border-box;background:var(--surface);color:var(--ink);border-radius:22px 22px 0 0;padding:24px 20px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
 .sheet h2{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.3;margin:0}
@@ -2164,11 +2172,23 @@ let ORIGIN = null,
   kakaoJsKey = '',
   kakaoReady = null,
   kakaoError = '';
+// 회사 메일 인증: 서버가 켜 두면(authOn) 처음 한 번 회사 메일로 확인 → 열쇠(sched.tok)를 이 휴대폰에 보관
+let authOn = false,
+  authDomain = 'koelsa.or.kr';
+const authTok = () => store.get('sched.tok') || '';
 function run(fn, ...a) {
   if (!GAS)
-    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn, args: a }) }).then(
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth': authTok() }, body: JSON.stringify({ fn, args: a }) }).then(
       async r => {
         const j = await r.json().catch(() => null);
+        if (r.status === 401 && j && j.needAuth) {
+          // 열쇠가 없거나 지워졌으면: 다시 회사 메일로 확인
+          store.set('sched.tok', '');
+          if (!run.authing) {
+            run.authing = true;
+            authScreen().then(() => location.reload());
+          }
+        }
         if (!r.ok) throw new Error((j && j.message) || '서버 오류(' + r.status + ')');
         return j;
       }
@@ -2185,6 +2205,8 @@ const applyCfg = c => {
   const sv = document.getElementById('srvVer');
   if (sv) sv.textContent = c && c.ver ? '서버 ' + c.ver.replace(/^v/, '') : SERVER ? '서버 예전 버전(Code.gs 새로 배포 필요)' : '서버 없음';
   if (c && c.ok) {
+    authOn = !!c.auth;
+    authDomain = c.authDomain || authDomain;
     kakaoJsKey = c.kakaoJsKey || '';
     tmapKey = c.tmapKey || '';
     webUrl = c.webUrl || '';
@@ -2215,7 +2237,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.5';
+const PAGE_VER = '3.6';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3092,6 +3114,99 @@ function askBranch(b, src, why, opt = {}) {
     else pick();
   });
 }
+// 회사 메일 인증 화면: ① 메일 아이디 → 인증번호 받기 ② 6자리 번호 → 확인. 끝나면 resolve
+function authScreen() {
+  return new Promise(done => {
+    const el = $('namePick');
+    document.body.classList.add('linkmode');
+    $('startView').hidden = false;
+    $('appView').hidden = true;
+    $('msg').textContent = '';
+    el.hidden = false;
+    let mail = store.get('sched.authMail') || '';
+    const say = (t, err) => {
+      const m = $('auMsg');
+      m.className = 'msg' + (err ? ' err' : '');
+      m.textContent = t || '';
+    };
+    const step1 = () => {
+      el.innerHTML = `<div class="pick-h">회사 메일로<br>한 번만 확인할게요</div>
+        <p class="pick-sub">공단 직원만 쓸 수 있어요. 회사 메일로 6자리 인증번호를 보내 드려요.</p>
+        <label class="auth-mail"><input id="auId" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="메일 아이디" value="${esc(mail.split('@')[0])}"><span>@${esc(authDomain)}</span></label>
+        <button type="button" class="big" id="auSend">인증번호 받기</button>
+        <p class="msg" id="auMsg" role="status"></p>`;
+      const go = async () => {
+        const id = $('auId').value.trim().split('@')[0].toLowerCase();
+        if (!id) return say('메일 아이디를 넣어 주세요.', true);
+        mail = id + '@' + authDomain;
+        $('auSend').disabled = true;
+        say('보내는 중…');
+        try {
+          const r = await run('authStart', mail);
+          if (r && (r.ok || r.wait)) {
+            store.set('sched.authMail', mail);
+            return step2(r.ok ? '' : r.message);
+          }
+          say((r && r.message) || '보내지 못했어요.', true);
+        } catch (e) {
+          say('인터넷 연결을 확인하고 다시 눌러 주세요.', true);
+        }
+        $('auSend').disabled = false;
+      };
+      $('auSend').onclick = go;
+      $('auId').onkeydown = e => e.key === 'Enter' && go();
+      $('auId').focus();
+    };
+    const step2 = note => {
+      el.innerHTML = `<div class="pick-h">메일로 받은<br>번호를 넣어 주세요</div>
+        <p class="pick-sub"><b>${esc(mail)}</b>(으)로 보냈어요. 메일이 안 보이면 스팸함도 봐 주세요.</p>
+        <input id="auCode" class="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="인증번호 6자리">
+        <button type="button" class="big" id="auOk">확인</button>
+        <p class="msg" id="auMsg" role="status"></p>
+        <div class="pick-more"><button type="button" class="pick-alt" id="auRe">번호 다시 받기</button><button type="button" class="pick-alt" id="auBack">메일 주소 바꾸기</button></div>`;
+      if (note) say(note);
+      const ok = async () => {
+        const code = $('auCode').value.replace(/\D/g, '');
+        if (code.length !== 6) return say('6자리 번호를 넣어 주세요.', true);
+        $('auOk').disabled = true;
+        try {
+          const r = await run('authVerify', mail, code);
+          if (r && r.ok) {
+            store.set('sched.tok', r.token);
+            appAuth();
+            el.hidden = true;
+            el.innerHTML = '';
+            return done();
+          }
+          say((r && r.message) || '확인하지 못했어요.', true);
+        } catch (e) {
+          say('인터넷 연결을 확인하고 다시 눌러 주세요.', true);
+        }
+        $('auOk').disabled = false;
+      };
+      $('auOk').onclick = ok;
+      $('auCode').oninput = e => e.target.value.replace(/\D/g, '').length === 6 && ok();
+      $('auRe').onclick = async () => {
+        say('보내는 중…');
+        try {
+          const r = await run('authStart', mail);
+          say(r && r.ok ? '새 번호를 보냈어요.' : (r && r.message) || '보내지 못했어요.', !(r && r.ok));
+        } catch (e) {
+          say('인터넷 연결을 확인하고 다시 눌러 주세요.', true);
+        }
+      };
+      $('auBack').onclick = step1;
+      $('auCode').focus();
+    };
+    step1();
+  });
+}
+// 앱 안이면 위젯도 같은 열쇠로 서버에서 받게 (앱 2.6 이상)
+function appAuth() {
+  try {
+    if (window.AndroidApp && AndroidApp.setAuth && authTok()) AndroidApp.setAuth(authTok());
+  } catch (e) {}
+}
 // 화면 아래 잠깐 뜨는 알림
 function toast(t) {
   let el = $('toast');
@@ -3569,6 +3684,20 @@ $('name').addEventListener('input', () => {
   const ez0 = store.get('sched.easy');
   document.body.classList.toggle('easy', ez0 ? ez0 === '1' : !!(LINK || APP));
   syncMode();
+  // 회사 메일 인증: 서버가 켜 두었고 이 휴대폰에 열쇠가 없으면 먼저 확인
+  if (API) {
+    await cfgReady;
+    if (authOn) {
+      // 열쇠가 없거나 더 이상 맞지 않으면(지워짐 등) 먼저 회사 메일로 확인
+      let valid = !!authTok();
+      if (valid) valid = await run('authCheck').then(r => !r || r.ok !== false).catch(() => true);
+      if (!valid) {
+        store.set('sched.tok', '');
+        await authScreen();
+      }
+    }
+    appAuth();
+  }
   // 「다른 지사 고르기」 (고르기 화면 어디서든)
   $('namePick').addEventListener('click', e => {
     if (e.target.closest('[data-act="branch"]')) rePickBranch();

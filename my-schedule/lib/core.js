@@ -13,8 +13,8 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.5';
-const PAGE_VER = '3.5'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.6';
+const PAGE_VER = '3.6'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -66,6 +66,8 @@ async function redis_(cmds) {
       if (op === 'MGET') return a.map(get);
       if (op === 'SET') { MEM.set(a[0], { val: a[1], exp: a[2] === 'EX' ? now + a[3] * 1000 : 0 }); return 'OK'; }
       if (op === 'DEL') { a.forEach(k => MEM.delete(k)); return a.length; }
+      if (op === 'INCR') { const v = (+get(a[0]) || 0) + 1; const o = MEM.get(a[0]); MEM.set(a[0], { val: String(v), exp: o ? o.exp : 0 }); return v; }
+      if (op === 'EXPIRE') { const o = MEM.get(a[0]); if (o) o.exp = now + a[1] * 1000; return o ? 1 : 0; }
       return null;
     });
   }
@@ -1167,5 +1169,5 @@ function setAppUrl(u) {
   APP_URL = prod ? prod.replace(/\/?$/, '/') : u;
 }
 
-module.exports = { RPC, widget, widgetByName, setAppUrl, SERVER_VER,
+module.exports = { RPC, widget, widgetByName, setAppUrl, SERVER_VER, redis_,
   _t: { juris_, inJuris_, bookKey_, bookFile_, widgetView_, addLegs_, redis_, MEM } };

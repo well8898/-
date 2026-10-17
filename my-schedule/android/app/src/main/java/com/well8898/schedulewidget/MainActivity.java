@@ -194,6 +194,14 @@ public class MainActivity extends Activity {
             WidgetProvider.update(MainActivity.this);
         }
 
+        /** 회사 메일 인증 열쇠: 위젯도 이 열쇠로 서버에서 일정을 받음 */
+        @JavascriptInterface
+        public void setAuth(String token) {
+            if (token == null || token.isEmpty() || token.equals(Data.prefs(MainActivity.this).getString("tok", ""))) return;
+            Data.prefs(MainActivity.this).edit().putString("tok", token).apply();
+            WidgetProvider.update(MainActivity.this);
+        }
+
         @JavascriptInterface
         public void addWidget() {
             runOnUiThread(MainActivity.this::pin);

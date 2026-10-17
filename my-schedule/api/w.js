@@ -1,5 +1,6 @@
 // 홈 화면 위젯: GET /?w=키 (vercel.json 이 이리로 보냄)  &fmt=text 줄글, &view=1 화면
 const { widget, widgetByName, setAppUrl } = require('../lib/core.js');
+const auth = require('../lib/auth.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -7,6 +8,12 @@ module.exports = async (req, res) => {
     setAppUrl('https://' + req.headers.host + '/');
     const q = req.query || {};
     const fmt = q.view ? 'view' : q.fmt === 'text' ? 'text' : 'json';
+    // 이름으로 받는 위젯은 회사 메일 인증 열쇠(&t=)가 있어야 함 (예전 /?w=키 는 키 자체가 비밀이라 그대로)
+    if (q.b && !(await auth.checkToken(q.t))) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).send(JSON.stringify({ ok: false, needAuth: true, title: '회사 메일 인증이 필요해요',
+        text: '앱을 열어 회사 메일로 확인해 주세요. 그래도 이 글이 나오면 「최신 버전 확인」으로 앱을 업데이트해 주세요.', lines: [] }));
+    }
     // 앱: /api/w?b=지사&n=이름  ·  예전 방식: /?w=키
     const out = q.b ? await widgetByName(String(q.b), String(q.n || ''), fmt) : await widget(String(q.w || ''), fmt);
     res.setHeader('Content-Type', out.type);
