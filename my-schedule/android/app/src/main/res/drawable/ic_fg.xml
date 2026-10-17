@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 앞쪽 그림: 달력 + 길안내 핀 (store/icon.svg 와 같은 모양) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF" android:pathData="M40,36h28a7,7 0 0 1 7,7v28a7,7 0 0 1 -7,7h-28a7,7 0 0 1 -7,-7v-28a7,7 0 0 1 7,-7z" />
+    <path android:fillColor="#DCE3FF" android:pathData="M40,36h28a7,7 0 0 1 7,7v4h-42v-4a7,7 0 0 1 7,-7z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M44,30h4v10h-4z M60,30h4v10h-4z" />
+    <path android:fillColor="#3D5AFE" android:pathData="M54,50a9,9 0 0 1 9,9c0,6.5 -9,14 -9,14s-9,-7.5 -9,-14a9,9 0 0 1 9,-9z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M54,55.7a3.3,3.3 0 1 1 0,6.6a3.3,3.3 0 1 1 0,-6.6z" />
+</vector>

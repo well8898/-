@@ -4,7 +4,8 @@
 
     <application
         android:label="오늘 현장"
-        android:icon="@drawable/ic_app"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:usesCleartextTraffic="false">
 

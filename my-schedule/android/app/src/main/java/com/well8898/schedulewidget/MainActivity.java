@@ -1,6 +1,10 @@
 package com.well8898.schedulewidget;
 
 import android.app.Activity;
+import android.content.res.Configuration;
+import android.graphics.Insets;
+import android.os.Build;
+import android.view.WindowInsets;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -32,12 +36,26 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        getWindow().setStatusBarColor(Color.WHITE);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        // 휴대폰이 어두운 모드면 위·아래 띠도 어둡게 (웹 화면 배경색과 같게)
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        int bg = night ? 0xFF0F1419 : Color.WHITE;
+        getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
+        if (!night) getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setBackgroundColor(Color.WHITE);
+        box.setBackgroundColor(bg);
+        // 안드로이드 15+ 는 화면이 상태 표시줄·내비게이션 바 밑까지 그려짐 → 그만큼 안쪽으로 (키보드가 뜨면 키보드 위로)
+        box.setOnApplyWindowInsetsListener((v, ins) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets in = ins.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime());
+                v.setPadding(in.left, in.top, in.right, in.bottom);
+                return WindowInsets.CONSUMED;
+            }
+            v.setPadding(ins.getSystemWindowInsetLeft(), ins.getSystemWindowInsetTop(), ins.getSystemWindowInsetRight(), ins.getSystemWindowInsetBottom());
+            return ins.consumeSystemWindowInsets();
+        });
         // 새 버전이 있으면 맨 위에 초록 띠
         update = new TextView(this);
         update.setBackgroundColor(0xFF16A34A);
@@ -45,7 +63,7 @@ public class MainActivity extends Activity {
         update.setTextSize(15);
         update.setPadding(dp(16), dp(12), dp(16), dp(12));
         update.setVisibility(View.GONE);
-        update.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Update.APK))));
+        update.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Update.where(this))));
         box.addView(update, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         web = new WebView(this);
@@ -204,7 +222,19 @@ public class MainActivity extends Activity {
         /** 새 버전 APK 받기 (브라우저로 내려받아 설치) */
         @JavascriptInterface
         public void openUpdate() {
-            runOnUiThread(() -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Update.APK))));
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Update.where(MainActivity.this)));
+                } catch (Exception e) {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + getPackageName())));
+                }
+            });
+        }
+
+        /** 플레이스토어에서 받은 앱인가 (그러면 화면에서 「앱 새 버전 받기」를 안 보여 줌 — 스토어가 업데이트) */
+        @JavascriptInterface
+        public boolean store() {
+            return BuildConfig.STORE;
         }
     }
 }

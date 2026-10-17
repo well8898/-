@@ -2207,7 +2207,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.3';
+const PAGE_VER = '3.4';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2243,7 +2243,9 @@ function verCheck(quiet) {
     const sv = document.getElementById('srvVer'); if (sv && v.server) sv.textContent = '서버 ' + v.server.replace(/^v/, '');
     const av = appVerNow();
     if (verNewer(v.page, PAGE_VER)) return verShow('old', '화면이 새로 바뀌었어요. 「새로고침」을 눌러 주세요.', '새로고침', reloadPage);
-    if (av && v.app && verNewer(v.app, av)) return verShow('old', '앱 새 버전 ' + v.app + '이 나왔어요 (지금 ' + av + '). 눌러서 받은 뒤 「설치」를 누르세요.', '앱 새 버전 받기', getApp);
+    // 플레이스토어에서 받은 앱은 스토어가 알아서 업데이트 → 앱 버전은 안내하지 않음
+    const fromStore = (() => { try { return !!(window.AndroidApp && AndroidApp.store && AndroidApp.store()); } catch (e) { return false; } })();
+    if (!fromStore && av && v.app && verNewer(v.app, av)) return verShow('old', '앱 새 버전 ' + v.app + '이 나왔어요 (지금 ' + av + '). 눌러서 받은 뒤 「설치」를 누르세요.', '앱 새 버전 받기', getApp);
     // 「최신이에요」는 잠깐만 보여 주고 사라짐 (오래 떠 있으면 나중에 옛 버전이 돼도 최신처럼 보임)
     if (!quiet) {
       const hm = new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });

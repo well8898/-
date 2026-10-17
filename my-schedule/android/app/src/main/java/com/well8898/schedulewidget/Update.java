@@ -2,6 +2,7 @@ package com.well8898.schedulewidget;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.net.Uri;
 import android.os.Build;
 
 import org.json.JSONObject;
@@ -16,6 +17,11 @@ import java.util.regex.Pattern;
 /** 새 버전 확인: GitHub 릴리스 "widget-apk" 설명의 versionCode=N 과 설치된 버전을 비교. */
 final class Update {
     static final String APK = "https://github.com/well8898/-/releases/download/widget-apk/schedule-widget.apk";
+
+    /** 새 버전 받는 곳: 플레이스토어 앱이면 스토어 화면, 아니면 APK 파일 */
+    static Uri where(Context c) {
+        return Uri.parse(BuildConfig.STORE ? "market://details?id=" + c.getPackageName() : APK);
+    }
     private static final String API = "https://api.github.com/repos/well8898/-/releases/tags/widget-apk";
     private static final long EVERY = 6 * 60 * 60 * 1000L;
 
@@ -38,6 +44,7 @@ final class Update {
 
     /** 6시간에 한 번만 (force 면 바로). 네트워크를 쓰므로 백그라운드에서 부른다. */
     static void check(Context c, boolean force) {
+        if (BuildConfig.STORE) return; // 플레이스토어 앱은 스토어가 업데이트 (스스로 받으면 정책 위반)
         long now = System.currentTimeMillis();
         if (!force && now - Data.prefs(c).getLong("upAt", 0) < EVERY) return;
         try {
@@ -69,6 +76,7 @@ final class Update {
 
     /** 새 버전 이름 (없으면 null) */
     static String available(Context c) {
+        if (BuildConfig.STORE) return null;
         long vc = Data.prefs(c).getLong("upVc", 0);
         if (vc <= current(c)) return null;
         String vn = Data.prefs(c).getString("upVn", "");

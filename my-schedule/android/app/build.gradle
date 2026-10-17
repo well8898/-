@@ -2,27 +2,50 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.well8898.schedulewidget'
-    compileSdk 34
+    compileSdk 36
     defaultConfig {
         applicationId 'com.well8898.schedulewidget'
         minSdk 26
-        targetSdk 34
-        versionCode 19
-        versionName '2.4'
+        targetSdk 36
+        versionCode 20
+        versionName '2.5'
     }
-    // 매번 같은 서명이어야 새 버전을 덮어 설치할 수 있다 (개인용 사이드로드 앱)
+    buildFeatures { buildConfig true }
     signingConfigs {
+        // 링크로 받는 APK: 매번 같은 서명이어야 새 버전을 덮어 설치할 수 있다
         fixed {
             storeFile file('widget.keystore')
             storePassword 'schedule'
             keyAlias 'widget'
             keyPassword 'schedule'
         }
+        // 플레이스토어 업로드 키: 저장소에 두지 않고 GitHub 비밀값(PLAY_KEYSTORE_B64·PLAY_KEYSTORE_PASS)으로만
+        if (System.getenv('PLAY_KEYSTORE')) {
+            play {
+                storeFile file(System.getenv('PLAY_KEYSTORE'))
+                storePassword System.getenv('PLAY_KEYSTORE_PASS')
+                keyAlias 'upload'
+                keyPassword System.getenv('PLAY_KEYSTORE_PASS')
+            }
+        }
+    }
+    // apk: 링크로 받는 지금 방식(앱이 스스로 새 버전 안내) · play: 플레이스토어(업데이트는 스토어가)
+    flavorDimensions 'dist'
+    productFlavors {
+        apk {
+            dimension 'dist'
+            buildConfigField 'boolean', 'STORE', 'false'
+            signingConfig signingConfigs.fixed
+        }
+        play {
+            dimension 'dist'
+            buildConfigField 'boolean', 'STORE', 'true'
+            if (System.getenv('PLAY_KEYSTORE')) signingConfig signingConfigs.play
+        }
     }
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.fixed
         }
     }
     compileOptions {

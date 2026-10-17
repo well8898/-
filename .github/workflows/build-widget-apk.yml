@@ -22,6 +22,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # 플레이스토어 업로드 키가 GitHub 비밀값에 있으면 서명된 AAB 를 만든다 (my-schedule/PLAYSTORE.md)
+      HAS_PLAY_KEY: ${{ secrets.PLAY_KEYSTORE_B64 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -30,11 +33,25 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
-      - name: 빌드
-        run: gradle -p my-schedule/android --no-daemon assembleRelease
+          gradle-version: '8.13'
+      - name: 플레이스토어 업로드 키 꺼내기
+        if: env.HAS_PLAY_KEY == 'true'
+        run: |
+          echo "${{ secrets.PLAY_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/play-upload.jks"
+          echo "PLAY_KEYSTORE=$RUNNER_TEMP/play-upload.jks" >> "$GITHUB_ENV"
+          echo "PLAY_KEYSTORE_PASS=${{ secrets.PLAY_KEYSTORE_PASS }}" >> "$GITHUB_ENV"
+      - name: 빌드 (링크용 APK + 플레이스토어용 AAB)
+        run: gradle -p my-schedule/android --no-daemon assembleApkRelease bundlePlayRelease
       - name: 파일 이름 정리
-        run: cp my-schedule/android/app/build/outputs/apk/release/app-release.apk schedule-widget.apk
+        run: |
+          cp my-schedule/android/app/build/outputs/apk/apk/release/app-apk-release.apk schedule-widget.apk
+          cp my-schedule/android/app/build/outputs/bundle/playRelease/app-play-release.aab today-site-play.aab
+      - name: 플레이스토어용 AAB 보관 (Actions 실행 화면 아래 Artifacts 에서 받기)
+        if: env.HAS_PLAY_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playstore-aab
+          path: today-site-play.aab
       - uses: actions/upload-artifact@v4
         with:
           name: schedule-widget
