@@ -5,3 +5,5 @@ tools
 data
 # 화면 원본은 내보내지 않음 (/ 는 web.html 로 — vercel.json)
 index.html
+store
+PLAYSTORE.md

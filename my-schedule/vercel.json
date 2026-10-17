@@ -15,6 +15,10 @@
       "destination": "/app.html"
     },
     {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
       "source": "/",
       "destination": "/web.html"
     }
