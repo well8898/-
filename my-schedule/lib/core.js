@@ -13,8 +13,8 @@
 
 const CACHE_SEC = 21600; // 6시간
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.6';
-const PAGE_VER = '3.7'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.7';
+const PAGE_VER = '3.8'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -899,7 +899,7 @@ async function siteElevators(list, branch) {
 
 // ════════ 지사 공유 일정표 ════════
 const BRANCH_RE = /^[가-힣]{2,12}(지사|출장소)$/;
-async function shareWeek(branch, data, force) {
+async function shareWeek(branch, data, force, by, ctx) {
   try {
     branch = String(branch || '').trim();
     if (!BRANCH_RE.test(branch)) throw new Error('지사를 먼저 골라 주세요.');
@@ -911,57 +911,91 @@ async function shareWeek(branch, data, force) {
     const json = JSON.stringify({ source: data.source || '', days: data.days });
     if (json.length > 400000) throw new Error('일정표가 너무 커서 공유하지 못했어요.');
     const at = Date.now();
-    await redis_([['SET', 'p:' + k, json], ['SET', 'p:' + k + ':meta', JSON.stringify({ branch, at, source: data.source || '', last })]]);
+    // 바로 전 일정표 하나는 남겨 둠 (잘못 올렸을 때 「이전 일정표로 되돌리기」)
+    const [curJson, curMeta] = await redis_([['GET', 'p:' + k], ['GET', 'p:' + k + ':meta']]);
+    const meta = { branch, at, source: data.source || '', last, by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' };
+    const cmds = [['SET', 'p:' + k, json], ['SET', 'p:' + k + ':meta', JSON.stringify(meta)]];
+    if (curJson) cmds.push(['SET', 'p:' + k + ':prev', curJson], ['SET', 'p:' + k + ':prev:meta', curMeta || '{}']);
+    await redis_(cmds);
     const all = JSON.parse((await props.get('WEEKS')) || '[]');
     if (all.indexOf(branch) < 0) { all.push(branch); await props.set('WEEKS', JSON.stringify(all)); }
-    return { ok: true, at };
+    return { ok: true, at, by: meta.by, hasPrev: !!curJson };
   } catch (e) {
     return { ok: false, message: e.message };
   }
 }
+
+// 이전 일정표로 되돌리기 (지금 것과 맞바꿈 → 한 번 더 누르면 원래대로)
+async function restoreWeek(branch, by, ctx) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) throw new Error('지사가 올바르지 않아요.');
+    const k = 'p:WEEK:' + branch;
+    const [cj, cm, pj, pm] = await redis_([['GET', k], ['GET', k + ':meta'], ['GET', k + ':prev'], ['GET', k + ':prev:meta']]);
+    if (!pj) return { ok: false, message: '되돌릴 이전 일정표가 없어요.' };
+    const m = Object.assign(JSON.parse(pm || '{}'), { restored: { at: Date.now(), by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' } });
+    await redis_([['SET', k, pj], ['SET', k + ':meta', JSON.stringify(m)], ['SET', k + ':prev', cj], ['SET', k + ':prev:meta', cm || '{}']]);
+    return { ok: true, source: m.source };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+// 플레이스토어 심사용 예시 지사 (REVIEW_LOGIN 이 있을 때만): 가상 이름 일정표를 이번 주 날짜로
+const DEMO_BRANCH = '심사용지사';
+const demoOn_ = () => !!env_('REVIEW_LOGIN');
+function demoWeek_() {
+  const d = require('./demo-week.json');
+  const now = new Date(Date.now() + 9 * 3600e3), dow = now.getUTCDay() || 7;
+  const mon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dow + 1));
+  const days = d.days.map((x, i) => {
+    const t = new Date(mon.getTime() + i * 864e5), m = t.getUTCMonth() + 1, dd = t.getUTCDate();
+    return Object.assign({}, x, { iso: t.toISOString().slice(0, 10), label: m + '/' + dd + ' (' + '일월화수목금토'[t.getUTCDay()] + ')' });
+  });
+  return { ok: true, branch: DEMO_BRANCH, source: d.source, days, at: mon.getTime(), last: days[days.length - 1].iso, by: '', hasPrev: false, prevSource: '' };
+}
 async function getWeek(branch) {
   try {
     branch = String(branch || '').trim();
+    if (branch === DEMO_BRANCH && demoOn_()) return demoWeek_();
     if (!BRANCH_RE.test(branch)) return { ok: false, message: '지사 이름이 올바르지 않아요.' };
-    const [json, meta] = await redis_([['GET', 'p:WEEK:' + branch], ['GET', 'p:WEEK:' + branch + ':meta']]);
+    const [json, meta, pm] = await redis_([['GET', 'p:WEEK:' + branch], ['GET', 'p:WEEK:' + branch + ':meta'], ['GET', 'p:WEEK:' + branch + ':prev:meta']]);
     if (!json) return { ok: false, message: branch + '에 공유된 일정표가 아직 없어요.' };
-    const d = JSON.parse(json), m = JSON.parse(meta || '{}');
-    return { ok: true, branch, source: d.source, days: d.days, at: m.at, last: m.last };
+    const d = JSON.parse(json), m = JSON.parse(meta || '{}'), p = pm ? JSON.parse(pm) : null;
+    return { ok: true, branch, source: d.source, days: d.days, at: m.at, last: m.last, by: m.by || '', hasPrev: !!pm, prevSource: p ? p.source || '' : '' };
   } catch (e) {
     return { ok: false, message: '공유 일정표를 읽지 못했어요: ' + e.message };
   }
 }
 
+// 이름으로 내 일정만: 내 조 + 같은 날 같은 현장에 가는 다른 조(그 현장만) + 내 휴가·지원
+// (지사 전체 명단·휴가자는 보내지 않음)
+const nmKey_ = s => bare_(s).replace(/\s/g, '');
+async function myWeek(branch, name) {
+  const wk = await getWeek(branch);
+  if (!wk.ok) return Object.assign({}, wk, { noWeek: true });
+  const n = nmKey_(name);
+  if (!n) return { ok: false, needName: true, message: '이름을 넣어 주세요.' };
+  const site = s => placeName_(s.name).replace(/\s/g, '');
+  let me0 = '';
+  const days = wk.days.map(d => {
+    const teams = d.teams || [];
+    const me = teams.find(t => (t.members || []).some(m => nmKey_(m) === n));
+    if (me && !me0) me0 = bare_(me.members.find(m => nmKey_(m) === n));
+    const vacation = (d.vacation || []).filter(v => nmKey_(v) === n);
+    if (vacation.length && !me0) me0 = bare_(vacation[0]);
+    const support = (d.support || []).filter(x => String(x).replace(/\s/g, '').includes(n));
+    const mine = new Set(me ? (me.stops || []).map(site) : []);
+    const others = me ? teams.filter(t => t !== me)
+      .map(t => Object.assign({}, t, { stops: (t.stops || []).filter(s => mine.has(site(s))) }))
+      .filter(t => t.stops.length) : [];
+    return { label: d.label, iso: d.iso, teams: me ? [me].concat(others) : [], vacation, support };
+  });
+  if (!me0) return { ok: false, notFound: true, message: '이번 주 ' + wk.branch + ' 일정표에 \'' + bare_(name) + '\' 님이 없어요. 이름을 확인해 주세요.' };
+  return { ok: true, branch: wk.branch, name: me0, source: wk.source, days, at: wk.at, by: wk.by || '', hasPrev: !!wk.hasPrev, prevSource: wk.prevSource || '' };
+}
+
 // ════════ 홈 화면 위젯 ════════
 const W_KEY_RE = /^[a-z0-9]{12,32}$/;
-async function saveWidget(key, data) {
-  try {
-    if (!W_KEY_RE.test(String(key || ''))) throw new Error('위젯 키가 올바르지 않습니다.');
-    const json = JSON.stringify(Object.assign({}, data, { savedAt: Date.now() }));
-    if (json.length > 60000) throw new Error('일정이 너무 커서 위젯에 저장하지 못했습니다.');
-    await props.set('W_' + key, json);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-async function saveWidgetKm(key, iso, km) {
-  try {
-    if (!W_KEY_RE.test(String(key || ''))) return { ok: false };
-    const raw = await props.get('W_' + key);
-    if (!raw) return { ok: false };
-    const data = JSON.parse(raw);
-    (data.days || []).forEach(d => { if (d.iso === iso) d.km = Number(km) || null; });
-    await props.set('W_' + key, JSON.stringify(data));
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, message: e.message };
-  }
-}
-async function deleteWidget(key) {
-  if (W_KEY_RE.test(String(key || ''))) await props.del('W_' + key);
-  return { ok: true };
-}
 
 // 위젯에 보여 줄 날의 현장 좌표·구간 거리가 없으면 찾아서 저장 (처음 한 번만)
 async function withCoords_(key, data) {
@@ -1092,6 +1126,7 @@ async function listWeeks() {
     const metas = list.length ? (await redis_([['MGET', ...list.map(b => 'p:WEEK:' + b + ':meta')]]))[0] : [];
     const out = list.map((b, i) => Object.assign({ branch: b }, JSON.parse(metas[i] || '{}'))).filter(x => x.last);
     out.sort((a, b) => (b.at || 0) - (a.at || 0));
+    if (demoOn_()) out.push({ branch: DEMO_BRANCH, demo: true });
     return { ok: true, list: out };
   } catch (e) {
     return { ok: false, message: e.message };
@@ -1161,7 +1196,7 @@ async function widget(key, fmt) {
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
 const RPC = { listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
-  recptnList, siteElevators, shareWeek, getWeek, saveWidget, saveWidgetKm, deleteWidget };
+  recptnList, siteElevators, shareWeek, restoreWeek, myWeek };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)
 function setAppUrl(u) {

@@ -29,6 +29,14 @@ function review_() {
   return m ? { email: m[1].toLowerCase(), code: m[2] } : null;
 }
 
+// 열쇠의 주인(회사 메일). 인증을 안 쓰면 ''
+async function whoIs(t) {
+  t = String(t || '');
+  if (!authOn() || !/^[a-f0-9]{48}$/.test(t)) return '';
+  const v = (await redis_([['GET', 'p:tok:' + sha(t)]]))[0];
+  try { return v ? JSON.parse(v).email || '' : ''; } catch (e) { return ''; }
+}
+
 function mailOk_(email) {
   return new RegExp('^[a-z0-9._%+-]{1,64}@' + DOMAIN().replace(/\./g, '\\.') + '$').test(email);
 }
@@ -106,4 +114,4 @@ async function authVerify(email, code) {
   return { ok: true, token };
 }
 
-module.exports = { authOn, DOMAIN, OPEN, checkToken, authStart, authVerify };
+module.exports = { authOn, DOMAIN, OPEN, checkToken, whoIs, authStart, authVerify };

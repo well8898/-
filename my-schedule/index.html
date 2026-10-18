@@ -1,6 +1,13 @@
 <title>내 검사 일정</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#1f5fbf">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="오늘 현장">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" media="print" onload="this.media='all'">
 <script>try{var t=localStorage.getItem('sched.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -768,6 +775,10 @@ label.ghost {
 .elv .mr,.elv .mrl{font:600 11.5px var(--font-mono);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .elv .mr{background:var(--accent-soft);color:var(--accent)}
 .elv .mrl{background:var(--off-soft);color:var(--off)}
+.upinfo{margin:18px auto 0;max-width:420px;font-size:13px;line-height:1.6;color:var(--muted);text-align:center}
+.linkbtn{font:600 13px var(--font-body);color:var(--accent);background:none;border:0;padding:2px 0;text-decoration:underline;cursor:pointer}
+.offbar{position:relative;z-index:6;background:#fff7e6;color:#7a5300;font:600 14px var(--font-body);text-align:center;padding:9px 16px}
+.name-in{font-size:20px!important;font-weight:700;margin:16px 0 12px!important}
 .disc{margin:20px auto 0;max-width:420px;font-size:12.5px;line-height:1.6;color:var(--muted);text-align:center}
 .namepick .disc{margin:10px 0 0;text-align:left;font-size:13px}
 .vbox{margin:18px 0 6px;text-align:center}
@@ -1015,6 +1026,7 @@ window.addEventListener(
 </section>
 
 <div id="appView" hidden>
+  <div class="offbar" id="offBar" role="status" hidden></div>
   <header class="bar gutter" id="bar">
     <div class="col">
       <div class="bar-in">
@@ -1035,8 +1047,8 @@ window.addEventListener(
       <section class="share" id="shareBox" hidden></section>
       <div class="set-it" id="fileRow"></div>
       <div class="branch" id="branchRow"></div>
-      <details class="widget" id="widgetBox" hidden></details>
     </section>
+    <p class="upinfo" id="upInfo" hidden></p>
     <p class="disc">한국승강기안전공단 공식 앱이 아니에요.<br>조합원의 업무를 돕기 위해 개인이 만든 앱이라 부족한 점이 있을 수 있어요. 너그러이 이해해 주세요.</p>
     <div class="vbox" id="verBox">
       <p class="ver"><span id="pageVer"></span><span id="appVer"></span> · <span id="srvVer">서버 확인 중</span></p>
@@ -1743,7 +1755,6 @@ function render() {
   $('src').textContent = data.source || '검사 일정표';
   branchRow();
   shareBox();
-  if (SERVER) syncWidget();
   // 사람이 바뀌면(어떤 방법이든) 앱 위젯·주소도 그 사람으로 — 글자마다 보내지 않게 잠깐 기다림
   if (name && name !== render.synced) {
     clearTimeout(render.t);
@@ -2157,6 +2168,8 @@ function tmapUrl(de, g) {
 // 서버: 구글 앱스 스크립트(google.script.run) 또는 Vercel(/api/rpc — vercel.app 주소나 window.SCHED_API)
 const GAS = typeof google !== 'undefined' && !!(google.script && google.script.run);
 const API = !GAS && (window.SCHED_API || (/\.vercel\.app$/.test(location.hostname) ? '/api/rpc' : ''));
+// 인터넷이 안 될 때도 마지막 화면이 열리게 (Vercel 주소에서만)
+if (API && 'serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 const SERVER = GAS || !!API;
 const GEO = {},
   LEGS = {},
@@ -2233,7 +2246,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.7';
+const PAGE_VER = '3.8';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2736,7 +2749,7 @@ function drawLegs(d, pts) {
   const skipped = d.t.stops.filter(s => !GEO[mapQuery(s)]).length;
   const route = pts.map(x => x.name).join(' → ');
   el.innerHTML = `<h3>이동거리 (${esc(ROUTE_SRC || '카카오')} 자동차 추천경로)</h3>${rows.join('')}
-    ${widgetKm(d.iso, tot, unknown)}<div class="leg total"><span>총 경로</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
+    <div class="leg total"><span>총 경로</span><span class="km">${tot.toFixed(1)}km${unknown ? '+' : ''}${totMin ? `<small> · 약 ${totMin}분</small>` : ''}</span></div>
     <div class="route" id="routeText">${esc(route)} (${tot.toFixed(1)}km)</div>
     <button class="ghost copy" type="button" id="copyRoute">경로·거리 복사</button>
     ${skipped ? `<p class="note">위치를 모르는 ${skipped}현장은 지도와 거리 계산에서 빠졌어요.</p>` : ''}`;
@@ -2804,103 +2817,6 @@ async function drawDayMap(stops) {
   if (stops.length + (ORIGIN ? 1 : 0) > 1) map.setBounds(b, 40, 40, 40, 40);
 }
 
-// ---------- 홈 화면 위젯 (웹앱 전용): 내 일정만 저장 → 개인 주소(?w=키)로 위젯 앱이 읽음 ----------
-function widgetKeyGet() {
-  let k = store.get('sched.wkey');
-  if (!/^[a-z0-9]{12,32}$/.test(k || '')) {
-    const a = new Uint8Array(12);
-    crypto.getRandomValues(a);
-    k = [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join('');
-    store.set('sched.wkey', k);
-  }
-  return k;
-}
-let widgetSig = '',
-  widgetTimer = null,
-  widgetKmSent = {},
-  widgetKmTot = {};
-function syncWidget() {
-  const name = curName();
-  if (!data || !name) return;
-  clearTimeout(widgetTimer);
-  widgetTimer = setTimeout(async () => {
-    const payload = {
-      name,
-      branch: BRANCH ? [BRANCH[0], BRANCH[1]] : null,
-      days: mine(name).map(d => {
-        const { md, dow } = mdow(d);
-        return {
-          iso: d.iso,
-          label: md + '(' + dow + ')',
-          off: !!d.off,
-          team: d.t ? d.t.team : '',
-          mates: d.t ? d.t.members.filter(m => bare(m) !== name).map(bare) : [],
-          stops: d.t
-            ? d.t.stops.map(s => ({ time: s.time, kind: s.kind, area: s.area, name: placeName(s.name), units: s.units }))
-            : []
-        };
-      })
-    };
-    const raw = JSON.stringify(payload);
-    let h = 0;
-    for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) | 0;
-    const sig = widgetKeyGet() + ':' + h;
-    if (!widgetSig) widgetSig = store.get('sched.wsig') || '';
-    if (sig === widgetSig) return widgetBox();
-    try {
-      await cfgReady;
-      const r = await run('saveWidget', widgetKeyGet(), payload);
-      if (r && r.ok) {
-        widgetSig = sig;
-        store.set('sched.wsig', sig);
-        widgetKmSent = {};
-        // 저장 전에 계산된 하루 km도 보냄
-        Object.keys(widgetKmTot).forEach(iso => widgetKm(iso, widgetKmTot[iso], false));
-      }
-    } catch (e) {}
-    widgetBox();
-  }, 1200);
-}
-function widgetKm(iso, tot, unknown) {
-  if (!unknown && tot > 0) widgetKmTot[iso] = tot;
-  if (SERVER && !unknown && tot > 0 && widgetKmSent[iso] !== tot && widgetSig) {
-    widgetKmSent[iso] = tot;
-    run('saveWidgetKm', widgetKeyGet(), iso, tot.toFixed(1)).catch(() => {});
-  }
-  return '';
-}
-function widgetBox() {
-  const el = $('widgetBox');
-  if (!el || !SERVER || !webUrl || !widgetSig) return;
-  const u = webUrl + '?w=' + widgetKeyGet();
-  el.hidden = false;
-  el.innerHTML = `<summary>홈 화면 위젯 주소</summary>
-    <p>위젯 앱에 아래 주소를 넣으면 오늘 일정(오후 6시 이후엔 다음 근무일)이 홈 화면에 나와요. 휴대폰(안드로이드)에서 열면 「위젯 앱에 바로 연결」 버튼이 나와요. 이 주소를 아는 사람은 내 일정을 볼 수 있으니 공유하지 마세요.</p>
-    ${/Android/.test(navigator.userAgent) ? `<p>위젯 앱(오늘 현장)을 설치했다면 아래 버튼 하나로 연결돼요. 주소를 복사할 필요 없어요.</p>
-    <div class="maps"><a class="call" target="_top" href="intent://set?u=${encodeURIComponent(u)}#Intent;scheme=schedwidget;package=com.well8898.schedulewidget;end">위젯 앱에 바로 연결</a></div>` : ''}
-    <div class="wurl" id="wUrl">${esc(u)}</div>
-    <div class="maps"><button type="button" data-copy="${esc(u)}">주소 복사</button><button type="button" id="wReset">주소 바꾸기</button></div>`;
-  el.querySelectorAll('[data-copy]').forEach(b => {
-    b.onclick = () => {
-      const t = b.dataset.copy;
-      const done = () => (b.textContent = '복사했어요');
-      (navigator.clipboard ? navigator.clipboard.writeText(t).then(done) : Promise.reject()).catch(() => {
-        const r = document.createRange();
-        r.selectNodeContents($('wUrl'));
-        getSelection().removeAllRanges();
-        getSelection().addRange(r);
-        b.textContent = '선택됨 · 길게 눌러 복사';
-      });
-    };
-  });
-  $('wReset').onclick = () => {
-    run('deleteWidget', widgetKeyGet()).catch(() => {});
-    store.set('sched.wkey', '');
-    widgetSig = '';
-    syncWidget();
-  };
-}
-
 // ── 지사 공유 · 이름 링크 (어르신들은 파일 없이 링크만 누르면 됨) ──
 // Vercel에서는 주소창의 ?b=지사&n=이름&d=날짜 를 직접 읽음 (앱스 스크립트는 서버가 window.LINK 로 넣어 줌)
 const QS = new URLSearchParams(API ? location.search : '');
@@ -2958,12 +2874,16 @@ function shareBox() {
 async function doShare(force) {
   const m = $('shareMsg');
   if (m) m.textContent = '공유하는 중…';
-  const d = data, br = BRANCH[0];
+  const d = data, br = BRANCH[0], by = curName();
   try {
     await cfgReady;
-    const r = await run('shareWeek', br, { source: d.source, days: d.days }, force);
+    const r = await run('shareWeek', br, { source: d.source, days: d.days }, force, by);
     if (r && r.ok) {
       shared = { at: r.at };
+      if (LINK) {
+        MINE_META = { at: r.at, by: r.by, hasPrev: r.hasPrev, prevSource: '' };
+        upInfo();
+      }
       if (LINK) toast('✓ ' + br + '에 공유했어요. 지사 분들도 이 일정표로 봐요.');
       if (LINK) LINK.b = BRANCH[0];
       appWidgetUser(BRANCH[0]);
@@ -3111,6 +3031,122 @@ function askBranch(b, src, why, opt = {}) {
     else pick();
   });
 }
+// ── 내 일정만 받기 (이름으로) · 인터넷이 안 되면 마지막으로 받은 일정 ──
+let MINE_META = null; // { at, by, hasPrev, prevSource, offline, savedAt }
+const mineKey = (b, n) => 'sched.mine:' + b + '|' + n;
+async function loadMine(b, n) {
+  if (!n) {
+    // 이름이 없으면: 일정표가 있는지만 확인
+    try {
+      const r = await run('myWeek', b, '');
+      return r && r.noWeek ? r : { ok: false, needName: true };
+    } catch (e) {
+      return { ok: false, offline: true };
+    }
+  }
+  try {
+    const r = await run('myWeek', b, n);
+    if (r && r.ok) {
+      try {
+        localStorage.setItem(mineKey(b, r.name), JSON.stringify({ r, savedAt: Date.now() }));
+      } catch (e) {}
+    }
+    return r || { ok: false };
+  } catch (e) {
+    // 서버에 못 닿음 → 이 휴대폰에 남겨 둔 마지막 일정
+    try {
+      const c = JSON.parse(localStorage.getItem(mineKey(b, n)) || 'null');
+      if (c && c.r) return Object.assign({}, c.r, { offline: true, savedAt: c.savedAt });
+    } catch (e2) {}
+    return { ok: false, offline: true };
+  }
+}
+function applyMine(r) {
+  data = { source: r.source || LINK.b + ' 공유 일정표', days: r.days };
+  $('name').value = r.name;
+  store.set('sched.name', r.name);
+  MINE_META = { at: r.at, by: r.by, hasPrev: r.hasPrev, prevSource: r.prevSource, offline: !!r.offline, savedAt: r.savedAt };
+  upInfo();
+}
+// 이름 입력: 서버(또는 방금 올린 파일 local)에서 내 이름을 찾음
+function nameAsk(note, local) {
+  const el = $('namePick');
+  document.body.classList.add('linkmode');
+  el.hidden = false;
+  el.innerHTML = `<div class="pick-h">내 이름을<br>넣어 주세요</div>
+    <p class="pick-sub">${esc(LINK.b)} 이번 주 일정표에서 내 일정만 찾아 보여 드려요.</p>
+    <input id="nmIn" class="pick-q name-in" placeholder="예: 홍길동" autocomplete="name" enterkeyhint="go">
+    <button type="button" class="big" id="nmGo">내 일정 보기</button>
+    <p class="msg" id="nmMsg" role="status"></p>${pickMore(true)}`;
+  const say = (t, err) => {
+    $('nmMsg').className = 'msg' + (err ? ' err' : '');
+    $('nmMsg').textContent = t || '';
+  };
+  if (note) say(note, true);
+  const go = async () => {
+    const n = bare($('nmIn').value).replace(/\s/g, '');
+    if (!n) return say('이름을 넣어 주세요.', true);
+    $('nmGo').disabled = true;
+    if (local) {
+      // 방금 올린 일정표에서 찾기
+      const hit = [...new Set(local.days.flatMap(d => d.teams.flatMap(t => t.members.map(bare))))].find(x => x.replace(/\s/g, '') === n);
+      if (hit) {
+        $('name').value = hit;
+        store.set('sched.name', hit);
+        data = local;
+        el.hidden = true;
+        return startShared();
+      }
+      say(`이 일정표에 '${n}' 님이 없어요. 이름을 확인해 주세요.`, true);
+    } else {
+      say('찾는 중…');
+      const r = await loadMine(LINK.b, n);
+      if (r.ok) {
+        el.hidden = true;
+        applyMine(r);
+        return startShared();
+      }
+      if (r.noWeek) return noWeek();
+      say(r.offline ? '인터넷 연결을 확인하고 다시 눌러 주세요.' : r.message || '찾지 못했어요.', true);
+    }
+    $('nmGo').disabled = false;
+  };
+  $('nmGo').onclick = go;
+  $('nmIn').onkeydown = e => e.key === 'Enter' && go();
+  $('nmIn').focus();
+}
+// 화면 아래: 누가 언제 올렸는지 · 이전 일정표로 되돌리기 · 인터넷 없을 때 안내
+function upInfo() {
+  const el = $('upInfo'),
+    off = $('offBar');
+  const m = MINE_META;
+  if (off) {
+    off.hidden = !(m && m.offline);
+    if (m && m.offline) off.textContent = '인터넷 연결 없음 · ' + (m.savedAt ? whenTxt(m.savedAt) + '에 받은 일정이에요' : '마지막으로 받은 일정이에요');
+  }
+  if (!el) return;
+  if (!m || !m.at || m.offline) return (el.hidden = true);
+  el.hidden = false;
+  el.innerHTML = `${esc(whenTxt(m.at))}${m.by ? ' · ' + esc(m.by) + ' 님이' : ''} 올린 일정표${m.hasPrev ? ` · <button type="button" class="linkbtn" id="undoUp">이전 일정표로 되돌리기</button>` : ''}`;
+  if ($('undoUp'))
+    $('undoUp').onclick = async () => {
+      if (!confirm(`이전 일정표(${m.prevSource || '바로 전에 올린 것'})로 되돌릴까요?\n${LINK.b} 분들 모두 이전 일정표로 보게 돼요. 한 번 더 누르면 다시 지금 것으로 돌아와요.`)) return;
+      try {
+        const r = await run('restoreWeek', LINK.b, curName());
+        if (r && r.ok) {
+          toast('이전 일정표로 되돌렸어요');
+          return setTimeout(() => location.reload(), 800);
+        }
+        toast((r && r.message) || '되돌리지 못했어요.');
+      } catch (e) {
+        toast('인터넷 연결을 확인하고 다시 눌러 주세요.');
+      }
+    };
+}
+const whenTxt = t => {
+  const d = new Date(t);
+  return d.getMonth() + 1 + '/' + d.getDate() + '(' + DOW[d.getDay()] + ') ' + d.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+};
 // 회사 메일 인증 화면: ① 메일 아이디 → 인증번호 받기 ② 6자리 번호 → 확인. 끝나면 resolve
 function authScreen() {
   return new Promise(done => {
@@ -3588,7 +3624,7 @@ async function load(file) {
         $('name').value = '';
         data = null;
         render();
-        namePick(names, wk);
+        nameAsk('', wk);
       }
     } else render();
     window.scrollTo({ top: 0 });
@@ -3724,16 +3760,25 @@ $('name').addEventListener('input', () => {
       $('name').value = LINK.n;
       store.set('sched.name', LINK.n);
     }
-    if (API && !window.SHARED) {
-      // Vercel: 공유 일정표를 서버에서 받아 옴
+    if (API) {
+      // Vercel: 서버가 일정표에서 내 이름을 찾아 「내 일정만」 보내 줌 (지사 전체 명단은 받지 않음)
       $('msg').textContent = '일정 불러오는 중…';
-      try {
-        const wk = await run('getWeek', LINK.b);
-        if (wk && wk.ok) window.SHARED = wk;
-      } catch (e) {}
+      const r = await loadMine(LINK.b, curName());
       $('msg').textContent = '';
+      if (r.ok) {
+        applyMine(r);
+        startShared();
+        if (window.START_DAY && days.some(x => x.iso === window.START_DAY)) go(window.START_DAY);
+      } else if (r.noWeek) noWeek();
+      else if (r.offline) {
+        $('msg').className = 'msg err';
+        $('msg').textContent = '인터넷에 연결되지 않았어요. 연결된 뒤 다시 열어 주세요.';
+      } else {
+        $('name').value = '';
+        nameAsk(r.notFound ? r.message : '');
+      }
     }
-    const sh = window.SHARED;
+    const sh = !API && window.SHARED;
     if (sh && sh.days && sh.days.length) {
       const wk = { source: sh.source || LINK.b + ' 공유 일정표', days: sh.days };
       data = wk;
@@ -3746,7 +3791,7 @@ $('name').addEventListener('input', () => {
         render();
         namePick(names, wk);
       }
-    } else noWeek();
+    } else if (!API) noWeek();
     easyToggle();
   } else render();
   // 위젯에서 현장을 눌러 열었을 때 (?d=날짜): 지난번 일정표를 이어서 그날 하루 보기로

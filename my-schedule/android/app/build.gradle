@@ -7,8 +7,8 @@ android {
         applicationId 'com.well8898.schedulewidget'
         minSdk 26
         targetSdk 36
-        versionCode 21
-        versionName '2.6'
+        versionCode 22
+        versionName '2.7'
     }
     buildFeatures { buildConfig true }
     signingConfigs {

@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -81,6 +82,19 @@ public class MainActivity extends Activity {
                 if (("https".equals(u.getScheme()) || "http".equals(u.getScheme())) && Data.HOST.equals(u.getHost())) return false;
                 openOutside(u);
                 return true;
+            }
+
+            // 처음부터 인터넷이 안 되면(보관해 둔 화면도 없을 때): 빈 오류 화면 대신 안내
+            @Override
+            public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError err) {
+                if (!r.isForMainFrame()) return;
+                String again = startUrl(null);
+                v.loadDataWithBaseURL(null, "<html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head>"
+                        + "<body style='font-family:sans-serif;padding:48px 24px;text-align:center;color:#17191c'>"
+                        + "<p style='font-size:22px;font-weight:bold;margin:0 0 12px'>인터넷에 연결되지 않았어요</p>"
+                        + "<p style='font-size:16px;color:#5b6575;line-height:1.6'>와이파이나 데이터를 켠 뒤 다시 열어 주세요.<br>홈 화면 위젯은 마지막으로 받은 일정을 보여 줘요.</p>"
+                        + "<a href='" + again + "' style='display:block;margin-top:24px;background:#3d5afe;color:#fff;text-decoration:none;font-size:18px;font-weight:bold;border-radius:14px;padding:16px'>다시 열기</a>"
+                        + "</body></html>", "text/html", "utf-8", null);
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
