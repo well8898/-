@@ -5,7 +5,10 @@
  *
  * ▶ 시트 구성 (헤더 이름으로 열을 찾으므로 열 순서는 상관없음)
  *   - 여비 청구 데이터 : 출장 1건당 1인 1행 (여러 구간은 줄바꿈으로 합쳐 기록, 금액·km는 합계)
- *                        마감여부를 '마감'으로 바꾸면 그 사람은 더 이상 수정 불가
+ *                        상태: 제출 → 보완요청(보완 메모가 직원 화면에 표시, 고쳐 내면 다시 '제출')
+ *                              → 확인완료 → 마감   (확인완료·마감이면 직원은 수정 불가)
+ *                        소속 = 직원이 확인한 근무 지사, 소속(등록) = 대상자 명단에 적힌 지사
+ *   - 제출 현황        : 출장별 대상·제출·보완요청·미제출 요약 (스크립트가 다시 만드는 탭 — 직접 고치지 마세요)
  *   - 출장 관리        : 출장명 | 출장목적 | 기본도착지 | 출장시작일 | 출장종료일 | 마감여부
  *                        (유류대 열을 두고 값을 적으면 그 출장만 그 단가 사용 — 보통은 비워 두세요)
  *   - 식수             : 출장명 | 일자 | 식수(끼) | 비고   (담당자가 정하면 직원 화면 식비 칸이 그 끼니로 고정)
@@ -24,14 +27,15 @@
  *
  * ▶ 최초 1회: 함수 선택 → setup → ▶ 실행 (권한 승인)
  *   이후 testDistance / testPdf / testHolidays 로 동작 확인
+ *   스프레드시트를 다시 열면 위쪽 메뉴에 '여비 관리'가 생김 (새 출장 등록 · 설정 점검 · 제출 현황 · 보완요청 · PDF 폴더 정리)
  *
  * ▶ 출장명 = 출장을 구분하는 이름 (출장 관리·대상자 명단·여비 청구 데이터를 이 값으로 연결)
  *   출장마다 겹치지 않게 적으세요 (예: 2026 임단협 워크숍(10/14)). 예전 '출장ID' 머리글도 그대로 읽힘
  *
- * ▶ 제출 시 생성물 (드라이브 / 여비청구_첨부 / 출장명 폴더)
+ * ▶ 제출 시 생성물 (드라이브 / 여비청구_첨부 / 연도 / '시작일~종료일 출장명' 폴더)
  *   - 출장명_사번_성명_출장일자.pdf        ← 이것 하나 (서식 + 서명 + 영수증 이미지 + 경로 지도)
- *   - _수정용데이터 / _상세_사번.json      ← 수정할 때 입력값·영수증을 다시 불러오는 데이터 (지우지 마세요)
- *   수정 제출하면 이전 PDF는 휴지통으로 이동
+ *   - _수정용데이터 / _상세_사번.json      ← 수정할 때 입력값·영수증을 다시 불러오는 데이터 (마감되면 자동 정리)
+ *   - _이전제출 / …_이전제출_날짜.pdf     ← 다시 제출하면 이전 PDF를 여기로 옮겨 보관
  */
 
 const CONFIG = {
@@ -59,8 +63,12 @@ const CONFIG = {
   MEAL_DAY_MAX: 25000,                  // 식비 하루 상한 (3끼 = 25,000원)
   MAX_MEALS:    3,
 
-  OPEN_STATUS:  '진행중',
+  OPEN_STATUS:  '진행중',               // 출장 관리 마감여부
   CLOSED_STATUS: '마감',
+  // 여비 청구 데이터 '상태' (사람별)
+  ST_SUBMIT: '제출', ST_FIX: '보완요청', ST_OK: '확인완료', ST_CLOSED: '마감',
+  SHEET_BOARD:  '제출 현황',
+  PREV_FOLDER_NAME: '_이전제출',
   TRANSPORTS:   ['자차', '동승', 'KTX', '버스', '도보'],
   CAR:          '자차',                 // 유류비 자동 계산 대상
   RIDE:         '동승',                 // 운임 0원 (일비·식비 등은 동일)
@@ -78,10 +86,25 @@ const CONFIG = {
 
 // 여비 청구 데이터 표준 헤더 (없는 열은 이 순서 기준 위치에 자동 삽입)
 const CLAIM_HEADERS = [
-  '마감여부', '제출일시', '출장명', '출장목적', '사번', '성명', '소속', '출장시작일', '출장종료일',
-  '출발지', '경과지', '도착지', '교통편', '이동거리(km)', '운임_유류비', '일비', '숙박비', '식비', '기타비용',
+  '상태', '보완 메모', '보완 이력', '제출일시', '출장명', '출장목적', '사번', '성명', '소속', '소속(등록)', '출장시작일', '출장종료일',
+  '출발지', '경과지', '도착지', '교통편', '이동거리(km)', '운임_유류비', '일비', '숙박비', '식비', '식수 변경', '기타비용',
   '총청구금액', '운임청구사유', '입금은행', '계좌번호', '예금주', '여비 청구 및 영수증',
 ];
+const CLAIM_STATUSES = [CONFIG.ST_SUBMIT, CONFIG.ST_FIX, CONFIG.ST_OK, CONFIG.ST_CLOSED];
+
+// 시트 상태 값 → 표준 값 (예전 '진행중'·빈칸은 '제출')
+function claimStatus_(v) {
+  const s = String(v == null ? '' : v).trim();
+  return CLAIM_STATUSES.indexOf(s) >= 0 ? s : CONFIG.ST_SUBMIT;
+}
+// 직원이 더 이상 고칠 수 없는 상태
+function isLockedStatus_(st) {
+  return st === CONFIG.ST_OK || st === CONFIG.ST_CLOSED;
+}
+function lockedMessage_(st) {
+  return st === CONFIG.ST_OK ? '담당자가 확인완료한 청구는 고칠 수 없습니다. 고칠 것이 있으면 담당자에게 보완요청을 부탁하세요.'
+    : '마감된 청구는 수정할 수 없습니다.';
+}
 
 // 숫자로 바뀌면 앞자리 0이 사라지는 열 → 텍스트 서식으로 저장
 const CLAIM_TEXT_COLS = ['출장명', '사번', '계좌번호'];
@@ -175,7 +198,8 @@ function getOpenTrips_(tripIds, empId, withWorkDays) {
       출장시작일: fmtDate_(row[c.출장시작일]),
       출장종료일: fmtDate_(row[c.출장종료일]),
       유류대:     rate > 0 ? rate : fuelRateFor_(start),
-      청구상태:   mine[id] ? (mine[id].locked ? '마감' : '제출') : '미제출',
+      청구상태:   mine[id] ? mine[id].status : '미제출',   // 미제출 · 제출 · 보완요청 · 확인완료 · 마감
+      보완메모:   mine[id] && mine[id].status === CONFIG.ST_FIX ? mine[id].memo : '',
       식수:       mealPlanFor_(id),   // 담당자가 정한 식수 { 'yyyy-MM-dd': 끼니, '*': 전체 기간 } 또는 null
     };
     if (withWorkDays) trip.근무일 = middleWorkDays_(trip.출장시작일, trip.출장종료일);
@@ -193,23 +217,29 @@ function tripCheck_(tripIds) {
   return tripIds.map(id => ({ id: id, found: id in status, status: status[id] || '' }));
 }
 
-// 출장명 → { rowNo, locked }  (본인 제출 행)
+// 출장명 → { rowNo, status, memo, branch, locked }  (본인 제출 행)
 function findMyClaims_(empId) {
   const out = {};
   const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const t = readTable_(CONFIG.SHEET_CLAIM);
-  const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('마감여부'), atCol = t.idx('제출일시'), purposeCol = t.idx('출장목적');
+  const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('상태'), atCol = t.idx('제출일시'), purposeCol = t.idx('출장목적');
+  const memoCol = t.idx('보완 메모'), brCol = t.idx('소속');
   if (idCol < 0 || empCol < 0) return out;
   t.rows.forEach((row, i) => {
     if (!sameEmpId_(row[empCol], empId)) return;
     const id = String(row[idCol]).trim();
     if (!id) return;
-    const locked = stCol >= 0 && String(row[stCol]).trim() === CONFIG.CLOSED_STATUS;
-    // 같은 출장에 행이 여러 개면 마지막 행 기준, 하나라도 마감이면 마감
+    const status = claimStatus_(stCol >= 0 ? row[stCol] : '');
+    // 같은 출장에 행이 여러 개면 마지막 행 기준, 하나라도 잠긴 상태면 잠금
     const at = atCol >= 0 && row[atCol] instanceof Date ? Utilities.formatDate(row[atCol], getTz_(), 'yyyy-MM-dd HH:mm') : String(atCol >= 0 ? row[atCol] : '').trim();
     const purpose = purposeCol >= 0 ? String(row[purposeCol]).trim() : '';
-    out[id] = { rowNo: i + 2, submittedAt: at, purpose: purpose, locked: locked || (out[id] ? out[id].locked : false) };
+    out[id] = {
+      rowNo: i + 2, submittedAt: at, purpose: purpose, status: status,
+      memo: memoCol >= 0 ? String(row[memoCol]).trim() : '',
+      branch: brCol >= 0 ? String(row[brCol]).trim() : '',
+      locked: isLockedStatus_(status) || (out[id] ? out[id].locked : false),
+    };
   });
   return out;
 }
@@ -325,14 +355,17 @@ function getMyClaim(employeeId, name, tripId) {
     if (auth.tripIds.indexOf(tripId) < 0) throw new Error('해당 출장의 청구 대상자가 아닙니다.');
     const mine = findMyClaims_(auth.user.사번)[tripId];
     if (!mine) return { ok: true, claim: null };
-    if (mine.locked) throw new Error('마감된 청구는 수정할 수 없습니다.');
+    if (mine.locked) throw new Error(lockedMessage_(mine.status));
 
-    const detail = loadDetail_(getTripFolder_(tripId), auth.user.사번);
+    const folder = findTripFolder_(tripId, false);
+    const detail = folder ? loadDetail_(folder, auth.user.사번) : null;
     // 시트에 제출 행은 있는데 수정용 데이터 파일이 없음 (시트에 직접 넣은 행, 예전 버전 제출 등)
     if (!detail) return { ok: true, claim: null, legacy: { rowNo: mine.rowNo, submittedAt: mine.submittedAt, purpose: mine.purpose } };
     return {
       ok: true,
+      status: mine.status, memo: mine.status === CONFIG.ST_FIX ? mine.memo : '',
       claim: {
+        branch: detail.branch || mine.branch || '', // 직원이 확인한 근무 지사
         rows: detail.rows,
         category: detail.category, categoryEtc: detail.categoryEtc, innerHours: detail.innerHours,
         unionCar: detail.unionCar, fareReason: detail.fareReason,
@@ -666,7 +699,14 @@ function saveClaimData(formData) {
     if (auth.tripIds.indexOf(tripId) < 0) throw new Error('해당 출장의 청구 대상자가 아닙니다.');
     const trip = getOpenTrips_([tripId], user.사번, false)[0];
     if (!trip) throw new Error('마감되었거나 존재하지 않는 출장입니다.');
-    if (trip.청구상태 === '마감') throw new Error('마감된 청구는 수정할 수 없습니다.');
+    if (isLockedStatus_(trip.청구상태)) throw new Error(lockedMessage_(trip.청구상태));
+
+    // 근무 지사: 직원이 확인한 값 (지사별 주소 탭에 있는 이름이거나 대상자 명단에 적힌 값)
+    const branch = String(f.branch || '').trim() || user.소속;
+    if (branch !== user.소속 && getBranchNames_().map(b => b.replace(/\s/g, '')).indexOf(branch.replace(/\s/g, '')) < 0) {
+      throw new Error("근무 지사 '" + branch + "'가 지사 목록에 없습니다. 목록에서 골라 주세요.");
+    }
+    const who = Object.assign({}, user, { 소속: branch }); // PDF의 소속 칸은 확인한 지사
 
     const unionCar = f.unionCar === '유' ? '유' : '무';
     const category = CONFIG.CATEGORIES.indexOf(f.category) >= 0 ? f.category : '근무지외';
@@ -699,7 +739,7 @@ function saveClaimData(formData) {
     const sig = cleanImage_(f.signature);
     if (!sig) throw new Error('서명을 입력하세요.');
 
-    const folder = getTripFolder_(tripId);
+    const folder = findTripFolder_(tripId, true, trip);
     const prev = loadDetail_(folder, user.사번);
 
     // 영수증·경로 증빙 사진: 이전 제출분 중 유지할 것 + 새로 올린 것 (모두 이미지, 파일로 따로 저장하지 않음)
@@ -741,7 +781,7 @@ function saveClaimData(formData) {
 
     // 서식 PDF (이것 하나만 드라이브에 남김)
     const pdfHtml = buildClaimHtml_({
-      user: user, trip: trip, rows: rows, totals: totals,
+      user: who, trip: trip, rows: rows, totals: totals,
       category: category, categoryEtc: categoryEtc, innerHours: innerHours, unionCar: unionCar, fareReason: fareReason,
       submitDate: Utilities.formatDate(new Date(), getTz_(), 'yyyy년 MM월 dd일'),
       signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages, addresses: addresses,
@@ -759,8 +799,10 @@ function saveClaimData(formData) {
         date: r.date, origin: r.origin, waypoint: r.waypoint, destination: r.destination,
         transport: r.transport, km: r.km, fare: r.transport === CONFIG.CAR ? 0 : r.fare,
         meals: r.meals, lodging: r.lodging, etc: r.etc,
+        mealReason: r.mealChange ? r.mealChange.reason : '', // 담당자 지정 식수를 바꾼 사유
         daily: r.dailyManual == null ? '' : r.dailyManual, // '' = 자동
       })),
+      branch: branch,
       category: category, categoryEtc: categoryEtc, innerHours: innerHours, unionCar: unionCar, fareReason: fareReason,
       bank: bank, account: account, holder: holder,
       receipts: receipts,
@@ -773,14 +815,17 @@ function saveClaimData(formData) {
 
     // 시트 저장 (1인 1행: 이미 있으면 덮어쓰기)
     const join = k => rows.map(r => r[k]).join('\n');
+    const md = d => d.slice(5);
     const values = {
-      마감여부: CONFIG.OPEN_STATUS,
+      상태: CONFIG.ST_SUBMIT,
+      '보완 메모': '',
       제출일시: new Date(),
       출장명: tripId,
       출장목적: trip.출장목적,
       사번: user.사번,
       성명: user.성명,
-      소속: user.소속,
+      소속: branch,
+      '소속(등록)': user.소속,
       출장시작일: startDate,
       출장종료일: endDate,
       출발지: join('origin'),
@@ -792,6 +837,8 @@ function saveClaimData(formData) {
       일비: totals.daily,
       숙박비: totals.lodging,
       식비: totals.meal,
+      '식수 변경': rows.filter(r => r.mealChange)
+        .map(r => md(r.date) + ' ' + r.mealChange.from + '→' + r.mealChange.to + '끼 (' + r.mealChange.reason + ')').join('\n'),
       기타비용: totals.etc,
       총청구금액: totals.total,
       운임청구사유: fareReason,
@@ -808,27 +855,40 @@ function saveClaimData(formData) {
       if (!sheet) throw new Error("'" + CONFIG.SHEET_CLAIM + "' 시트를 찾을 수 없습니다.");
       const headers = ensureClaimHeaders_(sheet);
       const mine = findMyClaims_(user.사번)[tripId];
-      if (mine && mine.locked) throw new Error('마감된 청구는 수정할 수 없습니다.');
+      if (mine && mine.locked) throw new Error(lockedMessage_(mine.status));
       const rowNo = mine ? mine.rowNo : sheet.getLastRow() + 1;
+      const old = mine ? sheet.getRange(rowNo, 1, 1, headers.length).getValues()[0] : null;
+
+      // 보완 이력: 다시 낼 때마다 한 줄씩 (보완요청 중이었으면 그 메모도 함께 남김)
+      if (old) {
+        const now = Utilities.formatDate(new Date(), getTz_(), 'MM-dd HH:mm');
+        const hist = String(old[headers.indexOf('보완 이력')] || '').trim();
+        const line = mine.status === CONFIG.ST_FIX
+          ? now + ' 재제출 (보완요청: ' + (mine.memo || '메모 없음') + ')'
+          : now + ' 수정 제출';
+        values['보완 이력'] = (hist ? hist + '\n' : '') + line;
+      }
 
       CLAIM_TEXT_COLS.forEach(name => {
         const i = headers.indexOf(name);
         if (i >= 0) sheet.getRange(rowNo, i + 1).setNumberFormat('@');
       });
-      // 표준 헤더에 없는 열(예: 예전 영수증링크 열)은 비워 둠
-      const row = headers.map(h => (h in values ? values[h] : ''));
+      // 표준 헤더에 없는 열(관리자가 추가한 메모 열 등)은 기존 값 유지
+      const row = headers.map((h, i) => (h in values ? values[h] : old ? old[i] : ''));
       sheet.getRange(rowNo, 1, 1, row.length).setValues([row]);
       SpreadsheetApp.flush();
     } finally {
       lock.releaseLock();
     }
 
-    // 이전 제출물 정리 (휴지통으로 이동) — 예전 버전의 영수증·지도 개별 파일 포함
+    // 이전 제출물 정리: 이전 PDF는 _이전제출 폴더로 옮겨 보관, 나머지(수정용 데이터·예전 개별 파일)는 휴지통
     if (prev) {
-      let old = [prev._fileId, prev.pdfId].concat(prev.mapIds || []);
+      keepPreviousPdf_(folder, prev.pdfId, prev.submittedAt);
+      let old = [prev._fileId].concat(prev.mapIds || []);
       if ((prev.version || 1) < 2) old = old.concat((prev.receipts || []).map(r => r.id));
       trashFiles_(old);
     }
+    try { refreshStatusBoard_(true); } catch (e) { Logger.log('제출 현황 갱신 실패: ' + e.message); }
 
     return { ok: true, total: totals.total, pdfUrl: pdfFile.getUrl(), updated: !!prev };
   } catch (e) {
@@ -881,6 +941,7 @@ function validateRows_(input, trip, opts) {
       meals: meals, meal: meals * CONFIG.MEAL_PRICE,
       lodging: toWon_(r.lodging), etc: toWon_(r.etc), daily: 0,
       dailyManual: String(r.daily == null ? '' : r.daily).trim() === '' ? null : toWon_(r.daily), // 직접 입력한 일비
+      mealReason: String(r.mealReason || '').trim().slice(0, 100), // 담당자 지정 식수를 바꾼 사유
       mapImage: move ? cleanImage_(r.mapImage) : null, // 화면에서 캡처한 지도 (거리 표시 포함)
       needsProof: move && r.needsProof === true, // 화면에서 이동거리를 길찾기와 다르게 고친 줄
     };
@@ -902,14 +963,20 @@ function validateRows_(input, trip, opts) {
   // 직접 입력한 일비가 있으면 자동값 대신 사용
   rows.forEach(r => { if (r.dailyManual != null) r.daily = r.dailyManual; });
   // 담당자가 정한 식수가 있으면 그 날짜 첫 줄에 그 끼니, 같은 날 다른 줄은 0끼 (직원 입력보다 우선)
-  const plan = trip.식수;
+  // 단, 직원이 사유를 적고 첫 줄의 끼니를 바꿨으면 그 값을 쓰고 '식수 변경'으로 기록
+  const plan = opts.inner ? null : trip.식수;
   if (plan) {
     const planSeen = {};
     rows.forEach(r => {
       const n = Object.prototype.hasOwnProperty.call(plan, r.date) ? plan[r.date] : plan['*'];
       if (n == null) return;
-      r.meals = planSeen[r.date] ? 0 : n;
+      const first = !planSeen[r.date];
       planSeen[r.date] = true;
+      if (first && r.mealReason && r.meals !== n) {
+        r.mealChange = { from: n, to: r.meals, reason: r.mealReason };
+      } else {
+        r.meals = first ? n : 0;
+      }
       r.meal = r.meals * CONFIG.MEAL_PRICE;
     });
   }
@@ -963,6 +1030,17 @@ function ensureClaimHeaders_(sheet) {
   if (legacyKey >= 0 && headers.indexOf('출장명') < 0) {
     sheet.getRange(1, legacyKey + 1).setValue('출장명'); // 기존 제출 행은 그대로 연결됨
     headers[legacyKey] = '출장명';
+  }
+  // 예전 '마감여부'(진행중/마감) → '상태'(제출/보완요청/확인완료/마감). '진행중'은 '제출'로 바꿈
+  const legacyStatus = headers.indexOf('마감여부');
+  if (legacyStatus >= 0 && headers.indexOf('상태') < 0) {
+    sheet.getRange(1, legacyStatus + 1).setValue('상태');
+    headers[legacyStatus] = '상태';
+    const n = sheet.getLastRow() - 1;
+    if (n > 0) {
+      const r = sheet.getRange(2, legacyStatus + 1, n, 1);
+      r.setValues(r.getValues().map(v => [String(v[0]).trim() ? claimStatus_(v[0]) : '']));
+    }
   }
 
   if (headers.every(h => !h)) {
@@ -1214,17 +1292,101 @@ function getRootFolder_() {
   return folder;
 }
 
-function getTripFolder_(tripId) {
+// 출장 폴더: 여비청구_첨부 / 연도 / '2026-10-14~10-16 출장명'
+// 한 번 만든 폴더는 스크립트 속성에 ID를 기억해서, 나중에 기간·이름을 바꿔도 같은 폴더를 씀.
+// 예전 위치(여비청구_첨부 / 출장명)의 폴더도 찾음 → '여비 관리 > PDF 폴더 정리'로 새 위치로 옮김
+// create=false면 없을 때 null. trip(출장 정보)이 없으면 출장 관리 탭에서 찾음
+function findTripFolder_(tripId, create, trip) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    const props = PropertiesService.getScriptProperties();
+    const key = 'FOLDER:' + tripId;
+    const id = props.getProperty(key);
+    if (id) {
+      try {
+        const f = DriveApp.getFolderById(id);
+        if (!f.isTrashed()) return f;
+      } catch (e) { /* 지워졌으면 아래에서 다시 찾음 */ }
+    }
     const root = getRootFolder_();
-    const name = safeName_(tripId);
-    const it = root.getFoldersByName(name);
-    return it.hasNext() ? it.next() : root.createFolder(name);
+    const legacy = root.getFoldersByName(safeName_(tripId));
+    if (legacy.hasNext()) return legacy.next();
+    if (!create) return null;
+
+    const info = trip || tripInfo_(tripId) || {};
+    const year = childFolder_(root, (info.출장시작일 || Utilities.formatDate(new Date(), getTz_(), 'yyyy')).slice(0, 4));
+    const folder = year.createFolder(tripFolderLabel_(tripId, info));
+    props.setProperty(key, folder.getId());
+    return folder;
   } finally {
     lock.releaseLock();
   }
+}
+
+// '2026-10-14~10-16 출장명' (하루짜리는 '2026-09-23 출장명')
+function tripFolderLabel_(tripId, info) {
+  const a = info.출장시작일 || '', b = info.출장종료일 || '';
+  const period = !a ? '' : !b || a === b ? a : a + '~' + (a.slice(0, 4) === b.slice(0, 4) ? b.slice(5) : b);
+  return ((period ? period + ' ' : '') + tripId).replace(/[\\/:*?"<>|]+/g, '-');
+}
+
+function childFolder_(parent, name) {
+  const it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+
+// 출장 관리 탭 → { 출장명, 출장시작일, 출장종료일, 마감여부 } (없으면 null)
+function tripInfo_(tripId) {
+  const t = readTable_(CONFIG.SHEET_TRIP);
+  const idCol = t.idx('출장명'), sCol = t.idx('출장시작일'), eCol = t.idx('출장종료일'), stCol = t.idx('마감여부');
+  const row = t.rows.find(r => String(r[idCol]).trim() === tripId);
+  if (!row) return null;
+  return {
+    출장명: tripId,
+    출장시작일: sCol >= 0 ? fmtDate_(row[sCol]) : '',
+    출장종료일: eCol >= 0 ? fmtDate_(row[eCol]) : '',
+    마감여부: stCol >= 0 ? String(row[stCol]).trim() : '',
+  };
+}
+
+// 다시 제출할 때 이전 PDF → _이전제출 폴더로 옮기고 이름 끝에 '_이전제출_제출일시' (실패하면 휴지통)
+function keepPreviousPdf_(tripFolder, pdfId, submittedAt) {
+  if (!pdfId) return;
+  try {
+    const f = DriveApp.getFileById(pdfId);
+    if (f.isTrashed()) return;
+    const stamp = String(submittedAt || Utilities.formatDate(f.getDateCreated(), getTz_(), 'yyyy-MM-dd HH:mm')).replace(/[:]/g, '');
+    f.setName(f.getName().replace(/\.pdf$/i, '') + '_이전제출_' + stamp + '.pdf');
+    f.moveTo(childFolder_(tripFolder, CONFIG.PREV_FOLDER_NAME));
+  } catch (e) {
+    trashFiles_([pdfId]);
+  }
+}
+
+// 예전 위치(여비청구_첨부 / 출장명)의 출장 폴더를 새 위치(연도 / 기간 출장명)로 옮기고,
+// 기간이 바뀐 출장은 폴더 이름도 맞춤. 여비 관리 메뉴에서 실행
+function organizeTripFolders() {
+  const root = getRootFolder_();
+  const props = PropertiesService.getScriptProperties();
+  const t = readTable_(CONFIG.SHEET_TRIP);
+  const idCol = t.idx('출장명');
+  let moved = 0, renamed = 0;
+  t.rows.forEach(r => {
+    const id = String(r[idCol]).trim();
+    if (!id) return;
+    const info = tripInfo_(id);
+    const folder = findTripFolder_(id, false);
+    if (!folder) return;
+    const label = tripFolderLabel_(id, info);
+    const year = childFolder_(root, (info.출장시작일 || Utilities.formatDate(new Date(), getTz_(), 'yyyy')).slice(0, 4));
+    const parents = folder.getParents();
+    const parentId = parents.hasNext() ? parents.next().getId() : '';
+    if (parentId !== year.getId()) { folder.moveTo(year); moved++; }
+    if (folder.getName() !== label) { folder.setName(label); renamed++; }
+    props.setProperty('FOLDER:' + id, folder.getId());
+  });
+  return '출장 폴더 ' + moved + '개를 연도 폴더로 옮기고, ' + renamed + '개의 이름을 기간·출장명으로 맞췄습니다.';
 }
 
 
@@ -1249,6 +1411,9 @@ function readTable_(sheetName) {
   // 예전 시트 호환: '출장명' 열이 없고 '출장ID' 열이 있으면 그 열을 출장명으로 읽음
   const legacyKey = headers.indexOf('출장ID');
   if (legacyKey >= 0 && headers.indexOf('출장명') < 0) headers[legacyKey] = '출장명';
+  // 여비 청구 데이터: 예전 '마감여부' 열은 '상태' 열로 읽음
+  const legacyStatus = headers.indexOf('마감여부');
+  if (sheetName === CONFIG.SHEET_CLAIM && legacyStatus >= 0 && headers.indexOf('상태') < 0) headers[legacyStatus] = '상태';
   return {
     name: sheetName,
     sheet: sheet,
@@ -1307,6 +1472,528 @@ function escHtml_(s) {
 
 
 // ════════════════════════════════════════════════════
+//  여비 관리 메뉴 (스프레드시트 위쪽 메뉴)
+//  스크립트가 이 스프레드시트에 연결돼 있을 때(확장 프로그램 → Apps Script로 연 프로젝트) 나타남
+// ════════════════════════════════════════════════════
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('여비 관리')
+    .addItem('새 출장 등록…', 'menuNewTrip')
+    .addItem('설정 점검', 'menuCheck')
+    .addItem('제출 현황 새로 고침', 'menuRefreshBoard')
+    .addSeparator()
+    .addItem('선택한 사람 보완요청…', 'menuRequestFix')
+    .addItem('PDF 폴더 정리', 'menuOrganizeFolders')
+    .addToUi();
+}
+
+// 출장 관리 탭에서 출장명을 적거나 고치면 겹치는 이름을 빨갛게 표시하고 알림
+function onEdit(e) {
+  try {
+    const rg = e && e.range;
+    if (!rg || rg.getRow() < 2) return;
+    const sheet = rg.getSheet();
+    if (sheet.getName() !== CONFIG.SHEET_TRIP) return;
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    let col = headers.indexOf('출장명') + 1;
+    if (!col) col = headers.indexOf('출장ID') + 1;
+    if (!col || col < rg.getColumn() || col > rg.getLastColumn()) return;
+    const n = Math.max(sheet.getLastRow() - 1, 1);
+    const names = sheet.getRange(2, col, n, 1).getValues().map(v => String(v[0]).trim());
+    const count = {};
+    names.forEach(v => { if (v) count[v] = (count[v] || 0) + 1; });
+    sheet.getRange(2, col, n, 1).setBackgrounds(names.map(v => [v && count[v] > 1 ? '#f8d7da' : null]));
+    const dup = Object.keys(count).filter(v => count[v] > 1);
+    if (dup.length) {
+      e.source.toast(dup.join(', ') + ' — 이미 있는 출장명이에요. 출장마다 다른 이름(끝에 날짜 등)으로 바꿔 주세요.', '출장명 겹침', 10);
+    }
+  } catch (err) { /* 알림만 하는 기능이라 실패해도 편집은 그대로 */ }
+}
+
+function menuNewTrip() {
+  const html = HtmlService.createHtmlOutput(newTripDialogHtml_(newTripData_())).setWidth(760).setHeight(640);
+  SpreadsheetApp.getUi().showModalDialog(html, '새 출장 등록');
+}
+
+function menuCheck() {
+  const lines = prepareSheets_().concat(checkSettings_());
+  const body = lines.map(l => '<li class="' + (l.indexOf('❌') === 0 ? 'bad' : l.indexOf('⚠') === 0 ? 'warn' : '') + '">' + escHtml_(l) + '</li>').join('');
+  const html = HtmlService.createHtmlOutput('<style>body{font:14px/1.6 "Malgun Gothic",sans-serif;margin:12px}ul{padding-left:18px;margin:0}'
+    + 'li{margin:3px 0}.bad{color:#b42318;font-weight:bold}.warn{color:#9a4a00}</style><ul>' + body + '</ul>').setWidth(640).setHeight(520);
+  SpreadsheetApp.getUi().showModalDialog(html, '설정 점검');
+}
+
+function menuRefreshBoard() {
+  const ok = refreshStatusBoard_(false);
+  getSS_().toast(ok ? "'" + CONFIG.SHEET_BOARD + "' 탭을 새로 만들었어요." : '다른 작업 중이라 갱신하지 못했어요. 잠시 뒤 다시 눌러 주세요.', '제출 현황', 5);
+}
+
+function menuOrganizeFolders() {
+  SpreadsheetApp.getUi().alert(organizeTripFolders());
+}
+
+// 여비 청구 데이터 탭에서 선택한 행 → 상태 '보완요청' + 보완 메모
+function menuRequestFix() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  if (sheet.getName() !== CONFIG.SHEET_CLAIM) {
+    ui.alert("'" + CONFIG.SHEET_CLAIM + "' 탭에서 보완요청할 사람의 행(아무 칸)을 선택한 뒤 다시 눌러 주세요.");
+    return;
+  }
+  const rows = [];
+  sheet.getActiveRangeList().getRanges().forEach(rg => {
+    for (let r = rg.getRow(); r < rg.getRow() + rg.getNumRows(); r++) if (r >= 2 && rows.indexOf(r) < 0) rows.push(r);
+  });
+  if (!rows.length) { ui.alert('보완요청할 사람의 행을 선택해 주세요. (1행 머리글 제외)'); return; }
+  const headers = ensureClaimHeaders_(sheet);
+  const nameCol = headers.indexOf('성명') + 1;
+  const names = rows.map(r => sheet.getRange(r, nameCol).getValue()).join(', ');
+  const res = ui.prompt('보완요청 · ' + rows.length + '명 (' + names + ')',
+    '직원 화면에 보일 메모를 적으세요.\n예: 10/16 영수증이 흐려요. 다시 찍어 올려 주세요.', ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  const memo = res.getResponseText().trim();
+  if (!memo) { ui.alert('메모가 비어 있어 보완요청하지 않았습니다.'); return; }
+  const stCol = headers.indexOf('상태') + 1, memoCol = headers.indexOf('보완 메모') + 1;
+  rows.forEach(r => {
+    sheet.getRange(r, stCol).setValue(CONFIG.ST_FIX);
+    sheet.getRange(r, memoCol).setValue(memo);
+  });
+  refreshStatusBoard_(false);
+  getSS_().toast(rows.length + '명에게 보완요청했어요. 직원이 출장을 열면 메모가 보여요.', '보완요청', 6);
+}
+
+
+// ── 시트 준비: 열 이름 정리 + 목록에서 고르기(데이터 확인) ─────────────
+// 대상자 명단·식수의 출장명 = 출장 관리에 있는 이름만, 대상자 명단의 소속 = 지사별 주소에 있는 지사만,
+// 여비 청구 데이터의 상태 = 제출/보완요청/확인완료/마감, 출장 관리의 마감여부 = 진행중/마감
+function prepareSheets_() {
+  const ss = getSS_(), out = [];
+  const colOf = (sheet, names) => {
+    const h = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(v => String(v).trim());
+    for (let i = 0; i < names.length; i++) { const c = h.indexOf(names[i]); if (c >= 0) return c + 1; }
+    return 0;
+  };
+  const body = (sheet, col) => sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1);
+  const listRule = (values, help) => SpreadsheetApp.newDataValidation().requireValueInList(values, true)
+    .setAllowInvalid(false).setHelpText(help).build();
+
+  const claim = ss.getSheetByName(CONFIG.SHEET_CLAIM);
+  if (claim) {
+    ensureClaimHeaders_(claim);
+    const c = colOf(claim, ['상태']);
+    if (c) body(claim, c).setDataValidation(listRule(CLAIM_STATUSES, '제출 · 보완요청(보완 메모를 함께 적기) · 확인완료 · 마감'));
+    out.push("✅ 여비 청구 데이터: 상태·보완 메모·보완 이력·소속(등록)·식수 변경 열 준비, 상태는 목록에서 선택");
+  }
+
+  const trip = ss.getSheetByName(CONFIG.SHEET_TRIP);
+  if (trip) {
+    const st = colOf(trip, ['마감여부']);
+    if (st) body(trip, st).setDataValidation(listRule([CONFIG.OPEN_STATUS, CONFIG.CLOSED_STATUS], '진행중 · 마감'));
+    const idc = colOf(trip, ['출장명', '출장ID']);
+    if (idc) {
+      const tripRule = SpreadsheetApp.newDataValidation().requireValueInRange(body(trip, idc), true)
+        .setAllowInvalid(false).setHelpText("'출장 관리' 탭에 있는 출장명만 고를 수 있어요.").build();
+      [CONFIG.SHEET_MEMBER, CONFIG.SHEET_MEAL].forEach(name => {
+        const sh = ss.getSheetByName(name);
+        const c = sh ? colOf(sh, ['출장명', '출장ID']) : 0;
+        if (c) { body(sh, c).setDataValidation(tripRule); out.push('✅ ' + name + ': 출장명은 출장 관리 목록에서 선택'); }
+      });
+    }
+  }
+
+  const branch = ss.getSheetByName(CONFIG.SHEET_BRANCH), member = ss.getSheetByName(CONFIG.SHEET_MEMBER);
+  if (branch && member) {
+    const bc = colOf(branch, ['지사']), mc = colOf(member, ['소속']);
+    if (bc && mc) {
+      body(member, mc).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(body(branch, bc), true)
+        .setAllowInvalid(false).setHelpText("'지사별 주소' 탭에 있는 지사만 고를 수 있어요.").build());
+      out.push('✅ 대상자 명단: 소속은 지사별 주소 목록에서 선택');
+    }
+  }
+  return out;
+}
+
+// 설정 점검 → 결과 줄 목록 (✅ 정상 · ⚠ 확인 필요 · ❌ 고쳐야 함)
+function checkSettings_() {
+  const ss = getSS_(), out = [];
+  [CONFIG.SHEET_CLAIM, CONFIG.SHEET_TRIP, CONFIG.SHEET_MEMBER, CONFIG.SHEET_BRANCH, CONFIG.SHEET_FUEL, CONFIG.SHEET_MEAL].forEach(n => {
+    if (!ss.getSheetByName(n)) out.push('❌ 탭이 없음: ' + n);
+  });
+  if (!ss.getSheetByName(CONFIG.SHEET_TRIP)) return out;
+
+  const trips = readTable_(CONFIG.SHEET_TRIP), idc = trips.idx('출장명');
+  const sc = trips.idx('출장시작일'), ec = trips.idx('출장종료일'), stc = trips.idx('마감여부');
+  const rowsById = {};
+  trips.rows.forEach((r, i) => {
+    const id = String(r[idc]).trim();
+    if (!id) return;
+    (rowsById[id] = rowsById[id] || []).push(i + 2);
+    const a = fmtDate_(r[sc]), b = fmtDate_(r[ec]);
+    if (String(r[stc]).trim() === CONFIG.CLOSED_STATUS) return;
+    if (!isDateStr_(a) || !isDateStr_(b)) out.push('❌ 출장 관리 ' + (i + 2) + '행 ' + id + ': 출장시작일·출장종료일을 날짜로 적어 주세요');
+    else if (a > b) out.push('❌ 출장 관리 ' + (i + 2) + '행 ' + id + ': 시작일이 종료일보다 늦어요');
+  });
+  const dup = Object.keys(rowsById).filter(id => rowsById[id].length > 1);
+  out.push(dup.length ? '❌ 겹치는 출장명: ' + dup.map(id => id + '(' + rowsById[id].join('·') + '행)').join(', ') : '✅ 출장명 겹침 없음');
+
+  [CONFIG.SHEET_MEMBER, CONFIG.SHEET_MEAL].forEach(name => {
+    if (!ss.getSheetByName(name)) return;
+    const t = readTable_(name), c = t.idx('출장명');
+    if (c < 0) { out.push('❌ ' + name + ": '출장명' 열이 없어요"); return; }
+    const missing = {};
+    t.rows.forEach((r, i) => { const v = String(r[c]).trim(); if (v && !rowsById[v] && v.indexOf('(예시)') !== 0) (missing[v] = missing[v] || []).push(i + 2); });
+    const k = Object.keys(missing);
+    out.push(k.length ? '❌ ' + name + '에 출장 관리에 없는 출장명: ' + k.map(v => v + '(' + missing[v].join('·') + '행)').join(', ') : '✅ ' + name + ' 출장명 모두 연결됨');
+  });
+
+  if (ss.getSheetByName(CONFIG.SHEET_MEMBER)) {
+    const branches = branchAddressMap_(), names = {};
+    getBranchNames_().forEach(b => { names[b.replace(/\s/g, '')] = true; });
+    const m = readTable_(CONFIG.SHEET_MEMBER), c = m.idx('소속');
+    const bad = {};
+    if (c >= 0) m.rows.forEach((r, i) => { const v = String(r[c]).trim(); if (v && !names[v.replace(/\s/g, '')]) (bad[v] = bad[v] || []).push(i + 2); });
+    const k = Object.keys(bad);
+    out.push(k.length ? '❌ 대상자 명단 소속 중 지사별 주소에 없는 이름: ' + k.map(v => v + '(' + bad[v].slice(0, 5).join('·') + '행)').join(', ') : '✅ 대상자 명단 소속 모두 지사 목록에 있음');
+    const noAddr = getBranchNames_().filter(b => !branches[b.replace(/\s/g, '')]);
+    if (noAddr.length) out.push('⚠ 지사별 주소에 주소가 빈 지사: ' + noAddr.join(', ') + ' (카카오 검색으로 찾음)');
+  }
+
+  out.push('✅ 오늘 적용 유류대: ' + fuelRateFor_('') + '원/km' + (ss.getSheetByName(CONFIG.SHEET_FUEL) ? '' : ' (유류대 탭이 없어 예비 단가)'));
+  const props = PropertiesService.getScriptProperties();
+  out.push(props.getProperty('KAKAO_REST_API_KEY') ? '✅ 카카오 REST API 키 등록됨' : '❌ 카카오 REST API 키 없음 (프로젝트 설정 → 스크립트 속성 KAKAO_REST_API_KEY)');
+  out.push(props.getProperty('KAKAO_JS_KEY') ? '✅ 카카오 지도 키 등록됨' : '⚠ 카카오 지도 키 없음 — 화면 지도가 기본 지도로 나와요');
+  try { out.push(ensureCleanupTrigger_()); } catch (e) { out.push('⚠ 자동 정리 등록 실패: ' + e.message + ' (편집기에서 setup을 한 번 실행하세요)'); }
+  return out;
+}
+
+
+// ── 제출 현황 탭 ─────────────────────────────────────
+// 출장마다: 기간 · 진행 · 대상 · 제출 · 보완요청 · 확인완료 · 마감 · 미제출 · 청구 합계 · 미제출자 · 확인할 것 · PDF 폴더
+// fromSubmit: 직원 제출 직후 호출 (잠금이 바쁘면 건너뜀)
+function refreshStatusBoard_(fromSubmit) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(fromSubmit ? 5000 : 30000)) return false;
+  try {
+    const ss = getSS_();
+    const key = v => normalizeEmpId_(v).replace(/^0+/, '');
+    const trips = readTable_(CONFIG.SHEET_TRIP);
+    const tc = { id: trips.idx('출장명'), a: trips.idx('출장시작일'), b: trips.idx('출장종료일'), st: trips.idx('마감여부') };
+
+    const targets = {}; // 출장명 → { 사번키: 성명 }
+    const members = readTable_(CONFIG.SHEET_MEMBER);
+    const mc = { id: members.idx('출장명'), emp: members.idx('사번'), name: members.idx('성명') };
+    members.rows.forEach(r => {
+      const id = String(r[mc.id]).trim(), emp = key(r[mc.emp]);
+      if (id && emp) (targets[id] = targets[id] || {})[emp] = String(r[mc.name]).trim();
+    });
+
+    const claims = {}; // 출장명 → { 사번키: { status, total, branchChanged, mealChanged } }
+    const cs = ss.getSheetByName(CONFIG.SHEET_CLAIM);
+    if (cs && cs.getLastRow() >= 2) {
+      const t = readTable_(CONFIG.SHEET_CLAIM);
+      const c = { id: t.idx('출장명'), emp: t.idx('사번'), st: t.idx('상태'), total: t.idx('총청구금액'),
+        br: t.idx('소속'), reg: t.idx('소속(등록)'), meal: t.idx('식수 변경') };
+      t.rows.forEach(r => {
+        const id = String(r[c.id]).trim(), emp = key(r[c.emp]);
+        if (!id || !emp) return;
+        const reg = c.reg >= 0 ? String(r[c.reg]).trim() : '';
+        (claims[id] = claims[id] || {})[emp] = {
+          status: claimStatus_(c.st >= 0 ? r[c.st] : ''),
+          total: c.total >= 0 ? toWon_(r[c.total]) : 0,
+          branchChanged: !!reg && c.br >= 0 && String(r[c.br]).trim() !== reg,
+          mealChanged: c.meal >= 0 && !!String(r[c.meal]).trim(),
+        };
+      });
+    }
+
+    const list = trips.rows.map(r => {
+      const id = String(r[tc.id]).trim();
+      if (!id) return null;
+      const a = fmtDate_(r[tc.a]), b = fmtDate_(r[tc.b]);
+      const who = targets[id] || {}, done = claims[id] || {};
+      const cnt = { 제출: 0, 보완요청: 0, 확인완료: 0, 마감: 0 };
+      let total = 0, br = 0, meal = 0;
+      Object.keys(done).forEach(k => {
+        const x = done[k];
+        cnt[x.status]++; total += x.total;
+        if (x.branchChanged) br++;
+        if (x.mealChanged) meal++;
+      });
+      const missing = Object.keys(who).filter(k => !done[k]).map(k => who[k] || k);
+      const notes = [];
+      if (cnt.보완요청) notes.push('보완요청 ' + cnt.보완요청);
+      if (br) notes.push('소속 변경 ' + br);
+      if (meal) notes.push('식수 변경 ' + meal);
+      const url = tripFolderUrl_(id);
+      return {
+        open: String(r[tc.st]).trim() !== CONFIG.CLOSED_STATUS, start: a,
+        row: [id, a === b || !b ? a : a + ' ~ ' + b, String(r[tc.st]).trim() || CONFIG.OPEN_STATUS,
+          Object.keys(who).length, cnt.제출, cnt.보완요청, cnt.확인완료, cnt.마감, missing.length, total,
+          missing.slice(0, 15).join(', ') + (missing.length > 15 ? ' 외 ' + (missing.length - 15) + '명' : ''),
+          notes.join(' · '), url ? '=HYPERLINK("' + url + '","열기")' : ''],
+      };
+    }).filter(Boolean);
+    // 진행중인 출장 먼저, 그 안에서는 최근 출장 먼저
+    list.sort((x, y) => (y.open - x.open) || String(y.start).localeCompare(String(x.start)));
+
+    const head = ['출장명', '기간', '진행', '대상', '제출', '보완요청', '확인완료', '마감', '미제출', '청구 합계(원)', '미제출자', '확인할 것', 'PDF 폴더'];
+    let sheet = ss.getSheetByName(CONFIG.SHEET_BOARD);
+    if (!sheet) sheet = ss.insertSheet(CONFIG.SHEET_BOARD);
+    sheet.clear();
+    const values = [head].concat(list.map(x => x.row));
+    sheet.getRange(1, 1, values.length, head.length).setValues(values);
+    sheet.getRange(1, 1, 1, head.length).setFontWeight('bold').setBackground('#e8eef7');
+    if (list.length) sheet.getRange(2, 10, list.length, 1).setNumberFormat('#,##0');
+    sheet.setFrozenRows(1);
+    sheet.getRange(values.length + 2, 1).setValue('갱신 ' + Utilities.formatDate(new Date(), getTz_(), 'yyyy-MM-dd HH:mm')
+      + ' · 이 탭은 직원이 제출할 때와 [여비 관리 > 제출 현황 새로 고침]에서 다시 만들어져요. 직접 고치지 마세요.').setFontColor('#666666');
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 출장 폴더 주소 (잠금 없이 찾기만 함, 없으면 '')
+function tripFolderUrl_(tripId) {
+  try {
+    const id = PropertiesService.getScriptProperties().getProperty('FOLDER:' + tripId);
+    if (id) { const f = DriveApp.getFolderById(id); if (!f.isTrashed()) return f.getUrl(); }
+    const it = getRootFolder_().getFoldersByName(safeName_(tripId));
+    return it.hasNext() ? it.next().getUrl() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+
+// ── 새 출장 등록 ─────────────────────────────────────
+// 대화상자에 넘길 자료: 기존 출장명, 지사 목록, 사번별 성명·최근 소속(직원이 확인한 소속 우선)
+function newTripData_() {
+  const key = v => normalizeEmpId_(v).replace(/^0+/, '');
+  const people = {};
+  const m = readTable_(CONFIG.SHEET_MEMBER);
+  const mc = { emp: m.idx('사번'), name: m.idx('성명'), br: m.idx('소속') };
+  m.rows.forEach(r => {
+    const emp = normalizeEmpId_(r[mc.emp]);
+    if (!emp) return;
+    people[key(emp)] = { 사번: emp, 성명: String(r[mc.name]).trim(), 소속: String(r[mc.br]).trim(), from: '대상자 명단' };
+  });
+  const cs = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
+  if (cs && cs.getLastRow() >= 2) {
+    const t = readTable_(CONFIG.SHEET_CLAIM);
+    const c = { emp: t.idx('사번'), name: t.idx('성명'), br: t.idx('소속') };
+    t.rows.forEach(r => {
+      const emp = normalizeEmpId_(r[c.emp]), br = c.br >= 0 ? String(r[c.br]).trim() : '';
+      if (!emp || !br) return;
+      const p = people[key(emp)] || (people[key(emp)] = { 사번: emp, 성명: String(r[c.name]).trim() });
+      p.소속 = br; p.from = '직원 확인';
+    });
+  }
+  const trips = readTable_(CONFIG.SHEET_TRIP), idc = trips.idx('출장명');
+  return {
+    trips: trips.rows.map(r => String(r[idc]).trim()).filter(Boolean),
+    branches: getBranchNames_(),
+    people: people,
+    maxMeals: CONFIG.MAX_MEALS,
+  };
+}
+
+// 대화상자 [등록] → 출장 관리 1줄 + 대상자 명단 n줄 + 식수 n줄
+// f: { name, purpose, dest, start, end, people: [{사번, 성명, 소속}], meals: { 'yyyy-MM-dd': 끼니 } }
+function createTripFromDialog(f) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    f = f || {};
+    const name = String(f.name || '').trim(), purpose = String(f.purpose || '').trim(), dest = String(f.dest || '').trim();
+    const start = String(f.start || '').trim(), end = String(f.end || '').trim();
+    if (!name) throw new Error('출장명을 적어 주세요.');
+    if (/[\\/:*?"<>|]/.test(name)) throw new Error('출장명에는 \\ / : * ? " < > | 를 쓸 수 없어요.');
+    const trips = readTable_(CONFIG.SHEET_TRIP);
+    if (trips.rows.some(r => String(r[trips.idx('출장명')]).trim() === name)) throw new Error("'" + name + "'은(는) 이미 있는 출장명이에요. 끝에 날짜를 붙이는 등 다르게 해 주세요.");
+    if (!purpose) throw new Error('출장목적을 적어 주세요.');
+    if (!dest) throw new Error('기본도착지를 적어 주세요.');
+    if (!isDateStr_(start) || !isDateStr_(end)) throw new Error('기간을 날짜로 골라 주세요.');
+    if (start > end) throw new Error('시작일이 종료일보다 늦어요.');
+
+    const branchSet = {};
+    getBranchNames_().forEach(b => { branchSet[b.replace(/\s/g, '')] = b; });
+    const seen = {};
+    const people = (Array.isArray(f.people) ? f.people : []).map((p, i) => {
+      const emp = normalizeEmpId_(p.사번), nm = String(p.성명 || '').trim(), br = String(p.소속 || '').trim();
+      if (!emp) return null;
+      if (seen[emp]) throw new Error('사번 ' + emp + '이(가) 두 번 들어 있어요.');
+      seen[emp] = true;
+      if (!nm) throw new Error((i + 1) + '번째 대상자(' + emp + '): 성명을 적어 주세요.');
+      if (!branchSet[br.replace(/\s/g, '')]) throw new Error((i + 1) + '번째 대상자(' + nm + '): 소속을 지사 목록에서 골라 주세요.');
+      return { 출장명: name, 사번: emp, 성명: nm, 소속: branchSet[br.replace(/\s/g, '')] };
+    }).filter(Boolean);
+    if (!people.length) throw new Error('대상자를 1명 이상 넣어 주세요.');
+
+    const meals = [];
+    Object.keys(f.meals || {}).sort().forEach(d => {
+      const raw = f.meals[d];
+      if (raw === '' || raw == null || !isDateStr_(d) || d < start || d > end) return;
+      meals.push({ 출장명: name, 일자: d, '식수(끼)': Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(raw) || 0))), 비고: '새 출장 등록' });
+    });
+
+    const ss = getSS_();
+    appendByHeaders_(ss.getSheetByName(CONFIG.SHEET_TRIP), [{
+      출장명: name, 출장목적: purpose, 기본도착지: dest, 출장시작일: start, 출장종료일: end, 마감여부: CONFIG.OPEN_STATUS,
+    }], ['출장명']);
+    appendByHeaders_(ss.getSheetByName(CONFIG.SHEET_MEMBER), people, ['출장명', '사번']);
+    if (meals.length) {
+      let mealSheet = ss.getSheetByName(CONFIG.SHEET_MEAL);
+      if (!mealSheet) {
+        mealSheet = ss.insertSheet(CONFIG.SHEET_MEAL);
+        mealSheet.getRange(1, 1, 1, 4).setValues([['출장명', '일자', '식수(끼)', '비고']]);
+        mealSheet.setFrozenRows(1);
+      }
+      appendByHeaders_(mealSheet, meals, ['출장명']);
+    }
+    SpreadsheetApp.flush();
+    lock.releaseLock();
+    try { refreshStatusBoard_(false); } catch (e) { /* 현황 갱신은 다음 기회에 */ }
+    return { ok: true, message: "'" + name + "' 출장을 등록했어요. 출장 관리 1줄, 대상자 명단 " + people.length + '줄' + (meals.length ? ', 식수 ' + meals.length + '줄' : '') + '을 넣었어요.' };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e) { /* 이미 풀림 */ }
+  }
+}
+
+// 객체 목록을 머리글 이름에 맞춰 시트 끝에 추가 (textCols는 텍스트 서식으로 — 앞자리 0 유지)
+function appendByHeaders_(sheet, objs, textCols) {
+  if (!sheet || !objs.length) return;
+  const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(h => String(h).trim());
+  if (headers.indexOf('출장명') < 0 && headers.indexOf('출장ID') >= 0) headers[headers.indexOf('출장ID')] = '출장명';
+  const start = sheet.getLastRow() + 1;
+  (textCols || []).forEach(n => {
+    const c = headers.indexOf(n);
+    if (c >= 0) sheet.getRange(start, c + 1, objs.length, 1).setNumberFormat('@');
+  });
+  sheet.getRange(start, 1, objs.length, headers.length).setValues(objs.map(o => headers.map(h => (h in o ? o[h] : ''))));
+}
+
+function newTripDialogHtml_(data) {
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  body{font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",sans-serif;margin:0;color:#1b2333}
+  form{padding:4px 14px 70px;display:grid;gap:10px}
+  label.f{display:grid;gap:3px;font-size:13px;color:#5d6879}
+  input,select,textarea{font:inherit;color:#1b2333;border:1px solid #c9d1dc;border-radius:4px;padding:6px 8px;box-sizing:border-box;width:100%}
+  textarea{height:64px}
+  .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .msg{font-size:12.5px}.bad{color:#b42318;font-weight:bold}.good{color:#1d7a4a}
+  table{border-collapse:collapse;width:100%}th,td{border:1px solid #dde3ea;padding:4px 6px;text-align:left;font-size:13px}
+  th{background:#f1f4f8;font-weight:normal;color:#5d6879}td.need select{border-color:#b42318;background:#fdecea}
+  .meals{display:flex;flex-wrap:wrap;gap:8px}.meals label{display:flex;gap:4px;align-items:center;font-size:13px}.meals select{width:auto}
+  .foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #dde3ea;padding:10px 14px;display:flex;gap:8px;align-items:center}
+  .foot span{margin-right:auto;font-size:13px}
+  button{font:inherit;border:1px solid #1b365d;background:#fff;color:#1b365d;border-radius:4px;padding:6px 14px;cursor:pointer}
+  button.pri{background:#1b365d;color:#fff}button:disabled{opacity:.45;cursor:default}
+  .x{border:0;color:#b42318;padding:0 4px}
+  h4{margin:6px 0 0;font-size:14px}
+</style></head><body><form id="f" onsubmit="return false">
+  <label class="f">출장명 (출장마다 다른 이름 · 예: 2026 임단협 워크숍(11월))<input id="name" autocomplete="off"><span class="msg" id="nameMsg"></span></label>
+  <label class="f">출장목적<input id="purpose"></label>
+  <div class="row">
+    <label class="f">기본도착지<input id="dest" list="br"></label>
+    <label class="f">출장시작일<input id="start" type="date"></label>
+    <label class="f">출장종료일<input id="end" type="date"></label>
+  </div>
+  <datalist id="br"></datalist>
+  <h4>대상자</h4>
+  <label class="f">사번을 줄마다 붙여넣고 [표에 넣기]. 처음 등록하는 사람은 '사번 성명 소속'처럼 (엑셀 3열 복사도 됨)
+    <textarea id="paste" placeholder="20231234&#10;20190077&#10;20250311 이민수 세종지사"></textarea></label>
+  <div><button type="button" id="addBtn">표에 넣기</button> <span class="msg" id="pasteMsg"></span></div>
+  <table><thead><tr><th style="width:22%">사번</th><th style="width:22%">성명</th><th>소속</th><th style="width:18%">소속 출처</th><th style="width:40px"></th></tr></thead><tbody id="people"></tbody></table>
+  <h4>식수 <span class="msg" style="font-weight:normal;color:#5d6879">비워 두면 직원이 직접 입력해요</span></h4>
+  <div class="meals" id="meals"><span class="msg">기간을 고르면 날짜가 나와요</span></div>
+</form>
+<div class="foot"><span id="foot"></span><button type="button" onclick="google.script.host.close()">닫기</button><button type="button" class="pri" id="save">등록</button></div>
+<script>
+const DATA = ${json};
+const $ = id => document.getElementById(id);
+const key = v => String(v || '').replace(/\\s/g, '').replace(/^0+/, '');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let people = [];
+$('br').innerHTML = DATA.branches.map(b => '<option value="' + esc(b) + '">').join('');
+function check() {
+  const n = $('name').value.trim(), dup = DATA.trips.indexOf(n) >= 0;
+  $('nameMsg').textContent = !n ? '' : dup ? '이미 있는 출장명이에요. 끝에 날짜를 붙이는 등 다르게 해 주세요.' : '사용할 수 있는 이름이에요.';
+  $('nameMsg').className = 'msg ' + (dup ? 'bad' : 'good');
+  const needBranch = people.filter(p => DATA.branches.indexOf(p.소속) < 0).length;
+  const ok = n && !dup && $('purpose').value.trim() && $('dest').value.trim() && $('start').value && $('end').value && $('start').value <= $('end').value && people.length && !needBranch && people.every(p => p.성명);
+  $('save').disabled = !ok;
+  $('foot').textContent = needBranch ? '소속을 골라야 하는 사람이 ' + needBranch + '명 있어요.'
+    : $('start').value && $('end').value && $('start').value > $('end').value ? '시작일이 종료일보다 늦어요.'
+    : ok ? '출장 관리 1줄, 대상자 명단 ' + people.length + '줄' + (mealCount() ? ', 식수 ' + mealCount() + '줄' : '') + '이 들어가요.' : '';
+}
+function mealCount() { return [...document.querySelectorAll('#meals select[data-d]')].filter(s => s.value !== '').length; }
+function drawPeople() {
+  $('people').innerHTML = people.map((p, i) => '<tr><td>' + esc(p.사번) + '</td>'
+    + '<td><input data-i="' + i + '" data-k="성명" value="' + esc(p.성명) + '"></td>'
+    + '<td class="' + (DATA.branches.indexOf(p.소속) < 0 ? 'need' : '') + '"><select data-i="' + i + '" data-k="소속"><option value="">고르세요</option>'
+    + DATA.branches.map(b => '<option' + (b === p.소속 ? ' selected' : '') + '>' + esc(b) + '</option>').join('') + '</select></td>'
+    + '<td class="msg">' + esc(p.from) + '</td><td><button type="button" class="x" data-del="' + i + '">삭제</button></td></tr>').join('');
+  check();
+}
+$('people').addEventListener('change', e => { const t = e.target; if (t.dataset.k) { people[t.dataset.i][t.dataset.k] = t.value.trim(); if (t.dataset.k === '소속') people[t.dataset.i].from = '직접 선택'; drawPeople(); } });
+$('people').addEventListener('click', e => { const i = e.target.dataset.del; if (i != null) { people.splice(Number(i), 1); drawPeople(); } });
+$('addBtn').addEventListener('click', () => {
+  let added = 0, dupl = 0;
+  $('paste').value.split(/\\n/).forEach(line => {
+    const t = line.trim().split(/[\\t,]+|\\s+/).filter(Boolean);
+    if (!t.length || !/\\d/.test(t[0])) return;
+    const emp = t[0];
+    if (people.some(p => key(p.사번) === key(emp))) { dupl++; return; }
+    const known = DATA.people[key(emp)] || {};
+    const br = t.length >= 3 ? t.slice(2).join(' ') : known.소속 || '';
+    people.push({ 사번: known.사번 || emp, 성명: t[1] || known.성명 || '', 소속: br,
+      from: t.length >= 3 ? '붙여넣기' : known.from === '직원 확인' ? '지난 출장(직원 확인)' : known.from ? '대상자 명단' : '처음 등록' });
+    added++;
+  });
+  $('paste').value = '';
+  $('pasteMsg').textContent = added + '명을 넣었어요' + (dupl ? ' (이미 있는 ' + dupl + '명은 건너뜀)' : '') + '. 소속이 맞는지 확인해 주세요.';
+  drawPeople();
+});
+function drawMeals() {
+  const a = $('start').value, b = $('end').value;
+  if (!a || !b || a > b) { $('meals').innerHTML = '<span class="msg">기간을 고르면 날짜가 나와요</span>'; check(); return; }
+  const days = [];
+  for (let d = new Date(a + 'T00:00:00'); days.length < 31; d.setDate(d.getDate() + 1)) {
+    const s = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    if (s > b) break;
+    days.push(s);
+  }
+  const opts = '<option value="">직원 입력</option>' + Array.from({ length: DATA.maxMeals + 1 }, (_, n) => '<option value="' + n + '">' + n + '끼</option>').join('');
+  $('meals').innerHTML = '<label>모든 날 <select id="allMeals">' + opts + '</select></label>'
+    + days.map(s => '<label>' + s.slice(5) + ' <select data-d="' + s + '">' + opts + '</select></label>').join('');
+  $('allMeals').addEventListener('change', e => { document.querySelectorAll('#meals select[data-d]').forEach(s => { s.value = e.target.value; }); check(); });
+  check();
+}
+['name', 'purpose', 'dest'].forEach(id => $(id).addEventListener('input', check));
+['start', 'end'].forEach(id => $(id).addEventListener('change', drawMeals));
+$('meals').addEventListener('change', check);
+$('save').addEventListener('click', () => {
+  const meals = {};
+  document.querySelectorAll('#meals select[data-d]').forEach(s => { meals[s.dataset.d] = s.value; });
+  $('save').disabled = true; $('foot').textContent = '등록하는 중…';
+  google.script.run.withSuccessHandler(res => {
+    if (!res.ok) { $('foot').innerHTML = '<b class="bad">' + esc(res.message) + '</b>'; $('save').disabled = false; return; }
+    $('foot').innerHTML = '<b class="good">' + esc(res.message) + '</b>';
+    DATA.trips.push($('name').value.trim());
+    $('save').textContent = '등록됨';
+  }).withFailureHandler(err => { $('foot').innerHTML = '<b class="bad">' + esc(err.message) + '</b>'; $('save').disabled = false; })
+    .createTripFromDialog({ name: $('name').value.trim(), purpose: $('purpose').value.trim(), dest: $('dest').value.trim(),
+      start: $('start').value, end: $('end').value, people: people, meals: meals });
+});
+check();
+</script></body></html>`;
+}
+
+
+// ════════════════════════════════════════════════════
 //  관리자용: 최초 설정 / 테스트 (편집기에서 직접 실행)
 // ════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════
@@ -1314,9 +2001,9 @@ function escHtml_(s) {
 // ════════════════════════════════════════════════════
 // 마감된 청구는 다시 고칠 일이 없으므로 _수정용데이터의 상세 파일(사진 사본 포함)을 휴지통으로 보냄.
 // 청구서 PDF와 시트 기록은 그대로 둠. 대상: '출장 관리'에서 마감된 출장의 모든 사람
-//                                     + '여비 청구 데이터'에서 마감여부가 '마감'인 사람
+//                                     + '여비 청구 데이터'에서 상태가 '마감'인 사람
 // setup()을 실행하면 매일 새벽 3시에 자동 실행되도록 등록됨. 편집기에서 직접 실행해도 됨.
-// ※ 마감을 다시 '진행중'으로 되돌리면 그 사람은 이전 내용을 불러오지 못하고 새로 작성해야 함.
+// ※ 마감을 다시 '제출'·'보완요청'으로 되돌리면 그 사람은 이전 내용을 불러오지 못하고 새로 작성해야 함.
 function cleanupClosedClaims() {
   const closedTrips = {};
   const trips = readTable_(CONFIG.SHEET_TRIP);
@@ -1331,23 +2018,21 @@ function cleanupClosedClaims() {
   const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
   if (sheet && sheet.getLastRow() >= 2) {
     const t = readTable_(CONFIG.SHEET_CLAIM);
-    const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('마감여부');
+    const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('상태');
     if (idCol >= 0 && empCol >= 0 && stCol >= 0) {
       t.rows.forEach(r => {
         const id = String(r[idCol]).trim();
-        if (!id || targets[id] === '*' || String(r[stCol]).trim() !== CONFIG.CLOSED_STATUS) return;
+        if (!id || targets[id] === '*' || claimStatus_(r[stCol]) !== CONFIG.ST_CLOSED) return;
         (targets[id] = targets[id] || {})[normalizeEmpId_(r[empCol])] = true;
       });
     }
   }
 
   // 출장 폴더는 찾기만 하고 새로 만들지 않음
-  const root = getRootFolder_();
   let removed = 0, bytes = 0;
   Object.keys(targets).forEach(id => {
-    const it = root.getFoldersByName(safeName_(id));
-    if (!it.hasNext()) return;
-    const tripFolder = it.next();
+    const tripFolder = findTripFolder_(id, false);
+    if (!tripFolder) return;
     const want = targets[id];
     const names = want === '*' ? null : Object.keys(want).map(detailFileName_);
     const dataIt = tripFolder.getFoldersByName(CONFIG.DATA_FOLDER_NAME);
@@ -1422,6 +2107,10 @@ function setup() {
 
   const headers = ensureClaimHeaders_(getSS_().getSheetByName(CONFIG.SHEET_CLAIM));
   Logger.log('✅ 여비 청구 데이터 헤더: ' + headers.filter(Boolean).join(' | '));
+  prepareSheets_().forEach(l => Logger.log(l));
+  checkSettings_().filter(l => l.indexOf('✅') !== 0).forEach(l => Logger.log(l));
+  Logger.log(refreshStatusBoard_(false) ? "✅ '" + CONFIG.SHEET_BOARD + "' 탭을 만들었어요" : '⚠ 제출 현황을 만들지 못했어요 (잠시 뒤 다시 실행)');
+  Logger.log("ℹ 스프레드시트를 새로 고치면 위쪽에 '여비 관리' 메뉴가 생겨요 (스크립트가 시트에 연결된 경우)");
 
   const folder = getRootFolder_();
   Logger.log('✅ 첨부 폴더: ' + folder.getName() + ' → ' + folder.getUrl());
@@ -1429,7 +2118,6 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   Logger.log(props.getProperty('KAKAO_REST_API_KEY') ? '✅ KAKAO_REST_API_KEY 등록됨' : '❌ KAKAO_REST_API_KEY 미등록 (스크립트 속성에 추가하세요)');
   Logger.log(props.getProperty('KAKAO_JS_KEY') ? '✅ KAKAO_JS_KEY 등록됨' : '⚠ KAKAO_JS_KEY 미등록 — 화면 지도가 카카오 대신 기본 지도로 나옵니다');
-  Logger.log(ensureCleanupTrigger_());
 }
 
 // 세부주소 확인: 지사별 주소 탭 상태 + 각 지사·예시 장소의 주소 조회 결과를 로그에 출력
