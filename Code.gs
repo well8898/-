@@ -777,14 +777,13 @@ function saveClaimData(formData) {
           + 'km와 달라서 그 줄의 길찾기(네비) 캡처가 필요합니다. 별도 경로 증빙 사진에 올리고 줄을 골라 주세요.');
       }
     });
-    const addresses = placeAddresses_(rows);
 
     // 서식 PDF (이것 하나만 드라이브에 남김)
     const pdfHtml = buildClaimHtml_({
       user: who, trip: trip, rows: rows, totals: totals,
       category: category, categoryEtc: categoryEtc, innerHours: innerHours, unionCar: unionCar, fareReason: fareReason,
       submitDate: Utilities.formatDate(new Date(), getTz_(), 'yyyy년 MM월 dd일'),
-      signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages, addresses: addresses,
+      signature: sig.b64, receipts: receipts, maps: maps, routeImages: routeImages,
     });
     const pdfFile = folder.createFile(
       Utilities.newBlob(pdfHtml, 'text/html', 'claim.html').getAs('application/pdf')
@@ -1069,28 +1068,27 @@ function ensureClaimHeaders_(sheet) {
 
 // ════════════════════════════════════════════════════
 //  [별지 서식 제1호] 여비 청구 및 영수증 — PDF용 HTML
+//  ※ 1쪽 서식(표 구성·문구·칸 이름)은 처음 양식 그대로 유지. 바꾸지 마세요.
+//    (직원 화면 5단계의 미리보기도 같은 서식을 그대로 씀 — Index.html formSheetHtml)
+//    증빙 서류(2쪽부터)만 이 앱에서 덧붙인 부분
 // ════════════════════════════════════════════════════
 function buildClaimHtml_(d) {
   const e = escHtml_;
   const w = n => (n ? Number(n).toLocaleString('ko-KR') : '0');
   const md = s => { const p = s.split('-'); return Number(p[1]) + '/' + Number(p[2]); };
-  // 장소 이름 아래 세부주소 (작은 글씨)
-  const addr = d.addresses || {};
-  const place = n => e(n) + (addr[n] ? '<div class="addr">' + e(addr[n]) + '</div>' : '');
-  const places = s => splitWaypoints_(s).map(place).join('');
 
   const cat = CONFIG.CATEGORIES.map(c => {
     const mark = d.category === c ? 'O' : '&nbsp;&nbsp;';
     return c === '기타'
       ? '기타(' + (d.category === '기타' ? e(d.categoryEtc) : '직접 작성 요망') + ')'
-      : c + '(' + mark + (d.category === c && d.innerHours ? ', ' + e(d.innerHours) : '') + ')';
+      : c + '(' + mark + ')';
   });
 
   const bodyRows = d.rows.map(r => '<tr>'
     + '<td class="c">' + md(r.date) + '</td>'
-    + '<td>' + place(r.origin) + '</td>'
-    + '<td>' + places(r.waypoint) + '</td>'
-    + '<td>' + place(r.destination) + '</td>'
+    + '<td>' + e(r.origin) + '</td>'
+    + '<td>' + e(r.waypoint) + '</td>'
+    + '<td>' + e(r.destination) + '</td>'
     + '<td class="c">' + e(r.transport) + '</td>'
     + '<td class="r">' + (r.km || '') + '</td>'
     + '<td class="r">' + w(r.fare) + '</td>'
@@ -1117,7 +1115,6 @@ function buildClaimHtml_(d) {
     + '.hl { background: #ffff66; text-align: center; }'
     + '.c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }'
     + '.detail td, .detail th { font-size: 9pt; }'
-    + '.addr { font-size: 7pt; color: #444; line-height: 1.25; margin-top: 1px; }'
     + '.gap { height: 10px; }'
     + '.plain td { border: 0; }'
     + '.sig { position: relative; display: inline-block; width: 110px; text-align: center; }'
@@ -1146,7 +1143,7 @@ function buildClaimHtml_(d) {
     + '<td class="c">정산액</td><td class="r">' + w(t.total) + '</td>'
     + '<td class="c">청구(반납)액</td><td class="r">' + w(t.total) + '</td></tr>'
     + '<tr><td class="lbl">구 &nbsp; 분</td><td colspan="4" class="hl">' + cat.slice(0, 3).join(', ') + ',<br>' + cat[3] + '</td>'
-    + '<td class="c">조합차량<br>(법인차량)<br>이용여부</td><td class="c">' + d.unionCar + '</td></tr>'
+    + '<td class="c">조합차량<br>이용여부</td><td class="c">' + d.unionCar + '</td></tr>'
     + '</table>'
 
     + '<table class="detail" style="border-top:0">'
