@@ -20,68 +20,72 @@
 <style>
 /* Layout: phone-first single column — sticky app bar + swipeable day tabs, one day's site cards at a time */
 :root {
-  --bg: #f1f4f7;
-  --surface: #ffffff;
-  --ink: #18212b;
-  --muted: #5d6b78;
-  --line: #dde3e9;
-  --accent: #1f5fbf;
+  --bg: #ffffff;
+  --surface: #f2f4f6;
+  --ink: #191f28;
+  --muted: #4e5968;
+  --mute: #646f7c;
+  --line: #e5e8eb;
+  --accent: #1b64da;
   --accent-ink: #ffffff;
-  --accent-soft: #e6eefa;
-  --k-jeong: #2a3440;
-  --k-mil: #1d7fc4;
-  --k-su: #c27a0e;
-  --k-wan: #c2392f;
-  --off: #8a6d1e;
-  --off-soft: #f8f0dc;
-  --hero: #1f5fbf;
+  --accent-soft: #e8f0fd;
+  --done: #87909c;
+  --amber: #7a5300;
+  --amber-soft: #fff4d6;
+  --off: #c4373b;
+  --off-soft: #fdecec;
+  --hero: #1b64da;
   --hero-ink: #ffffff;
+  --seg-on: #ffffff;
   --font-body: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic',
     system-ui, sans-serif;
   --font-mono: var(--font-body);
   --tmap: #3d5afe;
   --kakao: #fee500;
   --naver: #03c75a;
-  --line-b: #2563eb;
+  --line-b: var(--accent);
+  --k-wan: var(--off);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0f1419;
-    --surface: #19212a;
-    --ink: #e6ebf0;
-    --muted: #94a2b0;
-    --line: #2a3541;
-    --accent: #6ea6f5;
-    --accent-ink: #0f1419;
-    --accent-soft: #1d2d44;
-    --k-jeong: #c9d3dd;
-    --k-mil: #5fb4ec;
-    --k-su: #e7a84a;
-    --k-wan: #f07c72;
-    --off: #e2c06e;
-    --off-soft: #2e2818;
-    --hero: #1e3a66;
+    --bg: #17171c;
+    --surface: #24252b;
+    --ink: #f2f4f6;
+    --muted: #b0b8c1;
+    --mute: #9aa5b4;
+    --line: #2e3038;
+    --accent: #6aa0ff;
+    --accent-ink: #17171c;
+    --accent-soft: #1d2a44;
+    --done: #7d8794;
+    --amber: #ffd27a;
+    --amber-soft: #3a2d10;
+    --off: #ff8a8a;
+    --off-soft: #3a1c1e;
+    --hero: #1d2a44;
     --hero-ink: #eef4ff;
+    --seg-on: #3a3c44;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0f1419;
-  --surface: #19212a;
-  --ink: #e6ebf0;
-  --muted: #94a2b0;
-  --line: #2a3541;
-  --accent: #6ea6f5;
-  --accent-ink: #0f1419;
-  --accent-soft: #1d2d44;
-  --k-jeong: #c9d3dd;
-  --k-mil: #5fb4ec;
-  --k-su: #e7a84a;
-  --k-wan: #f07c72;
-  --off: #e2c06e;
-  --off-soft: #2e2818;
-  --hero: #1e3a66;
+  --bg: #17171c;
+  --surface: #24252b;
+  --ink: #f2f4f6;
+  --muted: #b0b8c1;
+  --mute: #9aa5b4;
+  --line: #2e3038;
+  --accent: #6aa0ff;
+  --accent-ink: #17171c;
+  --accent-soft: #1d2a44;
+  --done: #7d8794;
+  --amber: #ffd27a;
+  --amber-soft: #3a2d10;
+  --off: #ff8a8a;
+  --off-soft: #3a1c1e;
+  --hero: #1d2a44;
   --hero-ink: #eef4ff;
+  --seg-on: #3a3c44;
   color-scheme: dark;
 }
 * {
@@ -347,19 +351,6 @@ main {
   border-radius: 5px;
   padding: 0 6px;
   line-height: 1.5;
-}
-.k-정 {
-  color: var(--k-jeong);
-}
-.k-밀 {
-  color: var(--k-mil);
-}
-.k-수 {
-  color: var(--k-su);
-}
-.k-설,
-.k-완 {
-  color: var(--k-wan);
 }
 .u {
   font: 600 17px var(--font-mono);
@@ -844,21 +835,6 @@ body.easy{background:var(--surface)}
 .ez-days button{flex:1;font:600 15px var(--font-body);background:none;border:0;color:var(--muted);padding:10px 0 12px;cursor:pointer}
 .ez-days button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
 .ez-days button.off{color:#e11d48}
-.ez-tl{padding:8px 0 4px}
-.ez-r{display:grid;grid-template-columns:52px 20px 1fr;column-gap:10px}
-.ez-tm{font-weight:700;font-size:16px;text-align:right;padding-top:1px}
-.ez-rail{position:relative;display:flex;justify-content:center}
-.ez-dot{width:15px;height:15px;border-radius:50%;border:3px solid var(--line-b);background:var(--surface);margin-top:4px;z-index:1;box-sizing:border-box}
-.ez-dot.home{border-color:var(--ink);background:var(--ink);border-radius:4px}
-.ez-ln{position:absolute;top:10px;bottom:-10px;width:3px;background:var(--line-b)}
-.ez-ln.dash{background:repeating-linear-gradient(var(--line) 0 5px,transparent 5px 9px)}
-.ez-past .ez-dot{border-color:#c7d2fe;background:#c7d2fe}.ez-past .ez-ln{background:#c7d2fe}
-.ez-past .ez-tm,.ez-past .ez-nm,.ez-past .ez-in{color:#9ca3af}
-.ez-bd{padding-bottom:16px;min-width:0}
-.ez-head{display:block;width:100%;text-align:left;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer}
-.ez-nm{font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.3}
-.ez-in{font-size:14.5px;color:var(--muted);margin-top:2px}
-.ez-mv{font-size:14px;color:var(--muted);padding-top:10px}
 .ez-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .ez-nav.two{grid-template-columns:1fr 1fr}
 .ez-nav a{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none}
@@ -977,6 +953,151 @@ body.easy .tot3 div{background:var(--bg);border:0}
 .others span b,.ez-oth b,.ewk-c .ewk-o b,.wd-o b{color:inherit;font-weight:800;font-size:inherit;display:inline}
 @media (prefers-color-scheme:dark){:root:not([data-theme='light']) .ez-oth,:root:not([data-theme='light']) .ewk-c small.ewk-o,:root:not([data-theme='light']) small.wd-o,:root:not([data-theme='light']) .others>span{color:#fcd34d;background:#3a2a05}}
 :root[data-theme='dark'] .ez-oth,:root[data-theme='dark'] .ewk-c small.ewk-o,:root[data-theme='dark'] small.wd-o,:root[data-theme='dark'] .others>span{color:#fcd34d;background:#3a2a05}
+
+/* ══ 개편 (흔한 업무 앱 스타일): 흰 바탕 · 회색 카드 · 아래 탭 ══ */
+body,body.easy,body.easy main,body.easy #bar,.bar{background:var(--bg)}
+body{-webkit-font-smoothing:antialiased}
+main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important}
+.mode{background:var(--surface);border:0;border-radius:10px}
+.mode button{font-size:13.5px;color:var(--mute);padding:7px 11px;border-radius:8px}
+.mode button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.themeb{border:0;background:var(--surface)}
+.dtab.wk{display:none}
+/* 검사 종류 배지 */
+.kb{display:inline-block;font:800 13.5px/1.45 var(--font-body);border-radius:7px;padding:1px 8px;margin-left:7px;vertical-align:2px;letter-spacing:0;white-space:nowrap}
+.kb.kj{color:#4e5968;background:#e9ecef}
+.kb.km{color:#1b4fb8;background:#e8f0fd}
+.kb.ks{color:#a1361f;background:#fcebe6}
+.kb.kw{color:#5b3ea8;background:#efeafb}
+.tl-head .kb{margin-left:0}
+/* 날짜 머리 ‹ › */
+.ez-dnav{display:flex;align-items:center;gap:8px;margin-top:2px}
+.ez-dt{flex:1;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.ez-dt b{font-size:16px;font-weight:700;color:var(--muted)}
+.ez-dt span{font-size:13px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 8px}
+.ez-ar{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.ez-ar svg{width:20px;height:20px}
+.ez-ar:disabled{opacity:.35;cursor:default}
+.ez-dtx{font-size:15px;font-weight:600;color:var(--muted);margin-top:6px}
+.ez-hi{font-size:26px;line-height:1.3;font-weight:800;letter-spacing:-.6px;margin:14px 0 2px;word-break:keep-all}
+.ez-hi em{font-style:normal;color:var(--accent)}
+.ez-hisub{font-size:15px;font-weight:500;color:var(--muted);margin:2px 0 16px;word-break:keep-all}
+/* 크게 볼 현장 고르기 */
+.ez-stops{display:flex;gap:6px;margin:0 -16px 10px;padding:0 16px;overflow-x:auto;scrollbar-width:none}
+.ez-stops::-webkit-scrollbar{display:none}
+.ez-stops button{flex:none;min-height:44px;border:1.5px solid var(--line);background:var(--bg);color:var(--muted);border-radius:22px;padding:0 14px 0 10px;font:700 15.5px var(--font-body);display:flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap}
+.ez-stops button:last-child:not(:has(i)){padding-left:14px}
+.ez-stops i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--surface);color:var(--muted);display:grid;place-items:center;font-size:12.5px;font-weight:800}
+.ez-stops button.past{color:var(--done)}
+.ez-stops button.past i{color:var(--done)}
+.ez-stops button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.ez-stops button.on i{background:var(--bg);color:var(--ink)}
+/* 큰 카드 */
+.ez-card{background:var(--surface);border-radius:22px;padding:18px 16px 16px}
+.ez-lab{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--accent)}
+.ez-lab i{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.ez-n{font-size:27px;line-height:1.25;font-weight:800;letter-spacing:-.6px;margin-top:8px;word-break:keep-all}
+.ez-n .kb{font-size:15px;padding:2px 9px;vertical-align:4px}
+.ez-plan{font-size:15.5px;font-weight:600;color:var(--muted);margin-top:6px}
+.ez-plan b{color:var(--ink);font-weight:700}
+.ez-d{display:flex;align-items:center;gap:6px;font-size:16.5px;font-weight:600;margin-top:12px}
+.ez-d svg{flex:none;color:var(--muted)}
+.ez-same{display:flex;gap:8px;align-items:baseline;margin-top:12px;font-size:15px;font-weight:600;line-height:1.45;color:var(--amber);word-break:keep-all}
+.ez-same::before{content:"";flex:none;width:10px;height:10px;border-radius:3px;background:#f5b400;transform:translateY(1px)}
+.ez-same b{font-weight:800}
+.ez-card .ez-nav{margin-top:16px;gap:8px}
+.ez-nav a{min-height:56px;border-radius:14px;font-weight:800;font-size:16.5px}
+.ez-info{display:block;width:100%;margin-top:10px;min-height:44px;border:0;border-radius:12px;background:var(--bg);color:var(--muted);font:700 15px var(--font-body);cursor:pointer}
+.ez-card .ez-kv{background:var(--bg)}
+.ez-card .ez-more{color:var(--accent)}
+/* 하루 경로 */
+.ez-h2{display:flex;justify-content:space-between;align-items:baseline;margin:26px 0 6px}
+.ez-h2 b{font-size:19px;font-weight:800}
+.ez-h2 span{font-size:15px;font-weight:600;color:var(--muted)}
+.ez-route{list-style:none;margin:0;padding:0}
+.ez-route li{position:relative}
+.ez-route .rr{display:grid;grid-template-columns:52px 16px 1fr;column-gap:10px;width:100%;text-align:left;background:none;border:0;padding:11px 10px;margin:0 -10px;width:calc(100% + 20px);border-radius:12px;color:var(--ink);font-family:var(--font-body);cursor:pointer}
+.ez-route div.rr{cursor:default}
+.ez-route li:not(:last-child)::after{content:"";position:absolute;left:67px;top:28px;bottom:-12px;width:2px;background:var(--line)}
+.ez-route .tt{font-size:16px;font-weight:700;padding-top:1px}
+.ez-route .dot{width:13px;height:13px;border-radius:50%;border:3px solid var(--accent);background:var(--bg);margin-top:5px;position:relative;z-index:1}
+.ez-route li.base .dot{border-color:var(--ink);border-radius:3px}
+.ez-route .nm{font-size:18px;line-height:1.3;font-weight:700;word-break:keep-all}
+.ez-route .sm{font-size:14.5px;font-weight:500;color:var(--muted);margin-top:2px}
+.ez-route li.base .tt{font-size:14px;color:var(--muted)}
+.ez-route li.past .tt,.ez-route li.past .nm,.ez-route li.past .sm{color:var(--done)}
+.ez-route li.past .dot{border-color:var(--done)}
+.ez-route li.past .kb{opacity:.6}
+.ez-route li.cur .rr{background:var(--accent-soft)}
+.ez-route li.cur .nm{color:var(--accent)}
+.ez-card.past .ez-lab{color:var(--done)}.ez-card.past .ez-lab i{background:var(--done)}
+/* 이번 주 */
+.wsum{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-radius:20px;padding:16px 6px;text-align:center;margin:4px 0 6px}
+.wsum b{display:block;font-size:26px;font-weight:800}
+.wsum span{font-size:13.5px;font-weight:600;color:var(--muted)}
+.ewk2{list-style:none;margin:0;padding:0}
+.ewk2 li{border-bottom:1px solid var(--line)}
+.ewk2 button{position:relative;display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start;width:100%;padding:14px 0;background:none;border:0;text-align:left;color:var(--ink);font-family:var(--font-body);cursor:pointer}
+.ewk2 .dw{text-align:center}
+.ewk2 .dw b{display:block;font-size:20px;font-weight:800;border-radius:12px;padding:2px 0}
+.ewk2 .dw span{font-size:13px;font-weight:600;color:var(--mute);white-space:nowrap}
+.ewk2 li.today .dw b{color:#fff;background:var(--accent)}
+.ewk2 .ct{min-width:0}
+.ewk2 .ct>b{display:block;font-size:17px;line-height:1.35;font-weight:700;padding-right:92px;word-break:keep-all}
+.ewk2 .ct>small{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.ewk2 .cnt{position:absolute;right:0;top:16px;font-size:15px;font-weight:700;color:var(--muted);white-space:nowrap}
+.ewk2 li.off .ct>b{color:var(--off)}
+.ewk2 .ewk-o{margin-top:7px}
+/* 같은 현장 노란 박스 (목록) */
+.ez-oth,.ewk-o,small.wd-o,.others>span{color:var(--amber)!important;background:var(--amber-soft)!important}
+/* 자세히 · 이번 주 */
+.wd{padding:12px 0}
+.wd-h b{font-size:17px}
+.wd-h span{font-size:14px;font-weight:600}
+.wd.today .wd-h b{color:var(--accent)}
+.wd.off .wd-h b{color:var(--off)}
+.wd.none{opacity:.6}
+.wd table{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:6px}
+.wd td{padding:5px 0;vertical-align:top}
+.wd td.t{width:52px;font-weight:700}
+.wd td.k{width:52px;text-align:right}
+.wd td.k .kb{margin-left:0;font-size:12.5px;padding:1px 6px}
+.wd td.u{width:30px;text-align:right;font-weight:700}
+.wd .nm{font-weight:700}
+.wd .ar{display:block;font-size:13px;color:var(--muted)}
+/* 자세히 · 하루 */
+.tl-card{background:var(--surface)!important;border-radius:20px!important;padding:14px 14px 12px!important}
+.tl-item::before{background:var(--line)!important;width:2px!important;left:13px}
+.tl-no{background:var(--accent)!important}
+.kmap{border-radius:18px!important}
+/* 내 정보 */
+.mebox .ez-hi{margin-top:4px}
+.me-list{display:flex;flex-direction:column}
+.me-list .set-it,#fileRow{min-height:60px;border-bottom:1px solid var(--line);padding:8px 0}
+.set-it b{font-size:16px}
+.set-it .go{border:0;background:var(--surface);color:var(--ink);font:700 14.5px var(--font-body);border-radius:10px;min-height:40px;padding:0 14px;display:inline-grid;place-items:center;cursor:pointer}
+body:not(.tab-me) #meBox,body:not(.tab-me) .set-h,body:not(.tab-me) #fileRow,body:not(.tab-me) #branchRow,body:not(.tab-me) #upInfo,body:not(.tab-me) main .disc{display:none!important}
+body:not(.tab-me):not(.ver-old) #verBox{display:none!important}
+body.ver-old:not(.tab-me) #verBox{order:-1}
+body.tab-me #panel,body.tab-me #homeCard,body.tab-me #tabs,body.tab-me #week{display:none!important}
+body.tab-me #fileRow{display:flex!important}
+body.tab-me.linkmode #branchRow{display:none!important}
+body.tab-me .setbox{border:0;padding-top:0;margin-top:0}
+body.tab-me .set-h{display:none}
+body:not(.tab-me) .setbox:not(:has(#shareBox:not([hidden]))){display:none}
+/* 아래 탭 */
+.btabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.btabs button{position:relative;height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;background:none;color:var(--mute);font:600 12.5px var(--font-body);cursor:pointer}
+.btabs svg{width:24px;height:24px}
+.btabs button[aria-current="page"]{color:var(--ink)}
+.btabs-dot{display:none;position:absolute;top:10px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--off)}
+body.ver-old .btabs-dot{display:block}
+.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+@media (min-width:600px){.btabs{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .kb.kj{color:#c9d3dd;background:#2e3038}:root:not([data-theme='light']) .kb.km{color:#9cc0ff;background:#1d2a44}:root:not([data-theme='light']) .kb.ks{color:#ffb4a3;background:#3a2420}:root:not([data-theme='light']) .kb.kw{color:#c9b8ff;background:#2b2442}}
+:root[data-theme='dark'] .kb.kj{color:#c9d3dd;background:#2e3038}:root[data-theme='dark'] .kb.km{color:#9cc0ff;background:#1d2a44}:root[data-theme='dark'] .kb.ks{color:#ffb4a3;background:#3a2420}:root[data-theme='dark'] .kb.kw{color:#c9b8ff;background:#2b2442}
+.who b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#appView~.err-bar,body:has(#appView:not([hidden])) .err-bar{bottom:calc(64px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -1050,6 +1171,7 @@ window.addEventListener(
     <div class="homecard" id="homeCard" hidden></div>
     <section class="panel" id="panel" role="tabpanel"></section>
     <section class="setbox" id="setBox">
+      <section class="mebox" id="meBox"></section>
       <h3 class="set-h">일정표 · 지사 · 위젯</h3>
       <section class="share" id="shareBox" hidden></section>
       <div class="set-it" id="fileRow"></div>
@@ -1063,6 +1185,11 @@ window.addEventListener(
       <button type="button" class="vbtn" id="verBtn">최신 버전 확인</button>
     </div>
   </div></main>
+  <nav class="btabs" id="btabs" aria-label="화면 고르기">
+    <button type="button" data-tab="day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</button>
+    <button type="button" data-tab="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</button>
+    <button type="button" data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보<i class="btabs-dot" id="meDot"></i></button>
+  </nav>
 </div>
 
 <script>
@@ -1443,7 +1570,14 @@ function parseStops(buf) {
     });
 }
 
-const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치' };
+// 검사 종류: 한 글자(정·밀·수·완·설)나 풀어 쓴 말 모두. 완성검사는 지금 설치검사 — 지사에 따라 「완료」「완성」으로도 씀
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치', 정기: '정기', 정밀: '정밀', 수시: '수시', 설치: '설치', 완성: '설치', 완료: '설치', 정밀안전: '정밀' };
+// 검사 종류 배지 (글자 + 차분한 색)
+const KB = { 정기: 'kj', 정밀: 'km', 수시: 'ks', 설치: 'kw' };
+const kb = k => {
+  const n = KIND[k] || k;
+  return n ? `<span class="kb ${KB[n] || 'kj'}">${esc(n)}</span>` : '';
+};
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const $ = id => document.getElementById(id);
 const store = {
@@ -1792,28 +1926,29 @@ function render() {
     `<span>이번 주 근무 <b>${work.length}</b>일</span><span><b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>현장</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
   $('tabs').innerHTML = dayTabs(false);
   $('fileRow').innerHTML = `<div><b>${esc(data.source || '검사 일정표')}</b><span>${days.length ? mdow(days[0]).md + ' ~ ' + mdow(days[days.length - 1]).md : ''}</span></div><label class="go" for="file" role="button" tabindex="0">바꾸기</label>`;
+  meBox();
+  syncTabs();
   drawPanel();
 }
 function drawWeek() {
   const work = days.filter(d => d.t);
   const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
     wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
-  let h = `<section class="dz-h"><h2>${esc(curName())} 님 이번 주</h2><p>${esc(data.source || '검사 일정표')}</p></section>
-    <div class="tot3"><div><b>${work.length}</b><span>근무(일)</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
+  let h = `<div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
   days.forEach(d => {
     const { md, dow } = mdow(d);
     const km = d.t ? ezLegs(d) : null;
     const info = d.t
-      ? `${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대 · ${esc(d.t.team)}${km && km.tot ? ' · ' + km.tot.toFixed(1) + 'km' : ''}`
+      ? `${esc(d.t.team)} · ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대${km && km.tot ? ' · ' + km.tot.toFixed(1) + 'km' : ''}`
       : d.off ? '휴가' : '배정 없음';
-    h += `<section class="wd${d.t ? '' : ' off'}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${dow} ${md}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>`;
+    h += `<section class="wd${d.t ? '' : d.off ? ' off' : ' none'}${d.iso === todayIso ? ' today' : ''}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${md.split('/')[1]} ${dow}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>`;
     if (d.t)
-      h += `<ul>${d.t.stops
+      h += `<table>${d.t.stops
         .map(
           s =>
-            `<li><i>${esc(s.time || '')}</i><span>${esc(placeName(s.name))}${othersTxt(d, s) ? `<small class="wd-o">${othersChunks(d, s)}</small>` : ''}</span><em>${esc((KIND[s.kind] || s.kind || '') + (s.units != null ? ' ' + s.units : ''))}</em></li>`
+            `<tr><td class="t">${esc(s.time || '')}</td><td><span class="nm">${esc(placeName(s.name))}</span>${s.area ? `<span class="ar">${esc(s.area)}</span>` : ''}${othersTxt(d, s) ? `<small class="wd-o">${othersChunks(d, s)}</small>` : ''}</td><td class="k">${kb(s.kind)}</td><td class="u">${s.units != null ? s.units : ''}</td></tr>`
         )
-        .join('')}</ul>`;
+        .join('')}</table>`;
     if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
     h += '</section>';
   });
@@ -1870,7 +2005,7 @@ function drawPanel(dx) {
         .map(
           (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
         <div class="tl-card">
-          <div class="tl-head"><span class="t">${esc(s.time)}</span>${s.kind ? `<i class="kind k-${esc(s.kind)}">${esc(KIND[s.kind] || s.kind)}</i>` : ''}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
+          <div class="tl-head"><span class="t">${esc(s.time)}</span>${kb(s.kind)}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           <div class="elv" id="elv-${i}"></div>
@@ -1919,38 +2054,38 @@ function dayTabs(easy) {
       .join('')
   );
 }
-// 쉬운 화면 · 이번 주: 큰 숫자 3칸 + 날마다 한 줄
+// 쉬운 화면 · 이번 주: 합계 3칸 + 날마다 한 줄 (누르면 그날로)
 function drawEasyWeek() {
-  const name = curName();
   const work = days.filter(d => d.t);
   const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
     wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
-  let h = `<div class="ez-date">${mdow(days[0]).md} ~ ${mdow(days[days.length - 1]).md}</div>
-    <h2 class="ez-title">${esc(name)} 님,<br>이번 주 ${wp}현장 ${wu}대</h2>
-    <div class="ez-days" role="tablist">${dayTabs(true)}</div>
-    <div class="tot3"><div><b>${work.length}</b><span>근무(일)</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>
-    <div class="ewk">`;
+  let h = `<div class="ez-dtx">${mdow(days[0]).md} ~ ${mdow(days[days.length - 1]).md}</div>
+    <h2 class="ez-hi">이번 주</h2>
+    <div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>
+    <ul class="ewk2">`;
   days.forEach(d => {
     if (!d.t && !d.off) return;
     const { md, dow } = mdow(d);
+    const pl = d.t ? places(d.t.stops) : [];
     const first = d.t ? d.t.stops[0] : null;
-    const more = d.t ? places(d.t.stops).length - 1 : 0;
-    h += `<button type="button" class="ewk-r${d.iso === todayIso ? ' today' : ''}${d.t ? '' : ' off'}" data-day="${d.iso}">
-      <span class="ewk-d"><b>${dow}</b><small>${d.iso === todayIso ? '오늘' : md}</small></span>
-      <span class="ewk-c"><b>${d.t ? places(d.t.stops).length + '현장 ' + sumUnits(d.t.stops) + '대' : '휴가'}</b>
-      <small>${first ? esc((first.time ? first.time + ' ' : '') + placeName(first.name)) + (more > 0 ? ' 외 ' + more + '현장' : '') : '푹 쉬세요'}</small>
-      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">${othersChunks(d, s, places(d.t.stops).length > 1 ? placeName(s.name) + ': ' : '')}</small>`).join('') : ''}</span>${d.t ? '<span class="ewk-a">›</span>' : ''}</button>`;
+    const kinds = d.t ? [...new Set(d.t.stops.map(s => KIND[s.kind] || s.kind).filter(Boolean))] : [];
+    const areas = d.t ? [...new Set(d.t.stops.map(s => s.area).filter(Boolean))] : [];
+    h += `<li class="${d.iso === todayIso ? 'today' : ''}${d.t ? '' : ' off'}"><button type="button" data-day="${d.iso}">
+      <span class="dw"><b>${md.split('/')[1]}</b><span>${dow}${d.iso === todayIso ? ' · 오늘' : ''}</span></span>
+      <span class="ct"><b>${first ? esc(placeName(first.name)) + (pl.length > 1 ? ' 외 ' + (pl.length - 1) : '') + kinds.map(kb).join('') : '휴가'}</b>
+      <small>${d.t ? esc(areas.join('·')) : '쉬는 날이에요'}</small>
+      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">${othersChunks(d, s, pl.length > 1 ? placeName(s.name) + ': ' : '')}</small>`).join('') : ''}</span>
+      <span class="cnt">${d.t ? pl.length + '현장 ' + sumUnits(d.t.stops) + '대' : ''}</span></button></li>`;
   });
-  h += `</div>` + ezFoot(null);
+  h += `</ul>`;
   return h;
 }
-// 쉬운 화면 아래: 하루 경로(합계 km) + 일정표 바꾸기
+// 쉬운 화면 아래: 하루 경로
 function ezFoot(route) {
-  return `${route || ''}<div class="ez-foot"><label class="ez-file" for="file" role="button" tabindex="0">일정표 바꾸기</label></div>`;
+  return route || '';
 }
 
 // ════ 쉬운 화면 (시안 B: 하루 경로) ════
-let ezOpen = {}; // iso → 펼친 현장 번호
 const EZ_LOADED = {};
 const nowHm = () => {
   const d = new Date();
@@ -1987,15 +2122,20 @@ function ezLegs(d) {
   return { out, back, tot, unk };
 }
 const legTxt = x => (!x ? '' : x.same ? '같은 현장' : x.km.toFixed(1) + 'km' + (x.mn != null ? ' · ' + x.mn + '분' : ''));
-function ezNav(s) {
-  const g = GEO[mapQuery(s)];
-  const dest = g && g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : placeName(s.name);
+// 길안내 버튼 3개 (좌표가 있으면 바로 길안내, 없으면 이름으로 검색)
+function navLinks(name, g, s) {
+  const dest = g && g.addr ? g.addr.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : name;
   const de = encodeURIComponent(dest.replace(/,/g, ' '));
   if (!IS_MOBILE)
     return `<div class="ez-nav two"><a class="k" href="https:\/\/map.kakao.com/?eName=${de}" target="_blank" rel="noopener">카카오맵</a><a class="n" href="https:\/\/map.naver.com/p/search/${de}" target="_blank" rel="noopener">네이버지도</a></div>`;
-  if (!g)
-    return `<div class="ez-nav"><a class="t" href="tmap:\/\/search?name=${encodeURIComponent(mapQuery(s))}">티맵</a><a class="k" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오</a><a class="n" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버</a></div>`;
-  return `<div class="ez-nav"><a class="t" href="${tmapUrl(de, g)}">티맵</a><a class="k" href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오</a><a class="n" href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule">네이버</a></div>`;
+  if (!g || !g.lat) {
+    const q = encodeURIComponent(s ? mapQuery(s) : name);
+    return `<div class="ez-nav"><a class="t" href="tmap:\/\/search?name=${q}">티맵</a><a class="k" href="${s ? mapUrl(s) : 'https:\/\/map.kakao.com/?q=' + q}" target="_blank" rel="noopener">카카오맵</a><a class="n" href="${s ? naverUrl(s) : 'https:\/\/map.naver.com/p/search/' + q}" target="_blank" rel="noopener">네이버지도</a></div>`;
+  }
+  return `<div class="ez-nav"><a class="t" href="${tmapUrl(de, g)}">티맵</a><a class="k" href="https:\/\/map.kakao.com/link/to/${de},${g.lat},${g.lng}" target="_blank" rel="noopener">카카오맵</a><a class="n" href="nmap:\/\/route/car?dlat=${g.lat}&dlng=${g.lng}&dname=${de}&appname=elevator.schedule">네이버지도</a></div>`;
+}
+function ezNav(s) {
+  return navLinks(placeName(s.name), GEO[mapQuery(s)], s);
 }
 function ezDetail(d, s, i) {
   const g = GEO[mapQuery(s)];
@@ -2017,6 +2157,20 @@ function ezDetail(d, s, i) {
   return `<div class="ez-kv">${rows.map(r => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('')}</div>
     <button type="button" class="ez-more" data-full="${i}">위치 고치기 · 호기별 보기는 자세히에서</button>`;
 }
+const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+let ezPick = {}; // iso → 크게 볼 현장 번호 (현장 수 = 복귀). 시간으로 정하지 않고 사용자가 고름
+let ezInfo = false; // 주소·승강기 정보 펼침
+// 날짜 머리: ‹ 10/23 금요일 ›  (근무·휴가 날만 넘김)
+function dayNav(d) {
+  const list = days.filter(x => x.t || x.off);
+  const pv = list.filter(x => x.iso < d.iso).pop(),
+    nx = list.find(x => x.iso > d.iso);
+  const { md, dow } = mdow(d);
+  const [m, dd] = md.split('/');
+  const btn = (x, lab, path) =>
+    `<button type="button" class="ez-ar"${x ? ` data-go="${x.iso}"` : ' disabled'} aria-label="${lab}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg></button>`;
+  return `<div class="ez-dnav">${btn(pv, '전날 보기', 'M15 6l-6 6 6 6')}<div class="ez-dt"><b>${m}월 ${dd}일 ${dow}요일</b>${d.iso === todayIso ? '<span>오늘</span>' : ''}</div>${btn(nx, '다음 날 보기', 'M9 6l6 6-6 6')}</div>`;
+}
 function drawEasy() {
   const p = $('panel');
   if (!days.length) return;
@@ -2028,56 +2182,85 @@ function drawEasy() {
   }
   const d = days.find(x => x.iso === sel);
   const name = curName();
-  const { md, dow } = mdow(d);
   const isToday = d.iso === todayIso;
-  const when = isToday ? '오늘' : md + ' ' + dow + '요일';
-  let h = `<div class="ez-date">${md} ${dow}요일${isToday ? ' · 오늘' : ''}${d.t ? ' · ' + esc(d.t.team) : ''}</div>`;
+  const when = isToday ? '오늘' : mdow(d).dow + '요일';
+  let h = dayNav(d);
   if (d.t) {
+    const st = d.t.stops,
+      n = st.length;
     const mates = d.t.members.map(bare).filter(x => x !== name);
     const L = ezLegs(d);
-    h += `<h2 class="ez-title">${esc(name)} 님,<br>${when} ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대</h2>
-      <div class="ez-sum">${[mates.length ? esc(mates.join(', ')) + ' 님과' : '', L.tot ? '총 경로 ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : ''].filter(Boolean).join(' · ')}</div>`;
-    h += ezDays(d);
+    const home = ORIGIN && ORIGIN.lat ? ORIGIN : null;
+    const homeNm = BRANCH ? BRANCH[0] : home ? home.name : '지사';
+    const tot = L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
+    h += `<h2 class="ez-hi">${esc(name)} 님,<br>${when} <em>${places(st).length}현장 ${sumUnits(st)}대</em></h2>
+      <p class="ez-hisub">${[esc(d.t.team), mates.length ? esc(mates.join(', ')) + ' 님과' : '', tot ? '총 경로 ' + tot : ''].filter(Boolean).join(' · ')}</p>`;
+    // 오늘 시간이 지난 현장은 흐리게만 (고르는 건 사용자)
     const hm = nowHm();
-    const past = i => isToday && d.t.stops[i].time && d.t.stops[i].time < hm && i < d.t.stops.length - 1 && d.t.stops[i + 1].time && d.t.stops[i + 1].time <= hm;
-    let next = d.t.stops.findIndex((s, i) => !past(i));
-    if (next < 0) next = 0;
-    const open = d.iso in ezOpen ? ezOpen[d.iso] : next;
-    h += `<div class="ez-tl">`;
-    if (ORIGIN && ORIGIN.lat)
-      h += `<div class="ez-r${past(0) ? ' ez-past' : ''}"><div class="ez-tm" style="font-size:13.5px;color:var(--muted)">출발</div><div class="ez-rail"><span class="ez-dot home"></span><span class="ez-ln"></span></div>
-        <div class="ez-bd"><div class="ez-nm" style="font-size:16px">${esc(BRANCH ? BRANCH[0] : ORIGIN.name)}</div>${L.out[0] ? `<div class="ez-mv">${legTxt(L.out[0])}</div>` : ''}</div></div>`;
-    d.t.stops.forEach((s, i) => {
-      const last = i === d.t.stops.length - 1;
-      const pz = past(i);
-      h += `<div class="ez-r${pz ? ' ez-past' : ''}"><div class="ez-tm">${esc(s.time || '')}</div><div class="ez-rail"><span class="ez-dot"></span><span class="ez-ln${last ? ' dash' : ''}"></span></div>
-        <div class="ez-bd"><button type="button" class="ez-head" data-open="${i}" aria-expanded="${open === i}"><div class="ez-nm">${esc(placeName(s.name))}</div>
-        <div class="ez-in">${pz ? '다녀옴' : esc([s.area, ((KIND[s.kind] || s.kind || '') + ' ' + (s.units != null ? s.units + '대' : '')).trim()].filter(Boolean).join(' · '))}</div>
-        ${othersTxt(d, s) ? `<div class="ez-oth">${othersChunks(d, s)}</div>` : ''}</button>
-        ${open === i ? ezNav(s) + ezDetail(d, s, i) : ''}
-        ${!last && L.out[i + 1] ? `<div class="ez-mv">${legTxt(L.out[i + 1])}</div>` : last && L.back ? `<div class="ez-mv">${legTxt(L.back)} → 지사</div>` : ''}</div></div>`;
+    const past = i => isToday && st[i].time && st[i].time < hm && i < n - 1 && st[i + 1].time && st[i + 1].time <= hm;
+    let pick = d.iso in ezPick ? ezPick[d.iso] : 0;
+    if (pick > n || (pick === n && !home)) pick = 0;
+    if (n > 1 || home)
+      h += `<div class="ez-stops" role="group" aria-label="크게 볼 현장 고르기">${st
+        .map((s, i) => `<button type="button" class="${i === pick ? 'on' : ''}${past(i) ? ' past' : ''}" data-pick="${i}" aria-pressed="${i === pick}"><i>${i + 1}</i>${esc(placeName(s.name))}</button>`)
+        .join('')}${home ? `<button type="button" class="${pick === n ? 'on' : ''}" data-pick="${n}" aria-pressed="${pick === n}">복귀</button>` : ''}</div>`;
+    if (pick < n) {
+      const s = st[pick];
+      const lg = L.out[pick];
+      const from = pick === 0 ? '지사' : placeName(st[pick - 1].name);
+      const dl = !lg ? '' : lg.same ? '앞 현장과 같은 곳이에요' : `${esc(from)}에서 ${lg.km.toFixed(1)}km${lg.mn != null ? ' · ' + lg.mn + '분' : ''}`;
+      const plan = [s.time ? `일정표 <b>${esc(s.time)}</b>` : '', esc(s.area || ''), s.units != null ? s.units + '대' : ''].filter(Boolean).join(' · ');
+      h += `<section class="ez-card${past(pick) ? ' past' : ''}">
+        <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : '오늘 현장'}</div>
+        <div class="ez-n">${esc(placeName(s.name))}${kb(s.kind)}</div>
+        ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
+        ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
+        ${dl ? `<div class="ez-d">${ARROW}${dl}</div>` : ''}
+        ${othersTxt(d, s) ? `<div class="ez-same">${othersChunks(d, s)}</div>` : ''}
+        ${ezNav(s)}
+        <button type="button" class="ez-info" data-info aria-expanded="${ezInfo}">주소 · 승강기 정보 ${ezInfo ? '접기' : '보기'}</button>
+        ${ezInfo ? ezDetail(d, s, pick) : ''}
+      </section>`;
+    } else {
+      h += `<section class="ez-card">
+        <div class="ez-lab"><i></i>복귀</div>
+        <div class="ez-n">${esc(homeNm)}</div>
+        ${L.back ? `<div class="ez-d">${ARROW}${esc(placeName(st[n - 1].name))}에서 ${L.back.km.toFixed(1)}km${L.back.mn != null ? ' · ' + L.back.mn + '분' : ''}</div>` : ''}
+        ${navLinks(homeNm, home, null)}
+      </section>`;
+    }
+    // 하루 경로: 출발 → 현장들 → 복귀 (누르면 그 현장을 크게)
+    const km = x => (!x ? '' : x.same ? '같은 현장' : x.km.toFixed(1) + 'km');
+    h += `<div class="ez-h2"><b>${isToday ? '오늘' : '이날'} 경로</b>${tot ? `<span>총 ${tot}</span>` : ''}</div><ul class="ez-route">`;
+    if (home) h += `<li class="base${past(0) ? ' past' : ''}"><div class="rr"><span class="tt">출발</span><i class="dot"></i><div><div class="nm">${esc(homeNm)}</div></div></div></li>`;
+    st.forEach((s, i) => {
+      const sm = [esc(s.area || ''), s.units != null ? s.units + '대' : '', km(L.out[i])].filter(Boolean).join(' · ');
+      h += `<li class="${past(i) ? 'past' : ''}${i === pick ? ' cur' : ''}"><button type="button" class="rr" data-pick="${i}"><span class="tt">${esc(s.time || '')}</span><i class="dot"></i><div><div class="nm">${esc(placeName(s.name))}${kb(s.kind)}</div>${sm ? `<div class="sm">${sm}</div>` : ''}</div></button></li>`;
     });
-    h += `</div>`;
-    // 총 경로(지사 출발 → 현장들 → 지사 복귀) km
-    const route = L.tot ? `<div class="ez-route"><b>총 경로 ${L.tot.toFixed(1)}km${L.unk ? '+' : ''}</b></div>` : '';
-    h += ezFoot(route);
+    if (home) h += `<li class="base${pick === n ? ' cur' : ''}"><button type="button" class="rr" data-pick="${n}"><span class="tt">복귀</span><i class="dot"></i><div><div class="nm">${esc(homeNm)}</div>${L.back ? `<div class="sm">${km(L.back)}</div>` : ''}</div></button></li>`;
+    h += `</ul>`;
   } else {
-    h += `<h2 class="ez-title">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
-    h += ezDays(d);
+    h += `<h2 class="ez-hi">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
     const nx = days.find(x => x.t && x.iso > d.iso);
-    h += `<div class="ez-rest">${nx ? `<p>다음 근무 · ${mdow(nx).md} (${mdow(nx).dow}) ${places(nx.t.stops).length}현장</p><button type="button" class="ez-btn" data-go="${nx.iso}">다음 근무일 보기</button>` : '<p>이 일정표에 남은 근무가 없어요</p>'}</div>` + ezFoot(null);
+    h += `<div class="ez-rest">${nx ? `<p>다음 근무 · ${mdow(nx).md} (${mdow(nx).dow}) ${places(nx.t.stops).length}현장</p><button type="button" class="ez-btn" data-go="${nx.iso}">다음 근무일 보기</button>` : '<p>이 일정표에 남은 근무가 없어요</p>'}</div>`;
   }
+  if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
   p.innerHTML = h;
-  p.querySelectorAll('[data-day]').forEach(b => (b.onclick = () => go(b.dataset.day)));
-  p.querySelectorAll('[data-go]').forEach(b => (b.onclick = () => go(b.dataset.go)));
-  p.querySelectorAll('[data-open]').forEach(
+  p.querySelectorAll('[data-go]').forEach(b => (b.onclick = e => (e.stopPropagation(), go(b.dataset.go))));
+  p.querySelectorAll('[data-pick]').forEach(
     b =>
       (b.onclick = () => {
-        const i = +b.dataset.open;
-        ezOpen[d.iso] = ezOpen[d.iso] === i ? -1 : i;
+        ezPick[d.iso] = +b.dataset.pick;
         drawEasy();
+        if (b.classList.contains('rr')) window.scrollTo({ top: 0, behavior: 'smooth' });
       })
   );
+  const inf = p.querySelector('[data-info]');
+  if (inf)
+    inf.onclick = () => {
+      ezInfo = !ezInfo;
+      drawEasy();
+    };
   p.querySelectorAll('[data-full]').forEach(b => (b.onclick = () => setMode('full')));
   if (SERVER && d.t && !EZ_LOADED[d.iso]) {
     EZ_LOADED[d.iso] = true;
@@ -2085,9 +2268,6 @@ function drawEasy() {
       if (sel === d.iso && document.body.classList.contains('easy')) drawEasy();
     });
   }
-}
-function ezDays(d) {
-  return `<div class="ez-days" role="tablist">${dayTabs(true)}</div>`;
 }
 // 쉬운 화면용: 위치·구간 거리·승강기 정보를 불러옴 (다 되면 다시 그림)
 async function easyLoad(d) {
@@ -2126,9 +2306,42 @@ async function easyLoad(d) {
   }
 }
 
+// 아래 탭: 오늘(하루) · 이번 주 · 내 정보
+let lastDay = null;
+const curTab = () => (document.body.classList.contains('tab-me') ? 'me' : sel === 'week' ? 'week' : 'day');
+function syncTabs() {
+  const t = curTab();
+  document.querySelectorAll('#btabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === t ? 'page' : 'false'));
+}
+function setTab(t) {
+  const was = curTab();
+  document.body.classList.toggle('tab-me', t === 'me');
+  if (days.length) {
+    if (t === 'week' && sel !== 'week') {
+      lastDay = sel;
+      sel = 'week';
+      drawPanel();
+    }
+    if (t === 'day') {
+      // 하루 화면에서 한 번 더 누르면 오늘(가까운 근무일)로
+      const iso = was === 'day' || !lastDay ? defaultDay(days) : sel === 'week' ? lastDay : sel;
+      if (iso !== sel) {
+        sel = iso;
+        drawPanel();
+      }
+    }
+  }
+  if (t !== 'week' && sel !== 'week') lastDay = sel;
+  syncTabs();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('#btabs button').forEach(b => (b.onclick = () => setTab(b.dataset.tab)));
 function go(iso, dx) {
-  if (!iso || iso === sel) return;
+  document.body.classList.remove('tab-me');
+  if (!iso || iso === sel) return syncTabs();
   sel = iso;
+  if (iso !== 'week') lastDay = iso;
+  syncTabs();
   $('tabs')
     .querySelectorAll('.dtab')
     .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
@@ -2253,7 +2466,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.8';
+const PAGE_VER = '3.9';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2270,6 +2483,7 @@ function verLine() {
 function verShow(kind, text, btn, act) {
   const m = document.getElementById('verMsg'), b = document.getElementById('verBtn');
   m.hidden = !text; m.className = 'vmsg' + (kind ? ' ' + kind : ''); m.textContent = text || '';
+  document.body.classList.toggle('ver-old', kind === 'old' && !!text);
   b.textContent = btn; b.className = 'vbtn' + (act ? ' go' : ''); b.onclick = act || verCheck;
   b.disabled = false;
 }
@@ -2392,7 +2606,7 @@ function matchRecptn(d, s) {
     else continue;
     if (r.d === day) sc += 2;
     if (s.area && r.addr.includes(s.area)) sc += 2;
-    if (KIND[s.kind] === r.kind) sc += 1;
+    if (KIND[s.kind] && r.kind && r.kind.startsWith(KIND[s.kind])) sc += 1;
     if (sc > bs) {
       bs = sc;
       best = r;
@@ -3123,6 +3337,38 @@ function nameAsk(note, local) {
   $('nmIn').focus();
 }
 // 화면 아래: 누가 언제 올렸는지 · 이전 일정표로 되돌리기 · 인터넷 없을 때 안내
+// 내 정보: 이름·지사, 이름 바꾸기, 어둡게, 위젯 추가
+function meBox() {
+  const el = $('meBox');
+  if (!el) return;
+  const name = curName();
+  const br = LINK ? LINK.b : BRANCH ? BRANCH[0] : '';
+  const ab = APP && appBridge();
+  el.innerHTML = `<h2 class="ez-hi">${name ? esc(name) + ' 님' : '내 정보'}</h2>${br ? `<p class="ez-hisub">${esc(br)}</p>` : ''}
+    <div class="me-list">
+      ${LINK && API ? `<div class="set-it"><div><b>이름</b><span>${esc(name || '–')}</span></div><button type="button" class="go" id="meName">바꾸기</button></div>` : ''}
+      <div class="set-it"><div><b>화면 밝기</b><span>${isDark() ? '어둡게' : '밝게'}</span></div><button type="button" class="go" id="meTheme">${isDark() ? '밝게 보기' : '어둡게 보기'}</button></div>
+      ${ab ? `<div class="set-it"><div><b>홈 화면 위젯</b><span>첫 화면에서 오늘 현장·길안내</span></div><button type="button" class="go" id="meWidget">추가</button></div>` : ''}
+    </div>`;
+  if ($('meName'))
+    $('meName').onclick = () => {
+      document.body.classList.remove('tab-me');
+      $('name').value = '';
+      data = null;
+      render();
+      nameAsk('');
+    };
+  $('meTheme').onclick = () => {
+    $('themeBtn').click();
+    meBox();
+  };
+  if ($('meWidget'))
+    $('meWidget').onclick = () => {
+      try {
+        ab.addWidget();
+      } catch (e) {}
+    };
+}
 function upInfo() {
   const el = $('upInfo'),
     off = $('offBar');
@@ -3397,7 +3643,8 @@ $('panel').addEventListener(
       dy = e.changedTouches[0].clientY - sy;
     sx = null;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
-    const order = ['week', ...days.map(d => d.iso)];
+    if (sel === 'week' || document.body.classList.contains('tab-me')) return;
+    const order = days.filter(d => d.t || d.off || !document.body.classList.contains('easy')).map(d => d.iso);
     const i = order.indexOf(sel);
     const n = order[i + (dx < 0 ? 1 : -1)];
     if (n) go(n, dx < 0 ? 40 : -40);

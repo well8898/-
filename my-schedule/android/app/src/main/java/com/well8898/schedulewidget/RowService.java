@@ -51,20 +51,27 @@ public class RowService extends RemoteViewsService {
             v.setTextViewText(R.id.info, r.info);
             v.setTextViewText(R.id.leg, r.leg);
             v.setViewVisibility(R.id.leg, r.leg.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
-            // 타임라인 선·점: 첫 줄은 위 선 없이, 마지막 줄은 아래 선 없이. 지난 현장은 흐리게
+            // 줄 사이 선(첫 줄 위는 없음), 지난 현장은 흐리게
+            v.setViewVisibility(R.id.divider, p == 0 ? android.view.View.GONE : android.view.View.VISIBLE);
             int ink = c.getColor(r.done ? R.color.w_dim : R.color.w_ink);
             int sub = c.getColor(r.done ? R.color.w_dim : R.color.w_sub);
-            int line = c.getColor(r.done ? R.color.w_past : R.color.w_line);
             v.setTextColor(R.id.time, ink);
             v.setTextColor(R.id.name, ink);
             v.setTextColor(R.id.info, sub);
-            v.setTextColor(R.id.leg, sub);
-            v.setViewVisibility(R.id.line_top, p == 0 ? android.view.View.INVISIBLE : android.view.View.VISIBLE);
-            v.setViewVisibility(R.id.line_bot, p == rows.size() - 1 ? android.view.View.INVISIBLE : android.view.View.VISIBLE);
-            v.setInt(R.id.line_top, "setBackgroundColor", p > 0 && rows.get(p - 1).done ? c.getColor(R.color.w_past) : line);
-            v.setInt(R.id.line_bot, "setBackgroundColor", line);
-            v.setViewVisibility(R.id.dot, r.done ? android.view.View.GONE : android.view.View.VISIBLE);
-            v.setViewVisibility(R.id.dot_past, r.done ? android.view.View.VISIBLE : android.view.View.GONE);
+            v.setTextColor(R.id.leg, r.done ? sub : c.getColor(R.color.w_ink));
+            // 검사 종류 배지 (정기·정밀·수시·설치, 차분한 색)
+            String k = r.kind;
+            boolean has = !k.isEmpty();
+            v.setViewVisibility(R.id.kind, has ? android.view.View.VISIBLE : android.view.View.GONE);
+            if (has) {
+                int bg = R.drawable.kb_j, fg = R.color.kb_j;
+                if (k.startsWith("정밀")) { bg = R.drawable.kb_m; fg = R.color.kb_m; }
+                else if (k.startsWith("수시")) { bg = R.drawable.kb_s; fg = R.color.kb_s; }
+                else if (k.startsWith("설치")) { bg = R.drawable.kb_w; fg = R.color.kb_w; }
+                v.setTextViewText(R.id.kind, k);
+                v.setInt(R.id.kind, "setBackgroundResource", bg);
+                v.setTextColor(R.id.kind, c.getColor(fg));
+            }
             // 줄(시간·현장명)은 웹앱 그날 일정, 「티맵」「카카오」「네이버」는 각 앱 길안내
             Intent tmap = new Intent().setData(Uri.parse(r.link));
             v.setOnClickFillInIntent(R.id.row, web.isEmpty() ? tmap : new Intent().setData(Uri.parse(web)));

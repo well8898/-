@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="w_bg">#FF1D232B</color>
-    <color name="w_ink">#FFF1F5F9</color>
-    <color name="w_sub">#FF94A3B8</color>
-    <color name="w_btn">#FF2A313B</color>
-    <color name="w_btn_ink">#FFE2E8F0</color>
-    <color name="w_line">#FF5B8DEF</color>
-    <color name="w_past">#FF3B4A6B</color>
-    <color name="w_dim">#FF64748B</color>
+    <color name="w_bg">#FF1F2026</color>
+    <color name="w_ink">#FFF2F4F6</color>
+    <color name="w_sub">#FFB0B8C1</color>
+    <color name="w_btn">#FF2E3038</color>
+    <color name="w_btn_ink">#FFB0B8C1</color>
+    <color name="w_line">#FF2E3038</color>
+    <color name="w_dim">#FF7D8794</color>
+    <color name="kb_j">#FFC9D3DD</color>
+    <color name="kb_j_bg">#FF2E3038</color>
+    <color name="kb_m">#FF9CC0FF</color>
+    <color name="kb_m_bg">#FF1D2A44</color>
+    <color name="kb_s">#FFFFB4A3</color>
+    <color name="kb_s_bg">#FF3A2420</color>
+    <color name="kb_w">#FFC9B8FF</color>
+    <color name="kb_w_bg">#FF2B2442</color>
 </resources>

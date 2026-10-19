@@ -146,7 +146,7 @@ final class Data {
     }
 
     static final class Row {
-        String time, name, info, leg, link, kakao, naver;
+        String time, name, kind, info, leg, link, kakao, naver;
         boolean done;
     }
 
@@ -166,8 +166,11 @@ final class Data {
             r.time = l.optString("time");
             r.name = l.optString("name");
             String area = l.optString("area");
-            String kind = (l.optString("kind") + " " + l.optString("units")).trim();
-            r.info = area.isEmpty() ? kind : kind.isEmpty() ? area : area + " · " + kind;
+            // 종류는 배지로 따로, 아래 줄은 동네 · 대수
+            r.kind = l.optString("kind");
+            String units = l.optString("units");
+            units = units.isEmpty() ? "" : units + "대";
+            r.info = area.isEmpty() ? units : units.isEmpty() ? area : area + " · " + units;
             // 구간 거리 (지사→12.3km / ↑4.0km / 같은 곳)
             r.leg = l.optString("leg");
             JSONObject nav = l.optJSONObject("nav");

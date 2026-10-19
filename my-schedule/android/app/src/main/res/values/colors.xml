@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 위젯 색 (어두운 화면은 values-night) — 시안 B -->
+<!-- 위젯 색 (어두운 화면은 values-night) — 개편: 흰 바탕 · 차분한 회색 -->
 <resources>
     <color name="w_bg">#FFFFFFFF</color>
-    <color name="w_ink">#FF17191C</color>
-    <color name="w_sub">#FF6B7280</color>
-    <color name="w_btn">#FFF1F3F5</color>
-    <color name="w_btn_ink">#FF374151</color>
-    <color name="w_line">#FF2563EB</color>
-    <color name="w_past">#FFC7D2FE</color>
-    <color name="w_dim">#FF9CA3AF</color>
+    <color name="w_ink">#FF191F28</color>
+    <color name="w_sub">#FF4E5968</color>
+    <color name="w_btn">#FFF2F4F6</color>
+    <color name="w_btn_ink">#FF4E5968</color>
+    <color name="w_line">#FFE5E8EB</color>
+    <color name="w_dim">#FF87909C</color>
     <color name="ic_bg">#FF3D5AFE</color>
+    <!-- 검사 종류 배지: 정기·정밀·수시·설치 -->
+    <color name="kb_j">#FF4E5968</color>
+    <color name="kb_j_bg">#FFE9ECEF</color>
+    <color name="kb_m">#FF1B4FB8</color>
+    <color name="kb_m_bg">#FFE8F0FD</color>
+    <color name="kb_s">#FFA1361F</color>
+    <color name="kb_s_bg">#FFFCEBE6</color>
+    <color name="kb_w">#FF5B3EA8</color>
+    <color name="kb_w_bg">#FFEFEAFB</color>
 </resources>
