@@ -35,8 +35,15 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 .next{background:var(--well);border-radius:22px;padding:18px 18px 16px}
 .next .lab{display:flex;align-items:center;gap:8px;font:700 14px P;color:var(--accent)}
 .next .lab i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent)}
-.next .t{font:800 30px P;letter-spacing:-.5px;margin-top:10px}
-.next .n{font:800 26px/1.25 P;letter-spacing:-.6px;margin-top:2px}
+.stops{display:flex;gap:6px;margin:0 -20px 10px;padding:0 20px;overflow-x:auto;scrollbar-width:none}
+.stops button{flex:none;height:42px;border:1.5px solid var(--line);background:var(--bg);color:var(--sub);border-radius:21px;padding:0 12px;font:700 15px P;display:flex;align-items:center;gap:6px}
+.stops button i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--well);color:var(--sub);display:grid;place-items:center;font:800 12px P}
+.stops button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.stops button.on i{background:var(--bg);color:var(--ink)}
+.hint{font:500 13.5px P;color:var(--sub);margin:-2px 0 10px}
+.next .n{font:800 27px/1.25 P;letter-spacing:-.6px;margin-top:8px}
+.next .plan{font:600 15px P;color:var(--sub);margin-top:6px}
+.next .plan b{color:var(--ink);font-weight:700}
 .next .m{font:500 16px P;color:var(--sub);margin-top:6px}
 .next .d{display:flex;align-items:center;gap:6px;font:600 16px P;color:var(--ink);margin-top:12px}
 .same{margin-top:12px;background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:9px 12px;font:600 14.5px/1.45 P}
@@ -63,6 +70,8 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 .route li.done .sm{color:var(--done)}
 .route .ok{font:700 12.5px P;color:var(--sub);background:var(--well);border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:2px}
 .route li.cur .nm{color:var(--accent)}
+.route li.cur{background:var(--accent-soft);border-radius:12px;margin:0 -10px;padding-left:10px;padding-right:10px}
+.route li.cur:not(:last-child)::after{left:77px}
 .total{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:4px;padding:14px 0 0;font:700 16px P}
 .total span{color:var(--sub);font-weight:600}
 /* 탭바 */
@@ -127,18 +136,18 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 <div class="board">
 
 <!-- 1. 아침 출발 전 -->
-<div class="col"><div class="cap">아침 출발 전<small>08:10 · 오늘 탭</small></div>
+<div class="col"><div class="cap">아침 출발 전<small>처음엔 1번째 현장이 보임</small></div>
 <div class="phone">
   <div class="sb"><span>8:10</span><span>5G</span></div>
   <div class="scroll">
     <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div>
     <div class="hi">김민준 님,<br>오늘 <em>2현장 13대</em></div>
     <p class="hisub">3조 · 윤서준 님과 · 총 경로 29.0km</p>
+<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button" class="on"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
     <div class="next">
-      <div class="lab"><i></i>첫 현장</div>
-      <div class="t">09:40</div>
+      <div class="lab"><i></i>1번째 현장 · 2현장 중</div>
       <div class="n">한빛마을7단지</div>
-      <div class="m">야당동 · 정밀 5대</div>
+      <div class="plan">일정표 <b>09:40</b> · 야당동 · 정밀 5대</div>
       <div class="d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>지사에서 9.8km · 20분</div>
       <div class="same">같은 현장 · 4조 <b>장지민·임하준</b> 5대</div>
       <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
@@ -153,28 +162,26 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 </div></div>
 
 <!-- 2. 이동 중 -->
-<div class="col"><div class="cap">현장 사이 이동 중<small>11:20 · 첫 현장 끝, 다음 현장이 커짐</small></div>
+<div class="col"><div class="cap">현장 사이 이동 중<small>갈 현장을 직접 눌러 고름 · 시간으로 정하지 않음</small></div>
 <div class="phone">
   <div class="sb"><span>11:20</span><span>5G</span></div>
   <div class="scroll">
     <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div>
-    <ul class="route" style="margin-top:6px">
-      <li class="done"><span class="tt">09:40</span><i class="dot"></i><div><div class="nm">한빛마을7단지<span class="ok">완료</span></div></div></li>
-    </ul>
-    <div class="next" style="margin-top:6px">
-      <div class="lab"><i></i>다음 현장 · 1시간 40분 뒤</div>
-      <div class="t">13:00</div>
+    <div class="hi" style="font-size:22px;margin:4px 0 12px">어디로 갈까요?</div>
+<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button"><i>1</i>한빛마을7단지</button><button type="button" class="on"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+    <div class="next">
+      <div class="lab"><i></i>2번째 현장 · 2현장 중</div>
       <div class="n">유승아파트</div>
-      <div class="m">관산동 · 정기 8대</div>
+      <div class="plan">일정표 <b>13:00</b> · 관산동 · 정기 8대</div>
       <div class="d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>한빛마을7단지에서 6.4km · 14분</div>
       <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
     </div>
-    <div class="h2"><b>남은 경로</b><span>복귀까지 19.2km</span></div>
+    <div class="h2"><b>오늘 경로</b><span>총 29.0km</span></div>
     <ul class="route">
+      <li><span class="tt">09:40</span><i class="dot"></i><div><div class="nm">한빛마을7단지</div><div class="sm">야당동 · 정밀 5대 · 9.8km</div></div></li>
       <li class="cur"><span class="tt">13:00</span><i class="dot"></i><div><div class="nm">유승아파트</div><div class="sm">관산동 · 정기 8대 · 6.4km</div></div></li>
       <li class="base"><span class="tt">복귀</span><i class="dot"></i><div><div class="nm">고양파주지사</div><div class="sm">12.8km</div></div></li>
     </ul>
-    <div class="total">총 경로<span>29.0km · 약 58분</span></div>
   </div>
   <div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div>
 </div></div>
@@ -199,18 +206,15 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 </div></div>
 
 <!-- 4. 어둡게 -->
-<div class="col"><div class="cap">어둡게 (저녁·차 안)<small>이동 중 화면</small></div>
+<div class="col"><div class="cap">어둡게 (저녁·차 안)<small>「복귀」를 고른 모습</small></div>
 <div class="phone dark">
   <div class="sb"><span>17:40</span><span>5G</span></div>
   <div class="scroll">
     <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div>
-    <ul class="route" style="margin-top:6px">
-      <li class="done"><span class="tt">09:40</span><i class="dot"></i><div><div class="nm">한빛마을7단지<span class="ok">완료</span></div></div></li>
-      <li class="done"><span class="tt">13:00</span><i class="dot"></i><div><div class="nm">유승아파트<span class="ok">완료</span></div></div></li>
-    </ul>
-    <div class="next" style="margin-top:6px">
-      <div class="lab"><i></i>오늘 마지막 · 복귀</div>
-      <div class="t">복귀</div>
+    <div class="hi" style="font-size:22px;margin:4px 0 12px">어디로 갈까요?</div>
+<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button" class="on">복귀</button></div>
+    <div class="next">
+      <div class="lab"><i></i>복귀</div>
       <div class="n">고양파주지사</div>
       <div class="m">유승아파트에서 12.8km · 26분</div>
       <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
