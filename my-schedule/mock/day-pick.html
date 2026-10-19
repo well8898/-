@@ -1,0 +1,59 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>날짜 고르기 시안</title><link rel="stylesheet" href="redesign.css"><style>
+.top .date:empty{display:none}.top{justify-content:flex-end}
+/* A: 요일 5칸 고정 */
+.dp{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 14px}
+.dp button{border:0;background:var(--well);border-radius:14px;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-family:P;color:var(--ink)}
+.dp span{font:600 13px P;color:var(--sub)}.dp b{font:800 19px P}.dp em{font:600 11.5px P;font-style:normal;color:var(--sub)}
+.dp .on{background:var(--accent)}.dp .on span,.dp .on b,.dp .on em{color:#fff}
+.dp .off b,.dp .off em{color:#c4373b}
+/* B: 큰 요일 + 밑줄 탭 */
+.dl{display:flex;align-items:baseline;gap:8px;margin-top:2px}.dl b{font:800 20px P}.dl span{font:600 15px P;color:var(--sub)}.dl i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}
+.dw2{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);margin:8px 0 12px}
+.dw2 span{text-align:center;font:700 17px P;color:var(--mute);padding:10px 0 11px}
+.dw2 .on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}.dw2 .x{color:#c4373b}
+/* C: 날짜 눌러 고르기 */
+.dd{display:flex;align-items:center;gap:6px;border:0;background:var(--well);border-radius:12px;height:44px;padding:0 12px 0 14px;font:700 16px P;color:var(--ink);margin-top:2px}
+.dd i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}.dd svg{width:18px;height:18px;color:var(--sub)}
+.sheetbg{position:absolute;inset:0;background:rgba(25,31,40,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 24px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}.st{font:800 20px P;display:block;margin-bottom:6px}
+.sheet ul{list-style:none;margin:0;padding:0}.sheet li{display:flex;flex-direction:column;padding:12px 12px;border-radius:14px}
+.sheet li span{font:800 17px P}.sheet li em{font:500 14px P;font-style:normal;color:var(--sub);margin-top:2px}
+.sheet li.on{background:var(--accent-soft)}.sheet li.on span{color:var(--accent)}.sheet li.off span{color:#c4373b}
+</style></head><body><div class="board">
+<div class="col"><div class="cap">A. 요일 5칸 버튼<small>월~금이 늘 보이고 한 번 눌러 이동 · 현장 수도 함께</small></div>
+<div class="phone"><div class="sb"><span>8:10</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div><div class="dp"><button><span>월</span><b>19</b><em>1현장</em></button><button class="off"><span>화</span><b>20</b><em>휴가</em></button><button><span>수</span><b>21</b><em>2현장</em></button><button><span>목</span><b>22</b><em>1현장</em></button><button class="on"><span>금</span><b>23</b><em>오늘</em></button></div><div class="hi">김민준 님,<br>오늘 <em>2현장 13대</em></div>
+    <p class="hisub">3조 · 윤서준 님과 · 총 경로 29.0km</p><div class="stops"><button type="button" class="on"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+    <div class="next">
+      <div class="lab"><i></i>1번째 현장 · 2현장 중</div>
+      <div class="n">한빛마을7단지<span class="kb km">정밀</span></div>
+      <div class="plan">일정표 <b>09:40</b> · 야당동 · 5대</div>
+      <div class="d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>지사에서 9.8km · 20분</div>
+      <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
+    </div></div><div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div>
+
+<div class="col"><div class="cap">B. 요일 밑줄 탭<small>더 단순하게 요일만 · 고른 날은 위에 크게</small></div>
+<div class="phone"><div class="sb"><span>8:10</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div><div class="dl"><b>금</b><span>10월 23일</span><i>오늘</i></div><div class="dw2"><span>월</span><span class="x">화</span><span>수</span><span>목</span><span class="on">금</span></div><div class="hi">김민준 님,<br>오늘 <em>2현장 13대</em></div>
+    <p class="hisub">3조 · 윤서준 님과 · 총 경로 29.0km</p><div class="stops"><button type="button" class="on"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+    <div class="next">
+      <div class="lab"><i></i>1번째 현장 · 2현장 중</div>
+      <div class="n">한빛마을7단지<span class="kb km">정밀</span></div>
+      <div class="plan">일정표 <b>09:40</b> · 야당동 · 5대</div>
+      <div class="d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>지사에서 9.8km · 20분</div>
+      <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
+    </div></div><div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div>
+
+<div class="col"><div class="cap">C. 날짜 눌러 고르기<small>평소엔 한 줄, 누르면 아래에서 요일 목록</small></div>
+<div class="phone"><div class="sb"><span>8:10</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div><button class="dd">10월 23일 금요일 <i>오늘</i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="hi">김민준 님,<br>오늘 <em>2현장 13대</em></div>
+    <p class="hisub">3조 · 윤서준 님과 · 총 경로 29.0km</p><div class="stops"><button type="button" class="on"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+    <div class="next">
+      <div class="lab"><i></i>1번째 현장 · 2현장 중</div>
+      <div class="n">한빛마을7단지<span class="kb km">정밀</span></div>
+      <div class="plan">일정표 <b>09:40</b> · 야당동 · 5대</div>
+      <div class="d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>지사에서 9.8km · 20분</div>
+      <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
+    </div>
+<div class="sheetbg"></div><div class="sheet"><div class="grab"></div><b class="st">어느 날을 볼까요?</b>
+<ul><li><span>19 월</span><em>한빛마을7단지 · 1현장 5대</em></li><li class="off"><span>20 화</span><em>휴가</em></li><li><span>21 수</span><em>교하신도시 3단지 외 1 · 2현장 5대</em></li><li><span>22 목</span><em>일산동구청 · 1현장 5대</em></li><li class="on"><span>23 금 · 오늘</span><em>한빛마을7단지 외 1 · 2현장 13대</em></li></ul></div></div><div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div>
+
+</div></body></html>
