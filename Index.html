@@ -925,6 +925,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
   const MAX_ROWS = 31;
   const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 원본 파일 (이미지는 줄여서 전송)
   const MAX_PDF_PAGES = 10;                  // PDF 영수증 1개당 변환할 최대 페이지
+  const PHOTO_MAX_PX = 1280, PHOTO_QUALITY = 0.8; // 첨부 사진 크기 (긴 변·JPEG 화질) — 영수증 글씨는 읽히고 용량은 장당 150~250KB
   const CDN = {
     html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
     pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
@@ -1847,7 +1848,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     for (let p = 1; p <= n; p++) {
       const page = await doc.getPage(p);
       const base = page.getViewport({ scale: 1 });
-      const viewport = page.getViewport({ scale: Math.min(2, 1600 / Math.max(base.width, base.height)) });
+      const viewport = page.getViewport({ scale: Math.min(2, PHOTO_MAX_PX / Math.max(base.width, base.height)) });
       const c = document.createElement('canvas');
       c.width = Math.round(viewport.width);
       c.height = Math.round(viewport.height);
@@ -1855,20 +1856,20 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, c.width, c.height);
       await page.render({ canvasContext: ctx, viewport }).promise;
-      const data = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+      const data = c.toDataURL('image/jpeg', PHOTO_QUALITY).split(',')[1];
       const stem = file.name.replace(/\.pdf$/i, '');
       out.push({ name: doc.numPages > 1 ? `${stem} (${p}/${doc.numPages}쪽)` : stem, mimeType: 'image/jpeg', data, size: Math.round(data.length * 0.75) });
     }
     return out;
   }
 
-  // 휴대폰 사진은 커서 1600px JPEG로 줄여서 전송
+  // 휴대폰 사진은 커서 긴 변 PHOTO_MAX_PX JPEG로 줄여서 전송 (직원은 원본 그대로 올리면 됨)
   function compressImage(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const s = Math.min(1, PHOTO_MAX_PX / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * s);
         c.height = Math.round(img.height * s);
@@ -1877,7 +1878,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
         ctx.fillRect(0, 0, c.width, c.height);
         ctx.drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        const data = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+        const data = c.toDataURL('image/jpeg', PHOTO_QUALITY).split(',')[1];
         resolve({ name: file.name.replace(/\.[^.]+$/, '') + '.jpg', mimeType: 'image/jpeg', data, size: Math.round(data.length * 0.75) });
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };

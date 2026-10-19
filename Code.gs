@@ -1309,6 +1309,73 @@ function escHtml_(s) {
 // ════════════════════════════════════════════════════
 //  관리자용: 최초 설정 / 테스트 (편집기에서 직접 실행)
 // ════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
+//  마감된 청구의 수정용 데이터 정리 (드라이브 용량 절약)
+// ════════════════════════════════════════════════════
+// 마감된 청구는 다시 고칠 일이 없으므로 _수정용데이터의 상세 파일(사진 사본 포함)을 휴지통으로 보냄.
+// 청구서 PDF와 시트 기록은 그대로 둠. 대상: '출장 관리'에서 마감된 출장의 모든 사람
+//                                     + '여비 청구 데이터'에서 마감여부가 '마감'인 사람
+// setup()을 실행하면 매일 새벽 3시에 자동 실행되도록 등록됨. 편집기에서 직접 실행해도 됨.
+// ※ 마감을 다시 '진행중'으로 되돌리면 그 사람은 이전 내용을 불러오지 못하고 새로 작성해야 함.
+function cleanupClosedClaims() {
+  const closedTrips = {};
+  const trips = readTable_(CONFIG.SHEET_TRIP);
+  const tIdCol = trips.idx('출장명'), tStCol = trips.idx('마감여부');
+  trips.rows.forEach(r => {
+    const id = String(r[tIdCol]).trim();
+    if (id && String(r[tStCol]).trim() === CONFIG.CLOSED_STATUS) closedTrips[id] = true;
+  });
+
+  const targets = {}; // 출장명 → { 사번: true } (true 대신 '*'이면 그 출장 전체)
+  Object.keys(closedTrips).forEach(id => { targets[id] = '*'; });
+  const sheet = getSS_().getSheetByName(CONFIG.SHEET_CLAIM);
+  if (sheet && sheet.getLastRow() >= 2) {
+    const t = readTable_(CONFIG.SHEET_CLAIM);
+    const idCol = t.idx('출장명'), empCol = t.idx('사번'), stCol = t.idx('마감여부');
+    if (idCol >= 0 && empCol >= 0 && stCol >= 0) {
+      t.rows.forEach(r => {
+        const id = String(r[idCol]).trim();
+        if (!id || targets[id] === '*' || String(r[stCol]).trim() !== CONFIG.CLOSED_STATUS) return;
+        (targets[id] = targets[id] || {})[normalizeEmpId_(r[empCol])] = true;
+      });
+    }
+  }
+
+  // 출장 폴더는 찾기만 하고 새로 만들지 않음
+  const root = getRootFolder_();
+  let removed = 0, bytes = 0;
+  Object.keys(targets).forEach(id => {
+    const it = root.getFoldersByName(safeName_(id));
+    if (!it.hasNext()) return;
+    const tripFolder = it.next();
+    const want = targets[id];
+    const names = want === '*' ? null : Object.keys(want).map(detailFileName_);
+    const dataIt = tripFolder.getFoldersByName(CONFIG.DATA_FOLDER_NAME);
+    [tripFolder].concat(dataIt.hasNext() ? [dataIt.next()] : []).forEach(folder => {
+      const files = folder.getFiles();
+      while (files.hasNext()) {
+        const f = files.next();
+        const name = f.getName();
+        if (!/^_상세_.*\.json$/.test(name) || f.isTrashed()) continue;
+        if (names && names.indexOf(name) < 0) continue;
+        bytes += f.getSize();
+        f.setTrashed(true);
+        removed++;
+      }
+    });
+  });
+  const msg = '마감된 청구의 수정용 데이터 ' + removed + '개 정리 (' + Math.round(bytes / 1048576 * 10) / 10 + 'MB, 휴지통은 30일 뒤 자동으로 비워짐)';
+  Logger.log(msg);
+  return msg;
+}
+
+// 매일 새벽 정리 자동 실행 등록 (이미 있으면 그대로)
+function ensureCleanupTrigger_() {
+  const has = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'cleanupClosedClaims');
+  if (!has) ScriptApp.newTrigger('cleanupClosedClaims').timeBased().everyDays(1).atHour(3).create();
+  return has ? '✅ 마감 데이터 자동 정리: 이미 등록됨 (매일 새벽 3시)' : '✅ 마감 데이터 자동 정리 등록 (매일 새벽 3시)';
+}
+
 function setup() {
   [CONFIG.SHEET_CLAIM, CONFIG.SHEET_TRIP, CONFIG.SHEET_MEMBER, CONFIG.SHEET_BRANCH].forEach(name => {
     Logger.log((getSS_().getSheetByName(name) ? '✅ ' : '❌ 없음: ') + name);
@@ -1362,6 +1429,7 @@ function setup() {
   const props = PropertiesService.getScriptProperties();
   Logger.log(props.getProperty('KAKAO_REST_API_KEY') ? '✅ KAKAO_REST_API_KEY 등록됨' : '❌ KAKAO_REST_API_KEY 미등록 (스크립트 속성에 추가하세요)');
   Logger.log(props.getProperty('KAKAO_JS_KEY') ? '✅ KAKAO_JS_KEY 등록됨' : '⚠ KAKAO_JS_KEY 미등록 — 화면 지도가 카카오 대신 기본 지도로 나옵니다');
+  Logger.log(ensureCleanupTrigger_());
 }
 
 // 세부주소 확인: 지사별 주소 탭 상태 + 각 지사·예시 장소의 주소 조회 결과를 로그에 출력
