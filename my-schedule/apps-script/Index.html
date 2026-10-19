@@ -968,14 +968,6 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))!important}
 .kb.ks{color:#a1361f;background:#fcebe6}
 .kb.kw{color:#5b3ea8;background:#efeafb}
 .tl-head .kb{margin-left:0}
-/* 날짜 머리 ‹ › */
-.ez-dnav{display:flex;align-items:center;gap:8px;margin-top:2px}
-.ez-dt{flex:1;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
-.ez-dt b{font-size:16px;font-weight:700;color:var(--muted)}
-.ez-dt span{font-size:13px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 8px}
-.ez-ar{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
-.ez-ar svg{width:20px;height:20px}
-.ez-ar:disabled{opacity:.35;cursor:default}
 .ez-dtx{font-size:15px;font-weight:600;color:var(--muted);margin-top:6px}
 .ez-hi{font-size:26px;line-height:1.3;font-weight:800;letter-spacing:-.6px;margin:14px 0 2px;word-break:keep-all}
 .ez-hi em{font-style:normal;color:var(--accent)}
@@ -1096,6 +1088,21 @@ body.ver-old .btabs-dot{display:block}
 :root[data-theme='dark'] .kb.kj{color:#c9d3dd;background:#2e3038}:root[data-theme='dark'] .kb.km{color:#9cc0ff;background:#1d2a44}:root[data-theme='dark'] .kb.ks{color:#ffb4a3;background:#3a2420}:root[data-theme='dark'] .kb.kw{color:#c9b8ff;background:#2b2442}
 .who b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #appView~.err-bar,body:has(#appView:not([hidden])) .err-bar{bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+/* 날짜 고르기: 요일 칸 (밀지 않고 누름) */
+.ez-dp{display:grid;grid-template-columns:repeat(var(--n,5),minmax(0,1fr));gap:6px;margin:4px 0 2px}
+.ez-dp button{border:0;background:var(--surface);border-radius:14px;min-height:64px;padding:7px 0 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;color:var(--ink);font-family:var(--font-body);cursor:pointer;line-height:1.25}
+.ez-dp span{font-size:13px;font-weight:600;color:var(--muted)}
+.ez-dp b{font-size:19px;font-weight:800}
+.ez-dp em{font-size:11.5px;font-weight:600;font-style:normal;color:var(--muted);white-space:nowrap}
+.ez-dp .off b,.ez-dp .off em{color:var(--off)}
+.ez-dp .none em{color:var(--done)}
+.ez-dp .past:not(.on){opacity:.55}
+.ez-dp .on{background:var(--accent)}
+.ez-dp .on span,.ez-dp .on b,.ez-dp .on em{color:#fff}
+:root[data-theme='dark'] .ez-dp .on span,:root[data-theme='dark'] .ez-dp .on b,:root[data-theme='dark'] .ez-dp .on em{color:#0d1420}
+@media (prefers-color-scheme:dark){:root:not([data-theme='light']) .ez-dp .on span,:root:not([data-theme='light']) .ez-dp .on b,:root:not([data-theme='light']) .ez-dp .on em{color:#0d1420}}
+#tabs.tabs{display:block!important;border:0;padding:0 0 10px;margin-top:6px}
+body.easy .ez-hi{margin-top:16px}
 </style>
 </head>
 <body>
@@ -1922,7 +1929,7 @@ function render() {
   const work = days.filter(d => d.t);
   $('week').innerHTML =
     `<span>이번 주 근무 <b>${work.length}</b>일</span><span><b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>현장</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
-  $('tabs').innerHTML = dayTabs(false);
+  $('tabs').innerHTML = dayPick(sel);
   $('fileRow').innerHTML = `<div><b>${esc(data.source || '검사 일정표')}</b><span>${days.length ? mdow(days[0]).md + ' ~ ' + mdow(days[days.length - 1]).md : ''}</span></div><label class="go" for="file" role="button" tabindex="0">바꾸기</label>`;
   meBox();
   syncTabs();
@@ -2158,16 +2165,16 @@ function ezDetail(d, s, i) {
 const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 let ezPick = {}; // iso → 크게 볼 현장 번호 (현장 수 = 복귀). 시간으로 정하지 않고 사용자가 고름
 let ezInfo = false; // 주소·승강기 정보 펼침
-// 날짜 머리: ‹ 10/23 금요일 ›  (근무·휴가 날만 넘김)
-function dayNav(d) {
-  const list = days.filter(x => x.t || x.off);
-  const pv = list.filter(x => x.iso < d.iso).pop(),
-    nx = list.find(x => x.iso > d.iso);
-  const { md, dow } = mdow(d);
-  const [m, dd] = md.split('/');
-  const btn = (x, lab, path) =>
-    `<button type="button" class="ez-ar"${x ? ` data-go="${x.iso}"` : ' disabled'} aria-label="${lab}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg></button>`;
-  return `<div class="ez-dnav">${btn(pv, '전날 보기', 'M15 6l-6 6 6 6')}<div class="ez-dt"><b>${m}월 ${dd}일 ${dow}요일</b>${d.iso === todayIso ? '<span>오늘</span>' : ''}</div>${btn(nx, '다음 날 보기', 'M9 6l6 6-6 6')}</div>`;
+// 날짜 고르기: 월~금(일정표에 있는 날) 칸을 눌러 이동. 밀어서 넘기기는 없음(현장 칩 넘기다 날짜가 바뀌지 않게)
+function dayPick(iso) {
+  return `<div class="ez-dp" role="group" aria-label="날짜 고르기" style="--n:${days.length}">${days
+    .map(x => {
+      const { md, dow } = mdow(x);
+      const lab = x.iso === todayIso ? '오늘' : x.t ? places(x.t.stops).length + '현장' : x.off ? '휴가' : '–';
+      const cls = [x.iso === iso ? 'on' : '', x.t ? '' : x.off ? 'off' : 'none', x.iso < todayIso ? 'past' : ''].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" data-go="${x.iso}" aria-pressed="${x.iso === iso}" aria-label="${md} ${dow}요일 ${lab}"><span>${dow}</span><b>${md.split('/')[1]}</b><em>${lab}</em></button>`;
+    })
+    .join('')}</div>`;
 }
 function drawEasy() {
   const p = $('panel');
@@ -2182,7 +2189,7 @@ function drawEasy() {
   const name = curName();
   const isToday = d.iso === todayIso;
   const when = isToday ? '오늘' : mdow(d).dow + '요일';
-  let h = dayNav(d);
+  let h = dayPick(d.iso);
   if (d.t) {
     const st = d.t.stops,
       n = st.length;
@@ -2209,7 +2216,7 @@ function drawEasy() {
       const dl = !lg ? '' : lg.same ? '앞 현장과 같은 곳이에요' : `${esc(from)}에서 ${lg.km.toFixed(1)}km${lg.mn != null ? ' · ' + lg.mn + '분' : ''}`;
       const plan = [s.time ? `일정표 <b>${esc(s.time)}</b>` : '', esc(s.area || ''), s.units != null ? s.units + '대' : ''].filter(Boolean).join(' · ');
       h += `<section class="ez-card${past(pick) ? ' past' : ''}">
-        <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : '오늘 현장'}</div>
+        <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : isToday ? '오늘 현장' : '이날 현장'}</div>
         <div class="ez-n">${esc(placeName(s.name))}${kb(s.kind)}</div>
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
         ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
@@ -2253,6 +2260,8 @@ function drawEasy() {
         if (b.classList.contains('rr')) window.scrollTo({ top: 0, behavior: 'smooth' });
       })
   );
+  const on = p.querySelector('.ez-stops .on');
+  if (on) on.parentNode.scrollLeft = Math.max(0, on.offsetLeft - 16 - (on.parentNode.clientWidth - on.offsetWidth) / 2);
   const inf = p.querySelector('[data-info]');
   if (inf)
     inf.onclick = () => {
@@ -2340,6 +2349,7 @@ function go(iso, dx) {
   sel = iso;
   if (iso !== 'week') lastDay = iso;
   syncTabs();
+  if (!document.body.classList.contains('easy')) $('tabs').innerHTML = dayPick(sel);
   $('tabs')
     .querySelectorAll('.dtab')
     .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
@@ -2347,8 +2357,8 @@ function go(iso, dx) {
   window.scrollTo({ top: 0 });
 }
 $('tabs').addEventListener('click', e => {
-  const t = e.target.closest('.dtab');
-  if (t) go(t.dataset.iso);
+  const t = e.target.closest('[data-go]');
+  if (t) go(t.dataset.go);
 });
 $('panel').addEventListener('click', e => {
   const g = e.target.closest('[data-go]');
@@ -2464,7 +2474,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.9';
+const PAGE_VER = '3.10';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3622,33 +3632,6 @@ function easyToggle() {
   syncMode();
 }
 
-// 좌우로 밀어서 날짜 넘기기
-let sx = null,
-  sy = 0;
-$('panel').addEventListener(
-  'touchstart',
-  e => {
-    sx = e.touches[0].clientX;
-    sy = e.touches[0].clientY;
-  },
-  { passive: true }
-);
-$('panel').addEventListener(
-  'touchend',
-  e => {
-    if (sx == null) return;
-    const dx = e.changedTouches[0].clientX - sx,
-      dy = e.changedTouches[0].clientY - sy;
-    sx = null;
-    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
-    if (sel === 'week' || document.body.classList.contains('tab-me')) return;
-    const order = days.filter(d => d.t || d.off || !document.body.classList.contains('easy')).map(d => d.iso);
-    const i = order.indexOf(sel);
-    const n = order[i + (dx < 0 ? 1 : -1)];
-    if (n) go(n, dx < 0 ? 40 : -40);
-  },
-  { passive: true }
-);
 addEventListener(
   'scroll',
   () => $('bar').classList.toggle('scrolled', scrollY > 4),
