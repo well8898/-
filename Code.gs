@@ -1045,11 +1045,14 @@ function buildClaimHtml_(d) {
     + '.sig { position: relative; display: inline-block; width: 110px; text-align: center; }'
     + '.sig img { position: absolute; left: 5px; top: -22px; width: 100px; height: 50px; }'
     + '.page { page-break-before: always; }'
+    + 'h3 { font-size: 11pt; margin: 0 0 6px; padding: 3px 6px; background: #f0f0f0; border-left: 4px solid #000; }'
+    + 'h3.next { margin-top: 10px; }'
+    + 'h3 .cap { font-weight: normal; }'
     + '.tiles { table-layout: fixed; }'
-    + '.tiles td { width: 50%; border: 0; padding: 0 6px 12px; vertical-align: top; text-align: center; }'
+    + '.tiles td { border: 0; padding: 0 6px 10px; vertical-align: top; text-align: center; }'
     + '.tiles tr { page-break-inside: avoid; }'
     + '.tiles .cap { text-align: left; }'
-    + '.tiles img { max-width: 100%; max-height: 98mm; border: 1px solid #999; }'  /* 2열 × 2행이 A4 한 쪽에 들어가는 크기 */
+    + '.tiles img { max-width: 100%; max-height: 100mm; border: 1px solid #999; }'  /* 영수증 한 줄 + 경로 한 줄이 A4 한 쪽에 들어가는 높이 */
     + '.cap { font-size: 9pt; margin: 4px 0 6px; }'
     + '</style></head><body>'
 
@@ -1096,35 +1099,45 @@ function buildClaimHtml_(d) {
     + (d.signature ? '<img src="data:image/png;base64,' + d.signature + '">' : '') + '</span></td>'
     + '</tr></table>';
 
-  // 증빙 서류: 운임 영수증과 이동 경로 증빙을 한 쪽에 2열로 모음 (칸이 많으면 다음 쪽으로 이어짐)
+  // 증빙 서류: 한 쪽에 윗부분은 운임 영수증, 아랫부분은 이동 경로 증빙 (많으면 다음 쪽으로 이어짐)
   // 경로 증빙은 줄마다 직접 올린 길찾기 캡처가 있으면 그것, 없으면 자동 경로 지도
-  const tiles = [];
-  d.receipts.forEach((r, i) => tiles.push({
+  const receiptTiles = d.receipts.map((r, i) => ({
     head: '운임 영수증 ' + (i + 1), sub: r.name, mime: r.mimeType, b64: r.data,
   }));
+  const routeTiles = [];
   d.maps.forEach(m => {
     const photos = m.photos || [];
     if (photos.length) {
-      photos.forEach((p, i) => tiles.push({
-        head: '이동 경로 · ' + m.caption,
+      photos.forEach((p, i) => routeTiles.push({
+        head: m.caption,
         sub: '직접 첨부한 경로 증빙' + (photos.length > 1 ? ' ' + (i + 1) + '/' + photos.length : '') + ' · ' + p.name,
         mime: p.mimeType, b64: p.data,
       }));
       return;
     }
-    tiles.push({ head: '이동 경로 · ' + m.caption, sub: m.error || '', mime: m.mime, b64: m.b64 });
+    routeTiles.push({ head: m.caption, sub: m.error || '', mime: m.mime, b64: m.b64 });
   });
-  if (tiles.length) {
-    html += '<div class="page"><h2>증빙 서류 <span class="cap">운임 영수증 ' + d.receipts.length + '장 · 이동 경로 ' + d.maps.length + '구간</span></h2>'
-      + '<table class="tiles">';
-    for (let i = 0; i < tiles.length; i += 2) {
-      html += '<tr>' + [tiles[i], tiles[i + 1]].map(t => !t ? '<td></td>'
-        : '<td><div class="cap b">' + e(t.head) + '</div>'
-          + (t.sub ? '<div class="cap">' + e(t.sub) + '</div>' : '')
-          + (t.b64 ? '<img src="data:' + t.mime + ';base64,' + t.b64 + '">' : '')
-          + '</td>').join('') + '</tr>';
+  // 칸 묶음 → 표 (2장 이하는 2열, 3장 이상은 3열)
+  const tileTable = list => {
+    const cols = list.length <= 2 ? 2 : 3;
+    let t = '<table class="tiles">';
+    for (let i = 0; i < list.length; i += cols) {
+      t += '<tr>';
+      for (let j = i; j < i + cols; j++) {
+        const x = list[j];
+        t += '<td style="width:' + (100 / cols) + '%">' + (!x ? '' : '<div class="cap b">' + e(x.head) + '</div>'
+          + (x.sub ? '<div class="cap">' + e(x.sub) + '</div>' : '')
+          + (x.b64 ? '<img src="data:' + x.mime + ';base64,' + x.b64 + '">' : '')) + '</td>';
+      }
+      t += '</tr>';
     }
-    html += '</table></div>';
+    return t + '</table>';
+  };
+  if (receiptTiles.length || routeTiles.length) {
+    html += '<div class="page"><h2>증빙 서류</h2>';
+    if (receiptTiles.length) html += '<h3>운임 영수증 <span class="cap">' + receiptTiles.length + '장</span></h3>' + tileTable(receiptTiles);
+    if (routeTiles.length) html += '<h3 class="next">이동 경로 증빙 <span class="cap">' + d.maps.length + '구간</span></h3>' + tileTable(routeTiles);
+    html += '</div>';
   }
 
   return html + '</body></html>';
