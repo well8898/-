@@ -38,6 +38,8 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 .stops{display:flex;gap:6px;margin:0 -20px 10px;padding:0 20px;overflow-x:auto;scrollbar-width:none}
 .stops button{flex:none;height:42px;border:1.5px solid var(--line);background:var(--bg);color:var(--sub);border-radius:21px;padding:0 12px;font:700 15px P;display:flex;align-items:center;gap:6px}
 .stops button i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--well);color:var(--sub);display:grid;place-items:center;font:800 12px P}
+.stops button.past{color:var(--done);border-color:var(--line)}
+.stops button.past i{color:var(--done)}
 .stops button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .stops button.on i{background:var(--bg);color:var(--ink)}
 .hint{font:500 13.5px P;color:var(--sub);margin:-2px 0 10px}
@@ -69,6 +71,8 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 .route li.done .nm,.route li.done .tt{color:var(--done)}
 .route li.done .sm{color:var(--done)}
 .route .ok{font:700 12.5px P;color:var(--sub);background:var(--well);border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+.route li.past .tt,.route li.past .nm,.route li.past .sm{color:var(--done)}
+.route li.past .dot{border-color:var(--done)}
 .route li.cur .nm{color:var(--accent)}
 .route li.cur{background:var(--accent-soft);border-radius:12px;margin:0 -10px;padding-left:10px;padding-right:10px}
 .route li.cur:not(:last-child)::after{left:77px}
@@ -162,13 +166,13 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
 </div></div>
 
 <!-- 2. 이동 중 -->
-<div class="col"><div class="cap">현장 사이 이동 중<small>갈 현장을 직접 눌러 고름 · 시간으로 정하지 않음</small></div>
+<div class="col"><div class="cap">현장 사이 이동 중<small>시간 지난 현장은 흐리게 · 크게 볼 현장은 직접 고름</small></div>
 <div class="phone">
   <div class="sb"><span>11:20</span><span>5G</span></div>
   <div class="scroll">
     <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div>
     <div class="hi" style="font-size:22px;margin:4px 0 12px">어디로 갈까요?</div>
-<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button"><i>1</i>한빛마을7단지</button><button type="button" class="on"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button" class="past"><i>1</i>한빛마을7단지</button><button type="button" class="on"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
     <div class="next">
       <div class="lab"><i></i>2번째 현장 · 2현장 중</div>
       <div class="n">유승아파트</div>
@@ -178,7 +182,7 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
     </div>
     <div class="h2"><b>오늘 경로</b><span>총 29.0km</span></div>
     <ul class="route">
-      <li><span class="tt">09:40</span><i class="dot"></i><div><div class="nm">한빛마을7단지</div><div class="sm">야당동 · 정밀 5대 · 9.8km</div></div></li>
+      <li class="past"><span class="tt">09:40</span><i class="dot"></i><div><div class="nm">한빛마을7단지</div><div class="sm">야당동 · 정밀 5대 · 9.8km</div></div></li>
       <li class="cur"><span class="tt">13:00</span><i class="dot"></i><div><div class="nm">유승아파트</div><div class="sm">관산동 · 정기 8대 · 6.4km</div></div></li>
       <li class="base"><span class="tt">복귀</span><i class="dot"></i><div><div class="nm">고양파주지사</div><div class="sm">12.8km</div></div></li>
     </ul>
@@ -212,7 +216,7 @@ body{margin:0;font-family:P,-apple-system,sans-serif;color:var(--ink);font-varia
   <div class="scroll">
     <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b class="on">간단히</b><b>자세히</b></div></div>
     <div class="hi" style="font-size:22px;margin:4px 0 12px">어디로 갈까요?</div>
-<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button"><i>1</i>한빛마을7단지</button><button type="button"><i>2</i>유승아파트</button><button type="button" class="on">복귀</button></div>
+<div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button" class="past"><i>1</i>한빛마을7단지</button><button type="button" class="past"><i>2</i>유승아파트</button><button type="button" class="on">복귀</button></div>
     <div class="next">
       <div class="lab"><i></i>복귀</div>
       <div class="n">고양파주지사</div>
