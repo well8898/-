@@ -1045,8 +1045,11 @@ function buildClaimHtml_(d) {
     + '.sig { position: relative; display: inline-block; width: 110px; text-align: center; }'
     + '.sig img { position: absolute; left: 5px; top: -22px; width: 100px; height: 50px; }'
     + '.page { page-break-before: always; }'
-    + '.evi { margin-bottom: 14px; page-break-inside: avoid; }'
-    + '.evi img { max-width: 100%; max-height: 230mm; border: 1px solid #999; }'
+    + '.tiles { table-layout: fixed; }'
+    + '.tiles td { width: 50%; border: 0; padding: 0 6px 12px; vertical-align: top; text-align: center; }'
+    + '.tiles tr { page-break-inside: avoid; }'
+    + '.tiles .cap { text-align: left; }'
+    + '.tiles img { max-width: 100%; max-height: 98mm; border: 1px solid #999; }'  /* 2열 × 2행이 A4 한 쪽에 들어가는 크기 */
     + '.cap { font-size: 9pt; margin: 4px 0 6px; }'
     + '</style></head><body>'
 
@@ -1093,35 +1096,35 @@ function buildClaimHtml_(d) {
     + (d.signature ? '<img src="data:image/png;base64,' + d.signature + '">' : '') + '</span></td>'
     + '</tr></table>';
 
-  // 증빙 영수증
-  if (d.receipts.length) {
-    html += '<div class="page"><h2>운임 영수증</h2>';
-    d.receipts.forEach((r, i) => {
-      html += '<div class="evi"><div class="cap">운임 영수증 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
-        + '<img src="data:' + r.mimeType + ';base64,' + r.data + '"></div>';
-    });
-    html += '</div>';
-  }
-
-  // 줄마다 경로 증빙: 직접 올린 길찾기 캡처가 있으면 그것, 없으면 자동 경로 지도
-  if (d.maps.length) {
-    html += '<div class="page"><h2>이동 경로 증빙</h2>';
-    d.maps.forEach(m => {
-      const photos = m.photos || [];
-      if (photos.length) {
-        photos.forEach((p, i) => {
-          html += '<div class="evi"><div class="cap b">' + e(m.caption) + '</div>'
-            + '<div class="cap">직접 첨부한 경로 증빙' + (photos.length > 1 ? ' ' + (i + 1) + '/' + photos.length : '') + ' · ' + e(p.name) + '</div>'
-            + '<img src="data:' + p.mimeType + ';base64,' + p.data + '"></div>';
-        });
-        return;
-      }
-      html += '<div class="evi"><div class="cap b">' + e(m.caption) + '</div>'
-        + (m.b64 ? '<img src="data:' + m.mime + ';base64,' + m.b64 + '">' : '')
-        + (m.error ? '<div class="cap">' + e(m.error) + '</div>' : '')
-        + '</div>';
-    });
-    html += '</div>';
+  // 증빙 서류: 운임 영수증과 이동 경로 증빙을 한 쪽에 2열로 모음 (칸이 많으면 다음 쪽으로 이어짐)
+  // 경로 증빙은 줄마다 직접 올린 길찾기 캡처가 있으면 그것, 없으면 자동 경로 지도
+  const tiles = [];
+  d.receipts.forEach((r, i) => tiles.push({
+    head: '운임 영수증 ' + (i + 1), sub: r.name, mime: r.mimeType, b64: r.data,
+  }));
+  d.maps.forEach(m => {
+    const photos = m.photos || [];
+    if (photos.length) {
+      photos.forEach((p, i) => tiles.push({
+        head: '이동 경로 · ' + m.caption,
+        sub: '직접 첨부한 경로 증빙' + (photos.length > 1 ? ' ' + (i + 1) + '/' + photos.length : '') + ' · ' + p.name,
+        mime: p.mimeType, b64: p.data,
+      }));
+      return;
+    }
+    tiles.push({ head: '이동 경로 · ' + m.caption, sub: m.error || '', mime: m.mime, b64: m.b64 });
+  });
+  if (tiles.length) {
+    html += '<div class="page"><h2>증빙 서류 <span class="cap">운임 영수증 ' + d.receipts.length + '장 · 이동 경로 ' + d.maps.length + '구간</span></h2>'
+      + '<table class="tiles">';
+    for (let i = 0; i < tiles.length; i += 2) {
+      html += '<tr>' + [tiles[i], tiles[i + 1]].map(t => !t ? '<td></td>'
+        : '<td><div class="cap b">' + e(t.head) + '</div>'
+          + (t.sub ? '<div class="cap">' + e(t.sub) + '</div>' : '')
+          + (t.b64 ? '<img src="data:' + t.mime + ';base64,' + t.b64 + '">' : '')
+          + '</td>').join('') + '</tr>';
+    }
+    html += '</table></div>';
   }
 
   return html + '</body></html>';
