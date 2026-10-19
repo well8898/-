@@ -1,0 +1,59 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>검사 종류 표시 비교</title>
+<link rel="stylesheet" href="redesign.css">
+<style>
+body{background:#d9dde2}
+.grid{display:grid;grid-template-columns:repeat(4,330px);gap:22px;padding:26px;width:max-content}
+.card{background:#fff;border-radius:24px;padding:18px 18px 8px;box-shadow:0 10px 26px rgba(25,31,40,.12)}
+.card h2{font:800 19px P;margin:0}
+.card p.d{font:500 13.5px/1.5 P;color:#4e5968;margin:4px 0 10px;min-height:40px}
+.r{display:grid;grid-template-columns:50px 1fr auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid #e5e8eb}
+.r .t{font:700 16px P}.r .n{font:700 17px P}.r .a{font:500 13.5px P;color:#4e5968;margin-top:1px}
+.r .u{font:700 15px P;color:#4e5968}
+/* 종류 색 (채도 낮춤) */
+.kj{--c:#4e5968;--bgc:#f2f4f6}   /* 정기: 가장 흔함 → 조용한 회색 */
+.km{--c:#1b4fb8;--bgc:#e8f0fd}   /* 정밀: 남색 */
+.ks{--c:#a1361f;--bgc:#fcebe6}   /* 수시: 벽돌색 */
+.kw{--c:#5b3ea8;--bgc:#efeafb}   /* 설치·완성: 보라 */
+/* 1. 한 글자 동그라미 */
+.o1{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 15px P;color:var(--c);background:var(--bgc)}
+/* 2. 글자 배지 */
+.o2{font:800 13.5px P;color:var(--c);background:var(--bgc);border-radius:7px;padding:3px 8px;margin-left:6px;vertical-align:2px}
+/* 3. 모양 + 글자 (색 없이도 구분) */
+.o3{display:inline-flex;align-items:center;gap:5px;font:700 13.5px P;color:#191f28;margin-left:6px;vertical-align:1px}
+.o3 svg{width:14px;height:14px}
+/* 4. 왼쪽 세로 막대 + 글자 */
+.r4{position:relative;padding-left:12px}
+.r4::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:2px;background:var(--c)}
+.o4{font:700 13.5px P;color:var(--c)}
+.rec{display:inline-block;font:800 12px P;color:#fff;background:#1b64da;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:3px}
+</style></head><body><div class="grid">
+
+<div class="card"><h2>① 한 글자 동그라미<span class="rec">추천</span></h2><p class="d">일정표에 쓰는 「정·밀·수·완」 한 글자 그대로. 줄 오른쪽 끝에 같은 자리로 모여서 훑어보기 좋아요.</p>
+<div class="r"><span class="t">09:00</span><div><div class="n">한빛마을7단지</div><div class="a">야당동</div></div><span class="o1 kj">정</span></div>
+<div class="r"><span class="t">10:30</span><div><div class="n">유승아파트</div><div class="a">관산동</div></div><span class="o1 km">밀</span></div>
+<div class="r"><span class="t">13:00</span><div><div class="n">일산동구청</div><div class="a">장항동</div></div><span class="o1 ks">수</span></div>
+<div class="r"><span class="t">15:30</span><div><div class="n">탄현 신축상가</div><div class="a">탄현동</div></div><span class="o1 kw">완</span></div>
+</div>
+
+<div class="card"><h2>② 글자 배지</h2><p class="d">「정기·정밀·수시·설치」를 이름 옆 작은 꼬리표로. 처음 보는 분도 바로 읽혀요.</p>
+<div class="r"><span class="t">09:00</span><div><div class="n">한빛마을7단지<span class="o2 kj">정기</span></div><div class="a">야당동</div></div><span class="u">5대</span></div>
+<div class="r"><span class="t">10:30</span><div><div class="n">유승아파트<span class="o2 km">정밀</span></div><div class="a">관산동</div></div><span class="u">8대</span></div>
+<div class="r"><span class="t">13:00</span><div><div class="n">일산동구청<span class="o2 ks">수시</span></div><div class="a">장항동</div></div><span class="u">2대</span></div>
+<div class="r"><span class="t">15:30</span><div><div class="n">탄현 신축상가<span class="o2 kw">설치</span></div><div class="a">탄현동</div></div><span class="u">1대</span></div>
+</div>
+
+<div class="card"><h2>③ 모양 + 글자</h2><p class="d">색을 거의 안 쓰고 모양으로 구분(○ ◆ ▲ ■). 가장 차분하지만 모양을 익혀야 해요.</p>
+<div class="r"><span class="t">09:00</span><div><div class="n">한빛마을7단지<span class="o3"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="#4e5968" stroke-width="2"/></svg>정기</span></div><div class="a">야당동</div></div><span class="u">5대</span></div>
+<div class="r"><span class="t">10:30</span><div><div class="n">유승아파트<span class="o3"><svg viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z" fill="#1b4fb8"/></svg>정밀</span></div><div class="a">관산동</div></div><span class="u">8대</span></div>
+<div class="r"><span class="t">13:00</span><div><div class="n">일산동구청<span class="o3"><svg viewBox="0 0 16 16"><path d="M8 2 15 14H1z" fill="#a1361f"/></svg>수시</span></div><div class="a">장항동</div></div><span class="u">2대</span></div>
+<div class="r"><span class="t">15:30</span><div><div class="n">탄현 신축상가<span class="o3"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5" fill="#5b3ea8"/></svg>설치</span></div><div class="a">탄현동</div></div><span class="u">1대</span></div>
+</div>
+
+<div class="card"><h2>④ 세로 막대 + 글자</h2><p class="d">줄 왼쪽 가는 색 막대로 묶음을 보여 줘요. 목록이 길 때 한눈에 들어오지만 색 의존도가 높아요.</p>
+<div class="r r4 kj"><span class="t">09:00</span><div><div class="n">한빛마을7단지</div><div class="a">야당동 · <span class="o4">정기</span></div></div><span class="u">5대</span></div>
+<div class="r r4 km"><span class="t">10:30</span><div><div class="n">유승아파트</div><div class="a">관산동 · <span class="o4">정밀</span></div></div><span class="u">8대</span></div>
+<div class="r r4 ks"><span class="t">13:00</span><div><div class="n">일산동구청</div><div class="a">장항동 · <span class="o4">수시</span></div></div><span class="u">2대</span></div>
+<div class="r r4 kw"><span class="t">15:30</span><div><div class="n">탄현 신축상가</div><div class="a">탄현동 · <span class="o4">설치</span></div></div><span class="u">1대</span></div>
+</div>
+
+</div></body></html>
