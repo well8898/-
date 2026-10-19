@@ -355,6 +355,10 @@ main {
 .k-완 {
   color: var(--k-wan);
 }
+.k-정기 { color: var(--k-jeong); }
+.k-정밀, .k-정밀안전 { color: var(--k-mil); }
+.k-수시 { color: var(--k-su); }
+.k-설치, .k-완성, .k-완료 { color: var(--k-wan); }
 .u {
   font: 600 17px var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -1436,7 +1440,8 @@ function parseStops(buf) {
     });
 }
 
-const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치' };
+// 검사 종류: 한 글자(정·밀·수·완·설)나 풀어 쓴 말 모두. 완성검사는 지금 설치검사 — 지사에 따라 「완료」「완성」으로도 씀
+const KIND = { 정: '정기', 밀: '정밀', 수: '수시', 완: '설치', 설: '설치', 정기: '정기', 정밀: '정밀', 수시: '수시', 설치: '설치', 완성: '설치', 완료: '설치', 정밀안전: '정밀' };
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const $ = id => document.getElementById(id);
 const store = {
@@ -2385,7 +2390,7 @@ function matchRecptn(d, s) {
     else continue;
     if (r.d === day) sc += 2;
     if (s.area && r.addr.includes(s.area)) sc += 2;
-    if (KIND[s.kind] === r.kind) sc += 1;
+    if (KIND[s.kind] && r.kind && r.kind.startsWith(KIND[s.kind])) sc += 1;
     if (sc > bs) {
       bs = sc;
       best = r;

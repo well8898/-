@@ -353,7 +353,8 @@ function widgetView_(data) {
 function dayView_(data, main, today, now) {
   const tz = 'Asia/Seoul';
   const when = main.iso === today ? '오늘' : main.iso === tomorrow_(today) ? '내일' : '';
-  const kindNm = { '정': '정기', '밀': '정밀', '수': '수시', '완': '설치', '설': '설치' };
+  // 완성검사(지사에 따라 「완료」「완성」) = 지금 설치검사
+  const kindNm = { '정': '정기', '밀': '정밀', '수': '수시', '완': '설치', '설': '설치', '정기': '정기', '정밀': '정밀', '수시': '수시', '설치': '설치', '완성': '설치', '완료': '설치', '정밀안전': '정밀' };
   const lines = main.stops.map((s, i) => {
     const nav = s.lat ? navLinks_(s.addr ? s.addr.replace(/\([^)]*\)/g, ' ').trim() : s.name, s.lat, s.lng) : null;
     return {
