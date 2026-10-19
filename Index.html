@@ -161,7 +161,6 @@
     .stepbar .progress-line { flex-basis: 100%; height: 4px; background: #e3e8ef; border-radius: 2px; overflow: hidden; }
     .stepbar .progress-line i { display: block; height: 100%; width: 20%; background: var(--gov-navy); transition: width .25s; }
     .branch-box:empty { display: none; }
-    .branch-box .alert { margin: 0; }
     .sec-title { font-size: 18px; color: var(--gov-navy); font-weight: 700; padding: 6px 10px; background: var(--gov-head); border-left: 4px solid var(--gov-navy); margin: 0 0 10px; }
     .sec-title small { font-weight: 400; color: var(--gov-muted); font-size: 15px; margin-left: 6px; }
     .proof-box { border: 1px dashed #aab4c1; border-radius: 4px; padding: 12px; }
@@ -840,7 +839,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
                 <select id="fareReason" class="form-select" onchange="onReasonChange()"></select>
               </div>
               <div class="col-12 col-md-3">
-                <label class="form-label d-block">조합차량(법인차량) 이용여부 <span class="text-secondary">(유 → 일비 1일 1만원 감액)</span></label>
+                <label class="form-label d-block">조합차량·법인차량 이용여부 <span class="text-secondary">(이용 시 일비 1일당 1만원 감액)</span></label>
                 <div class="btn-group w-100" role="group">
                   <input type="radio" class="btn-check" name="unionCar" id="ucNo" value="무" checked onchange="recalc()">
                   <label class="btn btn-outline-primary" for="ucNo">무</label>
@@ -1021,9 +1020,9 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     signed: false,
     status: '',         // 이 출장의 내 청구 상태 (미제출·제출·보완요청)
     memo: '',           // 보완요청 메모
-    branch: '',         // 직원이 확인한 근무 지사 (첫날 출발지·마지막 날 도착지)
+    branch: '',         // 이번 청구의 소속 (첫날 출발지·마지막 날 도착지). 등록된 소속과 다르면 직원이 바꿈
     branchConfirmed: false,
-    branches: [],       // 지사 목록
+    branches: [],       // 소속 목록 (지사별 주소 탭)
     panel: 1,           // 지금 보고 있는 입력 단계 (1~5)
   };
 
@@ -1140,7 +1139,6 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
   }
 
   function nextPanel() {
-    if (state.panel === 1 && !state.branchConfirmed) return alertMsg('먼저 근무 지사를 확인해 주세요. (맞아요 또는 다른 지사 고르기)');
     if (state.panel < 5) return setPanel(state.panel + 1);
     submitClaim();
   }
@@ -1155,7 +1153,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     const days = new Set(moves.map(r => r.date)).size;
     const receipts = state.files.length + state.kept.length, photos = state.routeFiles.length + state.routeKept.length;
     const sum = {
-      1: !state.branchConfirmed ? '근무 지사 확인 필요' : `${$('category').value} · ${state.branch}`,
+      1: `${$('category').value} · ${state.branch}`,
       2: `${days}일 · ${state.totalKm || 0}km`,
       3: `영수증 ${receipts}장` + (photos ? ` · 경로 사진 ${photos}장` : ''),
       4: state.signed ? `${$('bank').value.trim() || '계좌 미입력'} · 서명 완료` : '서명이 필요해요',
@@ -1304,9 +1302,9 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     $('holder').value = state.user.성명;
     $('fixNotice').classList.toggle('d-none', state.status !== '보완요청');
     $('fixNotice').innerHTML = `<b>보완 요청:</b> ${esc(state.memo || '담당자에게 확인해 주세요')}<br><span class="small">내용을 고쳐 다시 제출하면 담당자에게 재제출로 표시돼요.</span>`;
-    // 근무 지사: 이전 제출에서 확인한 값이 있으면 그대로, 없으면 등록된 소속을 확인받음
+    // 소속: 이전 제출 값이 있으면 그대로, 없으면 등록된 소속 (다르면 1단계에서 직원이 바꿈)
     state.branch = (claim && claim.branch) || state.user.소속;
-    state.branchConfirmed = !!(claim && claim.branch);
+    state.branchConfirmed = true;
     state.signed = false;
 
     if (claim) {
@@ -1321,10 +1319,9 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     renderRows();
     renderBranchBox();
     showStep(3);
-    setPanel(state.branchConfirmed ? 2 : 1);
-    // 소속을 확인한 뒤(이전 제출을 불러온 경우 바로) 이동이 있는 줄의 거리·경로 지도 계산 — 끝날 때까지 대기 화면
-    state.calcDone = state.branchConfirmed;
-    if (state.branchConfirmed) await calcOnOpen(!!claim);
+    setPanel(claim ? 2 : 1);
+    // 이동이 있는 구간의 거리·경로 지도 계산 (불러온 제출 내역은 km 유지, 지도만) — 끝날 때까지 대기 화면
+    await calcOnOpen(!!claim);
   }
 
   async function calcOnOpen(keepKm) {
@@ -1334,39 +1331,28 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     try { await computeRoutes(targets, keepKm); } finally { loading(false); }
   }
 
-  // ── 근무 지사(소속) 확인 ─────────────────────────
-  // 담당자가 등록한 소속이 틀리면 거리·운임·일비가 모두 틀어지므로, 처음 열 때 직원이 확인
+  // ── 소속 ─────────────────────────────────────────
+  // 담당자가 등록한 소속이 실제와 다르면 직원이 바꿈 → 첫날 출발지·마지막 날 도착지와 거리를 다시 계산
   function renderBranchBox() {
-    const box = $('branchBox');
+    const reg = state.user.소속;
+    const list = state.branches.indexOf(reg) >= 0 ? state.branches : [reg].concat(state.branches);
     const addr = state.addr[state.branch] || '';
-    if (state.branchConfirmed) {
-      const changed = state.branch !== state.user.소속;
-      box.innerHTML = `<div class="small">근무 지사 <b>${esc(state.branch)}</b>${changed ? ` <span class="badge text-bg-warning">등록 소속(${esc(state.user.소속)})과 다름 · 담당자 확인</span>` : ''}
-        <button type="button" class="btn btn-link btn-sm p-0 ms-2" onclick="editBranch()">바꾸기</button></div>`;
-      return;
-    }
-    box.innerHTML = `<div class="alert alert-warning">
-      <b>근무 지사를 확인해 주세요</b><br>등록된 소속: <b>${esc(state.user.소속)}</b>${addr ? ` <span class="small">(${esc(addr)})</span>` : ''}<br>
-      <span class="small">첫날 출발지와 마지막 날 도착지가 이 지사로 계산돼요.</span>
-      <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
-        <button type="button" class="btn btn-primary" onclick="confirmBranch(state.user.소속)">맞아요</button>
-        <select id="branchPick" class="form-select w-auto" aria-label="실제 근무 지사">
-          <option value="">다른 지사예요 (고르기)</option>
-          ${state.branches.filter(b => b !== state.user.소속).map(b => `<option>${esc(b)}</option>`).join('')}
+    const changed = state.branch !== reg;
+    $('branchBox').innerHTML = `<label class="form-label" for="branchPick">소속 <span class="text-secondary">(첫날 출발지·마지막 날 도착지)</span></label>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <select id="branchPick" class="form-select w-auto" onchange="confirmBranch(this.value)">
+          ${list.map(b => `<option ${b === state.branch ? 'selected' : ''}>${esc(b)}</option>`).join('')}
         </select>
-        <button type="button" class="btn btn-outline-primary" onclick="if ($('branchPick').value) confirmBranch($('branchPick').value)">이 지사로 계산</button>
+        <span class="small text-secondary">${esc(addr)}</span>
+        ${changed ? `<span class="badge text-bg-warning">등록된 소속(${esc(reg)})과 다름 · 담당자에게 '소속 변경'으로 표시</span>` : ''}
       </div>
-      <div class="small mt-1">바꾸면 담당자에게 '소속 변경'으로 표시돼요.</div></div>`;
+      <div class="form-text">등록된 소속과 다르면 바꿔 주세요. 바꾸면 출발지·도착지와 거리를 다시 계산해요.</div>`;
   }
 
-  function editBranch() { state.branchConfirmed = false; renderBranchBox(); }
-
-  // 확인한 지사로 첫날 출발지·마지막 날 도착지(이전 지사였던 칸)를 바꾸고 거리 다시 계산
   async function confirmBranch(b) {
-    const old = state.branch, first = !state.calcDone;
+    const old = state.branch;
     alertMsg('');
     state.branch = b;
-    state.branchConfirmed = true;
     const changed = [];
     if (norm(old) !== norm(b)) {
       state.rows.forEach((r, i) => {
@@ -1378,9 +1364,8 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       renderRows();
     }
     renderBranchBox();
-    setPanel(2);
-    if (first) { state.calcDone = true; await calcOnOpen(false); }
-    else if (changed.length) await autoCalc(changed);
+    renderStepper();
+    if (changed.length) await autoCalc(changed);
   }
 
   function showNotice(text) {
@@ -1453,10 +1438,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     $('categoryEtc').value = c.categoryEtc || '';
     $('innerHours').value = c.innerHours || '4시간 이상';
     (c.unionCar === '유' ? $('ucYes') : $('ucNo')).checked = true;
-    if (c.fareReason) {
-      if (FARE_REASONS.indexOf(c.fareReason) < 0) $('fareReason').insertAdjacentHTML('beforeend', `<option>${esc(c.fareReason)}</option>`);
-      $('fareReason').value = c.fareReason;
-    }
+    if (FARE_REASONS.indexOf(c.fareReason) >= 0) $('fareReason').value = c.fareReason; // 목록에 없는 예전 값이면 기본값
     $('bank').value = c.bank || '';
     $('account').value = c.account || '';
     $('holder').value = c.holder || state.user.성명;
@@ -1592,7 +1574,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     names.forEach(n => { addrPending[n] = true; });
     try {
       const res = await run('lookupAddresses', names);
-      if (res.ok) { Object.assign(state.addr, res.addresses); Object.assign(state.addrErr, res.errors || {}); }
+      if (res.ok) { Object.assign(state.addr, res.addresses); Object.assign(state.addrErr, res.errors || {}); if (state.trip) renderBranchBox(); }
       else console.warn('주소 조회 실패:', res.message);
     } catch (e) { /* 주소 표시는 보조 기능이라 무시 */ } finally {
       names.forEach(n => { delete addrPending[n]; });
@@ -1782,7 +1764,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     $('sumLodging').textContent = comma(sums.lodging);
     $('sumMeal').textContent = comma(sums.meal);
     $('sumEtc').textContent = comma(sums.etc);
-    const carCut = unionCar ? `, 조합·법인차량 −${comma(R.unionCarDailyCut)}원` : '';
+    const carCut = unionCar ? `, 조합·법인차량 이용으로 1일당 −${comma(R.unionCarDailyCut)}원` : '';
     $('ruleHint').textContent = `자차 유류비 km×${comma(state.trip.유류대)}원 · ` + (inner
       ? `근무지내 일비 ${comma(dailyRate)}원/일 (4시간 이상 ${comma(R.innerDailyLong)}원, 미만 ${comma(R.innerDailyShort)}원${carCut}) · 식비 없음`
       : `일비 ${comma(dailyRate)}원/일 (전체 ${R.dailyLongKm}km 초과 시 ${comma(R.dailyLong)}원${carCut}) · 식비 1끼 ${comma(R.mealPrice)}원 (하루 최대 ${comma(R.mealDayMax)}원)`);
@@ -2259,7 +2241,6 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     const out = [];
     const add = (step, msg) => out.push({ step, msg });
     const t = state.trip;
-    if (!state.branchConfirmed) add(1, '근무 지사를 확인해 주세요.');
     if ($('category').value === '기타' && !$('categoryEtc').value.trim()) add(1, '구분이 기타이면 내용을 입력하세요.');
     if (state.rows.some(r => filled(r) && isMove(r) && r.transport === CAR) && !/^[1-5]\./.test($('fareReason').value))
       add(1, '자차를 이용한 구간이 있으면 운임청구사유를 1~5번 중에서 선택하세요.');
@@ -2342,7 +2323,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       ${warns.length ? `<div class="alert alert-warning small py-2"><b>확인해 주세요</b><ul class="mb-0 ps-3">${warns.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
       <div class="small mb-2">
         구분 <b>${esc(cat)}</b> · 운임청구사유 <b>${esc($('fareReason').value)}</b> ·
-        조합차량(법인차량) <b>${document.querySelector('input[name="unionCar"]:checked').value}</b>
+        조합차량·법인차량 이용 <b>${document.querySelector('input[name="unionCar"]:checked').value}</b>
       </div>
       <div class="table-responsive border rounded mb-2">
         <table class="table table-sm review-table">
@@ -2359,7 +2340,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       <div class="review-total mb-2"><span>총 청구금액</span><span class="amount">${won(total)}</span></div>
       <div class="small text-secondary">
         입금 계좌 <b class="text-body">${esc($('bank').value.trim())} ${esc($('account').value.trim())} (${esc($('holder').value.trim())})</b><br>
-        근무 지사 <b class="text-body">${esc(state.branch)}</b>${state.branch !== state.user.소속 ? ` (등록 소속 ${esc(state.user.소속)}에서 바꿈)` : ''}<br>
+        소속 <b class="text-body">${esc(state.branch)}</b>${state.branch !== state.user.소속 ? ` (등록된 소속 ${esc(state.user.소속)}에서 바꿈)` : ''}<br>
         운임 영수증 ${state.files.length + state.kept.length}장 · 별도 경로 증빙 사진 ${state.routeFiles.length + state.routeKept.length}장 · 경로 지도 ${rows.filter(x => isMove(x.r) && x.r.map).length}개
       </div>`;
     renderSheets(rows, total);
@@ -2485,7 +2466,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       innerHours: isInner() ? $('innerHours').value : '',
       unionCar: document.querySelector('input[name="unionCar"]:checked').value,
       fareReason: $('fareReason').value,
-      branch: state.branch,   // 직원이 확인한 근무 지사
+      branch: state.branch,   // 이번 청구의 소속 (등록된 소속과 다르면 직원이 바꾼 값)
       rows: state.rows.map((r, i) => ({ r, i })).filter(x => filled(x.r)).map(({ r, i }) => ({
         no: i + 1, // 화면의 줄 번호 (서버 오류 메시지가 화면과 같은 줄을 가리키게)
         date: r.date, origin: r.origin.trim(), waypoint: r.waypoint.trim(), destination: r.destination.trim(),

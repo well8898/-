@@ -701,12 +701,12 @@ function saveClaimData(formData) {
     if (!trip) throw new Error('마감되었거나 존재하지 않는 출장입니다.');
     if (isLockedStatus_(trip.청구상태)) throw new Error(lockedMessage_(trip.청구상태));
 
-    // 근무 지사: 직원이 확인한 값 (지사별 주소 탭에 있는 이름이거나 대상자 명단에 적힌 값)
+    // 소속: 등록된 소속이 실제와 다르면 직원이 화면에서 바꾼 값 (지사별 주소 탭에 있는 이름만)
     const branch = String(f.branch || '').trim() || user.소속;
     if (branch !== user.소속 && getBranchNames_().map(b => b.replace(/\s/g, '')).indexOf(branch.replace(/\s/g, '')) < 0) {
-      throw new Error("근무 지사 '" + branch + "'가 지사 목록에 없습니다. 목록에서 골라 주세요.");
+      throw new Error("소속 '" + branch + "'이(가) 소속 목록에 없습니다. 목록에서 골라 주세요.");
     }
-    const who = Object.assign({}, user, { 소속: branch }); // PDF의 소속 칸은 확인한 지사
+    const who = Object.assign({}, user, { 소속: branch }); // PDF의 소속 칸은 이번 청구의 소속
 
     const unionCar = f.unionCar === '유' ? '유' : '무';
     const category = CONFIG.CATEGORIES.indexOf(f.category) >= 0 ? f.category : '근무지외';
