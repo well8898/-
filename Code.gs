@@ -338,7 +338,7 @@ function getMyClaim(employeeId, name, tripId) {
         unionCar: detail.unionCar, fareReason: detail.fareReason,
         bank: detail.bank, account: detail.account, holder: detail.holder,
         receipts: (detail.receipts || []).map(r => ({ id: r.id, name: r.name })),
-        routeImages: (detail.routeImages || []).map(r => ({ id: r.id, name: r.name })),
+        routeImages: (detail.routeImages || []).map(r => ({ id: r.id, name: r.name, row: r.row })), // row = 증빙하는 줄 (저장 순서)
         submittedAt: detail.submittedAt,
       },
     };
@@ -705,7 +705,7 @@ function saveClaimData(formData) {
     // 영수증·경로 증빙 사진: 이전 제출분 중 유지할 것 + 새로 올린 것 (모두 이미지, 파일로 따로 저장하지 않음)
     const keepIds = Array.isArray(f.keepReceiptIds) ? f.keepReceiptIds.map(String) : [];
     const receipts = mergeImages_(prev && prev.receipts, keepIds, f.receipts, 'r', '영수증');
-    const routeImages = mergeImages_(prev && prev.routeImages, f.keepRouteIds, f.routeImages, 'p', '경로 증빙');
+    const routeImages = mergeImages_(prev && prev.routeImages, f.keepRouteIds, f.routeImages, 'p', '경로 증빙', f.keepRouteNos);
     if (rows.some(r => isMove_(r) && CONFIG.RECEIPT_TRANSPORTS.indexOf(r.transport) >= 0) && !receipts.length) {
       throw new Error('대중교통(KTX·버스)이나 자차를 이용한 줄이 있으면 운임 영수증을 1장 이상 첨부하세요.');
     }
@@ -718,6 +718,25 @@ function saveClaimData(formData) {
 
     // 구간별 경로 지도 (km는 서버에서 다시 길찾기로 확인)
     const maps = buildRouteEvidence_(rows);
+    // 별도 경로 증빙 사진은 화면에서 고른 줄에 연결 → 그 줄의 PDF 증빙은 자동 지도 대신 이 사진
+    const idxByNo = {};
+    rows.forEach((r, i) => { idxByNo[r.no] = i; });
+    routeImages.forEach(img => {
+      const i = idxByNo[img.no];
+      if (i == null || !(rows[i].km > 0 && isMove_(rows[i]))) {
+        throw new Error('별도 경로 증빙 사진 \'' + img.name + '\': 어느 줄의 증빙인지 골라 주세요.');
+      }
+      img.row = i; // 저장된 줄 순서 (다시 불러올 때 같은 줄에 연결)
+      delete img.no;
+    });
+    maps.forEach(m => {
+      m.photos = routeImages.filter(img => img.row === m.row);
+      if (m.differs && !m.photos.length) {
+        const r = rows[m.row];
+        throw new Error(r.no + '번째 줄: 이동거리 ' + r.km + 'km가 카카오 길찾기 ' + m.kakaoKm
+          + 'km와 달라서 그 줄의 길찾기(네비) 캡처가 필요합니다. 별도 경로 증빙 사진에 올리고 줄을 골라 주세요.');
+      }
+    });
     const addresses = placeAddresses_(rows);
 
     // 서식 PDF (이것 하나만 드라이브에 남김)
@@ -856,12 +875,14 @@ function validateRows_(input, trip, opts) {
     // 근무지내는 식비 없음
     const meals = opts.inner ? 0 : Math.min(CONFIG.MAX_MEALS, Math.max(0, Math.floor(Number(r.meals) || 0)));
     return {
+      no: no > 0 ? no : i + 1, // 화면의 줄 번호 (경로 증빙 사진 연결용)
       date: date, origin: origin, waypoint: waypoint, destination: destination, transport: transport, km: km,
       fare: transport === CONFIG.CAR ? Math.round(km * trip.유류대) : transport === CONFIG.RIDE ? 0 : toWon_(r.fare),
       meals: meals, meal: meals * CONFIG.MEAL_PRICE,
       lodging: toWon_(r.lodging), etc: toWon_(r.etc), daily: 0,
       dailyManual: String(r.daily == null ? '' : r.daily).trim() === '' ? null : toWon_(r.daily), // 직접 입력한 일비
       mapImage: move ? cleanImage_(r.mapImage) : null, // 화면에서 캡처한 지도 (거리 표시 포함)
+      needsProof: move && r.needsProof === true, // 화면에서 이동거리를 길찾기와 다르게 고친 줄
     };
   });
 
@@ -915,11 +936,16 @@ function buildRouteEvidence_(rows) {
       const route = computeRoute_(r.origin, r.waypoint, r.destination, key);
       const img = r.mapImage || { mime: 'image/png', b64: Utilities.base64Encode(buildRouteMap_(route).getBytes()) };
       out.push({
+        // 캡처가 필요한 줄: 화면에서 거리를 고친 줄, 또는 서버 길찾기와 크게 다른 줄
+        // (길찾기는 실시간 교통으로 거리가 조금씩 달라져서 서버 확인은 5km·10%까지 허용)
+        row: i, kakaoKm: route.km,
+        differs: r.needsProof || Math.abs(route.km - r.km) > Math.max(5, route.km * 0.1),
         caption: label + '  |  카카오 길찾기 ' + route.km + 'km (청구 ' + r.km + 'km)',
         mime: img.mime, b64: img.b64,
       });
     } catch (e) {
       out.push({
+        row: i,
         caption: label + '  |  청구 ' + r.km + 'km',
         mime: r.mapImage ? r.mapImage.mime : '', b64: r.mapImage ? r.mapImage.b64 : '',
         error: '경로 확인 실패: ' + e.message,
@@ -1077,19 +1103,23 @@ function buildClaimHtml_(d) {
     html += '</div>';
   }
 
-  // 경로 지도 + 직접 첨부한 경로 증빙 사진
-  const extra = d.routeImages || [];
-  if (d.maps.length || extra.length) {
+  // 줄마다 경로 증빙: 직접 올린 길찾기 캡처가 있으면 그것, 없으면 자동 경로 지도
+  if (d.maps.length) {
     html += '<div class="page"><h2>이동 경로 증빙</h2>';
     d.maps.forEach(m => {
+      const photos = m.photos || [];
+      if (photos.length) {
+        photos.forEach((p, i) => {
+          html += '<div class="evi"><div class="cap b">' + e(m.caption) + '</div>'
+            + '<div class="cap">직접 첨부한 경로 증빙' + (photos.length > 1 ? ' ' + (i + 1) + '/' + photos.length : '') + ' · ' + e(p.name) + '</div>'
+            + '<img src="data:' + p.mimeType + ';base64,' + p.data + '"></div>';
+        });
+        return;
+      }
       html += '<div class="evi"><div class="cap b">' + e(m.caption) + '</div>'
         + (m.b64 ? '<img src="data:' + m.mime + ';base64,' + m.b64 + '">' : '')
         + (m.error ? '<div class="cap">' + e(m.error) + '</div>' : '')
         + '</div>';
-    });
-    extra.forEach((r, i) => {
-      html += '<div class="evi"><div class="cap b">별도 경로 증빙 ' + (i + 1) + ' · ' + e(r.name) + '</div>'
-        + '<img src="data:' + r.mimeType + ';base64,' + r.data + '"></div>';
     });
     html += '</div>';
   }
@@ -1114,18 +1144,25 @@ function cleanImage_(data) {
 }
 
 // 이전 제출 이미지 중 유지할 것 + 새 이미지 → [{ id, name, mimeType, data }]
-function mergeImages_(prevList, keepIds, newFiles, idPrefix, label) {
+// keepNos가 있으면(경로 증빙) 각 이미지에 화면 줄 번호 no도 붙임 (keepIds와 같은 순서, 새 이미지는 file.no)
+function mergeImages_(prevList, keepIds, newFiles, idPrefix, label, keepNos) {
   const keep = (Array.isArray(keepIds) ? keepIds : []).map(String);
+  const withNo = Array.isArray(keepNos);
   const out = [];
   (prevList || []).forEach(r => {
     if (keep.indexOf(String(r.id)) < 0) return;
     const img = r.data ? { mime: r.mimeType, b64: r.data } : legacyReceiptImage_(r.id);
-    if (img) out.push({ id: String(r.id), name: r.name, mimeType: img.mime, data: img.b64 });
+    if (!img) return;
+    const item = { id: String(r.id), name: r.name, mimeType: img.mime, data: img.b64 };
+    if (withNo) item.no = Math.floor(Number(keepNos[keep.indexOf(String(r.id))])) || 0;
+    out.push(item);
   });
   (Array.isArray(newFiles) ? newFiles : []).forEach((file, i) => {
     const img = cleanImage_(file.data);
     if (!img) throw new Error((file.name || label) + ': 이미지 파일만 첨부할 수 있습니다.');
-    out.push({ id: idPrefix + Date.now() + '_' + i, name: String(file.name || label), mimeType: img.mime, data: img.b64 });
+    const item = { id: idPrefix + Date.now() + '_' + i, name: String(file.name || label), mimeType: img.mime, data: img.b64 };
+    if (withNo) item.no = Math.floor(Number(file.no)) || 0;
+    out.push(item);
   });
   if (out.length > CONFIG.MAX_FILES) throw new Error(label + ' 사진은 최대 ' + CONFIG.MAX_FILES + '장까지 첨부할 수 있습니다.');
   return out;
