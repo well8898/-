@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>오늘 현장 개편 시안 · 자세히</title>
+<link rel="stylesheet" href="redesign.css">
+<style>
+.seg b.on{background:#fff}
+.dayhd{font:800 24px/1.3 P;letter-spacing:-.5px;margin:6px 0 2px}
+.daysub{font:500 15px P;color:var(--sub);margin:0 0 12px}
+/* 지도 */
+.map{border-radius:18px;overflow:hidden;background:#eef1f4;position:relative;height:178px}
+.map svg{display:block;width:100%;height:100%}
+.map .src{position:absolute;right:8px;bottom:8px;font:600 11.5px P;color:var(--sub);background:rgba(255,255,255,.9);border-radius:6px;padding:2px 6px}
+/* 구간 거리 */
+.legs{list-style:none;margin:12px 0 0;padding:0}
+.legs li{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font:600 15.5px P}
+.legs li>span:first-child{display:flex;align-items:center;gap:6px;min-width:0}
+.legs .k{font:800 16px P;white-space:nowrap}
+.legs .mn{font:500 14px P;color:var(--sub);margin-left:4px}
+.legs li.sum{border-bottom:0;font:800 17px P;padding-top:12px}
+.pin{flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:inline-grid;place-items:center;font:800 12px P}
+.pin.base{background:var(--ink);border-radius:6px}
+.arr{width:14px;height:14px;color:var(--mute);flex:none}
+.copy{margin-top:10px;width:100%;height:46px;border:1.5px solid var(--line);background:var(--bg);border-radius:12px;font:700 15px P;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px}
+.copy svg{width:18px;height:18px}
+/* 현장 카드 (자세히) */
+.site{background:var(--well);border-radius:22px;padding:16px 16px 14px}
+.site .row1{display:flex;align-items:center;gap:8px;font:700 15px P;color:var(--sub)}
+.badge{font:700 13px P;border-radius:7px;padding:2px 8px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.site .n{font:800 25px/1.25 P;letter-spacing:-.5px;margin-top:8px}
+.addr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-top:8px}
+.addr p{margin:0;font:500 15px/1.5 P;color:var(--sub);word-break:keep-all}
+.addr button{flex:none;height:34px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);font:700 13.5px P;color:var(--accent);padding:0 10px}
+.ok-tag{font:700 12px P;color:#0a7a4a;background:#e3f6ec;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.elv{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.elv .sum{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.elv .sum b{font:800 16px P;margin-right:4px}
+.chip{font:700 13px P;border-radius:7px;padding:3px 8px;background:var(--well);color:var(--sub)}
+.chip.mr{background:#eef2ff;color:#3446b8}
+.chip.mrl{background:#e9f7f0;color:#0a6b40}
+.elv .spec{font:500 13.5px P;color:var(--sub);margin-top:6px}
+.elv table{width:100%;border-collapse:collapse;margin-top:10px;font:500 13.5px P}
+.elv th{font:700 12.5px P;color:var(--sub);text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+.elv td{padding:7px 4px;border-bottom:1px solid var(--line)}
+.elv tr:last-child td{border-bottom:0}
+.elv td:first-child{font-weight:700}
+.elv .tg{display:flex;align-items:center;gap:4px;margin-left:auto;font:700 13.5px P;color:var(--accent);background:none;border:0;padding:0}
+.elv .tg svg{width:14px;height:14px}
+.more{margin-top:8px;width:100%;height:40px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);font:700 13.5px P;color:var(--sub)}
+.site .same{background:none;padding:0;margin-top:14px;display:flex;gap:8px;align-items:baseline}
+.site .same::before{content:"";flex:none;width:10px;height:10px;border-radius:3px;background:#f5b400;transform:translateY(1px)}
+/* 주간 자세히 */
+.wd{border-bottom:1px solid var(--line);padding:10px 0}
+.wd h3{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px;font:800 17px P}
+.wd h3 span{font:600 14px P;color:var(--sub)}
+.wd.today h3 b{color:var(--accent)}
+.wd table{width:100%;border-collapse:collapse;font:500 14.5px P}
+.wd td{padding:5px 0;vertical-align:top}
+.wd td.t{width:52px;font-weight:700}
+.wd td.k{width:44px;color:var(--sub);font-size:13.5px}
+.wd td.u{width:36px;text-align:right;font-weight:700}
+.wd .nm{font-weight:700}
+.wd .ar{display:block;font-size:13px;color:var(--sub)}
+.wd .sm2{display:inline-block;margin-top:4px;font:600 12.5px P;color:var(--amber);background:var(--amber-soft);border-radius:6px;padding:2px 7px}
+.wd.off h3 b{color:#c4373b}
+.mates{font:500 13.5px P;color:var(--sub);margin:0 0 4px}
+</style>
+</head>
+<body>
+<div class="board">
+
+<!-- A. 자세히 · 하루: 지도와 구간 거리 -->
+<div class="col"><div class="cap">자세히 · 하루 경로<small>지도와 구간별 거리 (예시 데이터)</small></div>
+<div class="phone">
+  <div class="sb"><span>8:10</span><span>5G</span></div>
+  <div class="scroll">
+    <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div>
+    <div class="dayhd">2현장 13대</div>
+    <p class="daysub">3조 · 윤서준 님과 · 정밀 5 · 정기 8 · 환산 13.6대</p>
+    <div class="map" role="img" aria-label="오늘 경로 지도: 지사에서 한빛마을7단지, 유승아파트를 거쳐 지사로">
+      <svg viewBox="0 0 320 178" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="178" fill="#eef1f4"/>
+        <path d="M-10 120 C60 110 110 140 180 118 S290 70 340 82" stroke="#d6e4f2" stroke-width="16" fill="none"/>
+        <path d="M0 40 H320 M0 150 H320 M70 0 V178 M150 0 V178 M240 0 V178" stroke="#fff" stroke-width="7"/>
+        <path d="M0 95 L320 60" stroke="#fff" stroke-width="10"/>
+        <path d="M40 140 L72 102 L148 70 L236 46 L198 132 L60 138" stroke="#1b64da" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        <rect x="30" y="128" width="22" height="22" rx="6" fill="#191f28"/><text x="41" y="143.5" font-family="P" font-weight="800" font-size="12" fill="#fff" text-anchor="middle">지</text>
+        <circle cx="148" cy="70" r="12" fill="#1b64da"/><text x="148" y="74.5" font-family="P" font-weight="800" font-size="12" fill="#fff" text-anchor="middle">1</text>
+        <circle cx="236" cy="46" r="12" fill="#1b64da"/><text x="236" y="50.5" font-family="P" font-weight="800" font-size="12" fill="#fff" text-anchor="middle">2</text>
+      </svg>
+      <span class="src">지도 예시</span>
+    </div>
+    <ul class="legs">
+      <li><span><i class="pin base">지</i><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><i class="pin">1</i>한빛마을7단지</span><span class="k">9.8km<span class="mn">20분</span></span></li>
+      <li><span><i class="pin">1</i><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><i class="pin">2</i>유승아파트</span><span class="k">6.4km<span class="mn">14분</span></span></li>
+      <li><span><i class="pin">2</i><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><i class="pin base">지</i>복귀</span><span class="k">12.8km<span class="mn">26분</span></span></li>
+      <li class="sum"><span>총 경로</span><span>29.0km<span class="mn">약 60분</span></span></li>
+    </ul>
+    <button class="copy" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>경로·거리 복사 (출장 기록용)</button>
+  </div>
+  <div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div>
+</div></div>
+
+<!-- B. 자세히 · 현장: 주소·승강기 정보 -->
+<div class="col"><div class="cap">자세히 · 현장 정보<small>고른 현장의 주소 · 호기별 승강기 (예시 데이터)</small></div>
+<div class="phone">
+  <div class="sb"><span>12:40</span><span>5G</span></div>
+  <div class="scroll">
+    <div class="top"><span class="date">10월 23일 금요일</span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div>
+    <div class="stops" role="tablist" aria-label="볼 현장 고르기"><button type="button" class="past"><i>1</i>한빛마을7단지</button><button type="button" class="on"><i>2</i>유승아파트</button><button type="button">복귀</button></div>
+    <div class="site">
+      <div class="row1">일정표 13:00<span class="badge">정기</span><span class="badge">8대</span></div>
+      <div class="n">유승아파트</div>
+      <div class="addr"><p>경기 고양시 덕양구 통일로742번길 63 (관산동)<span class="ok-tag">실주소</span></p><button type="button">위치 고치기</button></div>
+      <div class="elv">
+        <div class="sum"><b>오늘 8대</b><span class="chip mrl">MRL 6</span><span class="chip mr">MR 2</span><button class="tg" type="button">호기별 접기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button></div>
+        <div class="spec">로프식 · 15인승 · 20층 · 2007~2008년</div>
+        <table>
+          <tr><th>호기</th><th>기계실</th><th>모델</th><th>인승</th><th>설치</th></tr>
+          <tr><td>101-1</td><td><span class="chip mrl">MRL</span></td><td>예시 A15</td><td>15</td><td>2007</td></tr>
+          <tr><td>101-2</td><td><span class="chip mrl">MRL</span></td><td>예시 A15</td><td>15</td><td>2007</td></tr>
+          <tr><td>102-1</td><td><span class="chip mr">MR</span></td><td>예시 B13</td><td>13</td><td>2008</td></tr>
+          <tr><td>102-2</td><td><span class="chip mr">MR</span></td><td>예시 B13</td><td>13</td><td>2008</td></tr>
+        </table>
+        <button class="more" type="button">나머지 4대 더 보기</button>
+      </div>
+      <div class="same">같은 현장 · 7조 <b>황도현·권나은</b> 정기 1대</div>
+      <div class="nav"><span class="tm">티맵</span><span class="kk">카카오맵</span><span class="nv">네이버지도</span></div>
+    </div>
+  </div>
+  <div class="tabs"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div>
+</div></div>
+
+<!-- C. 자세히 · 이번 주 -->
+<div class="col"><div class="cap">자세히 · 이번 주<small>날마다 시간·현장·종류·대수 한눈에</small></div>
+<div class="phone">
+  <div class="sb"><span>19:30</span><span>5G</span></div>
+  <div class="scroll">
+    <div class="top"><span class="date">10월 19일 – 23일</span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div>
+    <div class="wsum" style="margin-top:6px"><div><b>4</b><span>근무일</span></div><div><b>6</b><span>현장</span></div><div><b>28</b><span>승강기(대)</span></div></div>
+    <div class="wd"><h3><b>19 월</b><span>3조 · 1현장 5대</span></h3>
+      <table><tr><td class="t">09:30</td><td><span class="nm">한빛마을7단지</span><span class="ar">야당동</span><span class="sm2">같은 현장 · 4조 장지민·임하준 5대</span></td><td class="k">정밀</td><td class="u">5</td></tr></table></div>
+    <div class="wd off"><h3><b>20 화</b><span>휴가</span></h3></div>
+    <div class="wd"><h3><b>21 수</b><span>2조 · 2현장 5대</span></h3>
+      <table><tr><td class="t">09:00</td><td><span class="nm">교하신도시 3단지</span><span class="ar">교하동</span></td><td class="k">정기</td><td class="u">3</td></tr>
+      <tr><td class="t">13:30</td><td><span class="nm">동패마을 상가</span><span class="ar">동패동</span></td><td class="k">정기</td><td class="u">2</td></tr></table></div>
+    <div class="wd"><h3><b>22 목</b><span>3조 · 1현장 5대</span></h3>
+      <table><tr><td class="t">10:00</td><td><span class="nm">일산동구청</span><span class="ar">장항동</span></td><td class="k">수시</td><td class="u">5</td></tr></table></div>
+    <div class="wd today"><h3><b>23 금 · 오늘</b><span>3조 · 2현장 13대</span></h3>
+      <table><tr><td class="t">09:40</td><td><span class="nm">한빛마을7단지</span><span class="ar">야당동</span></td><td class="k">정밀</td><td class="u">5</td></tr>
+      <tr><td class="t">13:00</td><td><span class="nm">유승아파트</span><span class="ar">관산동</span></td><td class="k">정기</td><td class="u">8</td></tr></table></div>
+  </div>
+  <div class="tabs"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div>
+</div></div>
+
+</div>
+</body>
+</html>
