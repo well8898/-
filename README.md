@@ -7,7 +7,6 @@ Google Apps Script 웹앱입니다.
 | `Code.gs` | 서버 (시트·드라이브·카카오 API·PDF) |
 | `Index.html` | 직원 화면 |
 | `data/지사별주소.xlsx` | '지사별 주소' 탭에 붙여 넣을 지사 주소 목록 |
-| `.github/workflows/deploy-apps-script.yml` | 자동 배포 |
 
 ## 반영 순서 (관리 기능 포함 버전)
 
@@ -35,42 +34,39 @@ Google Apps Script 웹앱입니다.
 제출 → 보완요청(보완 메모가 직원 화면에 보임, 고쳐 내면 다시 '제출'과 보완 이력 기록) → 확인완료 → 마감.
 확인완료·마감이면 직원은 고칠 수 없습니다. 마감되면 수정용 데이터는 매일 새벽 자동 정리됩니다.
 
-## 자동 배포
+## 자동 배포 (GitHub → Apps Script)
 
-`Code.gs` 또는 `Index.html`이 바뀌어 `claude/admiring-mendel-ne43hk` 브랜치에 올라가면,
-GitHub Actions가 Apps Script 프로젝트의 두 파일을 바꾸고 **지금 쓰는 웹앱 배포를 새 버전으로** 바꿉니다.
-웹앱 주소는 그대로입니다. 프로젝트의 설정 파일(appsscript.json)과 다른 파일은 건드리지 않습니다.
+GitHub 브랜치 `claude/admiring-mendel-ne43hk`에 새 `Code.gs`·`Index.html`이 올라오면,
+Apps Script가 **10분마다 스스로 확인해서** 프로젝트에 반영하고 **지금 쓰는 웹앱 배포를 새 버전으로** 바꿉니다.
+웹앱 주소는 그대로이고, 프로젝트의 다른 파일과 설정(appsscript.json)은 건드리지 않습니다.
+바로 반영하려면 스프레드시트 메뉴 **여비 관리 → 최신 버전으로 업데이트 (GitHub)**.
 
-### 처음 한 번 설정
+### 처음 한 번만 설정 (스크립트 소유자 계정으로)
 
-1. **Apps Script API 켜기** — https://script.google.com/home/usersettings 에서 'Google Apps Script API'를 **사용**으로.
-   웹앱을 배포한 계정(스크립트 소유자)으로 하세요.
-2. **로그인 정보 만들기** — Node.js가 설치된 PC에서:
+1. **Apps Script API 켜기** — https://script.google.com/home/usersettings → 'Google Apps Script API'를 **사용**으로.
+2. **코드 붙여넣기 (마지막 수동 작업)** — 스프레드시트 → 확장 프로그램 → Apps Script → `Code.gs`, `Index.html`을 이 저장소 내용으로 바꾸고 저장.
+3. **권한 목록 넣기** — 편집기 왼쪽 ⚙ 프로젝트 설정 → '편집기에서 "appsscript.json" 매니페스트 파일 표시' 체크 →
+   편집기 파일 목록의 `appsscript.json`을 열고, 맨 첫 줄 `{` 바로 다음 줄에 아래를 그대로 붙여넣고 저장:
    ```
-   npm install -g @google/clasp@2.4.2
-   clasp login
+     "oauthScopes": [
+       "https://www.googleapis.com/auth/spreadsheets",
+       "https://www.googleapis.com/auth/drive",
+       "https://www.googleapis.com/auth/script.external_request",
+       "https://www.googleapis.com/auth/script.scriptapp",
+       "https://www.googleapis.com/auth/script.container.ui",
+       "https://www.googleapis.com/auth/calendar.readonly",
+       "https://www.googleapis.com/auth/script.projects",
+       "https://www.googleapis.com/auth/script.deployments"
+     ],
    ```
-   브라우저가 열리면 스크립트 소유자 계정으로 허용합니다.
-   그러면 `C:\Users\(사용자)\.clasprc.json` (Mac은 `~/.clasprc.json`) 파일이 생깁니다. 메모장으로 열어 **내용 전체**를 복사하세요.
-3. **값 두 개 확인**
-   - 스크립트 ID: Apps Script 편집기 → ⚙ 프로젝트 설정 → 스크립트 ID
-   - 배포 ID: 배포 → 배포 관리 → 지금 쓰는 웹앱 배포 → 배포 ID
-4. **GitHub에 등록** — 이 저장소 → Settings → Secrets and variables → Actions → New repository secret
-
-   | Name | Secret |
-   |---|---|
-   | `CLASPRC_JSON` | 2번에서 복사한 내용 전체 |
-   | `SCRIPT_ID` | 스크립트 ID |
-   | `DEPLOYMENT_ID` | 배포 ID |
-5. **시험 실행** — 저장소 → Actions → 'Apps Script 자동 배포' → Run workflow.
-   초록 체크가 뜨면 끝입니다. 이후에는 코드가 올라갈 때마다 자동으로 실행됩니다.
+4. **실행** — 함수 선택 칸에서 `setup` → [실행] → 권한 허용. 이어서 `setupAutoUpdate` → [실행] → 권한 허용.
+   실행 기록에 `✅ … 새 버전(n)으로 배포했어요`가 나오면 끝입니다.
 
 ### 알아 둘 점
 
-- `CLASPRC_JSON`은 스크립트 소유자 계정의 Apps Script 접근 권한입니다. GitHub Secret은 화면에 다시 표시되지 않지만,
-  계정 비밀번호처럼 다루세요. 권한을 끊으려면 Google 계정 → 보안 → 타사 액세스에서 clasp 연결을 삭제하면 됩니다.
-- Apps Script 프로젝트는 버전을 최대 200개까지 만들 수 있습니다. 많이 쌓이면 편집기의 '배포 관리'에서 오래된 버전을 정리하세요.
-- 편집기에서 직접 고친 내용은 다음 자동 배포 때 이 저장소의 `Code.gs`·`Index.html`로 덮어써집니다. 수정은 저장소에서 하세요.
+- 편집기에서 직접 고친 `Code.gs`·`Index.html`은 GitHub 내용이 바뀌면 덮어써집니다. 수정은 저장소에서 하세요.
+- 새 버전이 만들어질 때마다 Apps Script 버전이 하나씩 쌓입니다(프로젝트당 최대 200개). 많이 쌓이면 배포 관리에서 오래된 버전을 지우세요.
+- 자동 업데이트를 멈추려면 편집기 왼쪽 ⏰ 트리거에서 `autoUpdateFromGitHub`를 삭제하세요.
 - 시트 탭(유류대·식수·지사별 주소 등)을 고치는 것은 배포와 상관없이 바로 반영됩니다.
 
 ## 짧은 주소 (Netlify)

@@ -1480,6 +1480,8 @@ function onOpen() {
     .addSeparator()
     .addItem('선택한 사람 보완요청…', 'menuRequestFix')
     .addItem('PDF 폴더 정리', 'menuOrganizeFolders')
+    .addSeparator()
+    .addItem('최신 버전으로 업데이트 (GitHub)', 'menuUpdateNow')
     .addToUi();
 }
 
@@ -1989,6 +1991,122 @@ check();
 </script></body></html>`;
 }
 
+
+// ════════════════════════════════════════════════════
+//  GitHub 자동 업데이트
+//  GitHub 브랜치에 새 Code.gs·Index.html이 올라오면 10분 안에 이 프로젝트에 반영하고
+//  지금 쓰는 웹앱 배포를 새 버전으로 바꿈 (웹앱 주소 그대로). 프로젝트의 다른 파일·설정은 건드리지 않음.
+//  처음 한 번: Apps Script API 켜기 → appsscript.json에 oauthScopes 추가 → setupAutoUpdate 실행 (README 참고)
+// ════════════════════════════════════════════════════
+const AUTO_UPDATE = {
+  RAW: 'https://raw.githubusercontent.com/well8898/-/claude/admiring-mendel-ne43hk/',
+  FILES: [
+    { path: 'Code.gs', name: 'Code', type: 'SERVER_JS' },
+    { path: 'Index.html', name: 'Index', type: 'HTML' },
+  ],
+  DEPLOYMENT_ID: 'AKfycbyp2C_FXAfEKpSbbYjBApwrlwc_S8Q6cxRJJPnMGSOwSdpwDUoyyn0huFhJYlNHf1OvZA', // 지금 쓰는 웹앱 주소의 /s/ 뒤 부분
+  API: 'https://script.googleapis.com/v1/projects/',
+};
+
+// 처음 한 번 편집기에서 실행: 10분마다 확인하도록 등록 + 바로 한 번 업데이트
+function setupAutoUpdate() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'autoUpdateFromGitHub').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('autoUpdateFromGitHub').timeBased().everyMinutes(10).create();
+  Logger.log('✅ 10분마다 GitHub를 확인하도록 등록했어요.');
+  Logger.log(updateFromGitHub_(true));
+}
+
+// 시간 트리거 (10분마다): 바뀐 게 있을 때만 반영
+function autoUpdateFromGitHub() {
+  try {
+    const msg = updateFromGitHub_(false);
+    if (msg) Logger.log(msg);
+  } catch (e) {
+    Logger.log('❌ 자동 업데이트 실패: ' + e.message);
+  }
+}
+
+// 여비 관리 메뉴 [최신 버전으로 업데이트]
+function menuUpdateNow() {
+  let msg;
+  try { msg = updateFromGitHub_(false) || '이미 GitHub의 최신 코드로 배포돼 있어요.'; } catch (e) { msg = '❌ ' + e.message; }
+  SpreadsheetApp.getUi().alert(msg);
+}
+
+// force=false면 GitHub 내용이 지난번 배포와 같을 때 아무것도 하지 않음 ('' 반환)
+function updateFromGitHub_(force) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return '다른 업데이트가 진행 중이에요. 잠시 뒤 다시 해 주세요.';
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const files = AUTO_UPDATE.FILES.map(f => {
+      const res = UrlFetchApp.fetch(AUTO_UPDATE.RAW + f.path + '?t=' + Date.now(), { muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) throw new Error('GitHub에서 ' + f.path + '을(를) 받지 못했어요 (' + res.getResponseCode() + ')');
+      return Object.assign({ source: res.getContentText('UTF-8') }, f);
+    });
+    // 잘리거나 엉뚱한 파일이면 배포하지 않음
+    const code = files[0].source, html = files[1].source;
+    if (code.indexOf('function doGet(') < 0 || code.indexOf('function updateFromGitHub_(') < 0) throw new Error('GitHub의 Code.gs 내용이 이상해서 배포하지 않았어요.');
+    if (!/<\/html>\s*$/.test(html)) throw new Error('GitHub의 Index.html이 끝까지 받아지지 않아 배포하지 않았어요.');
+    const hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, code + '\u0000' + html, Utilities.Charset.UTF_8));
+    if (!force && hash === props.getProperty('DEPLOYED_HASH')) return '';
+
+    // 1) 프로젝트 파일 교체 (Code·Index만, 나머지 파일과 appsscript.json은 그대로)
+    const id = ScriptApp.getScriptId();
+    const content = scriptApi_('get', id + '/content');
+    const list = (content.files || []).map(f => ({ name: f.name, type: f.type, source: f.source }));
+    files.forEach(f => {
+      const cur = list.find(x => x.name === f.name && x.type === f.type);
+      if (cur) cur.source = f.source; else list.push({ name: f.name, type: f.type, source: f.source });
+    });
+    scriptApi_('put', id + '/content', { files: list });
+
+    // 2) 새 버전 → 3) 지금 쓰는 웹앱 배포를 그 버전으로 (주소 유지)
+    const when = Utilities.formatDate(new Date(), getTz_(), 'yyyy-MM-dd HH:mm');
+    const ver = scriptApi_('post', id + '/versions', { description: 'GitHub 자동 업데이트 ' + when });
+    const depId = webAppDeploymentId_(id);
+    scriptApi_('put', id + '/deployments/' + depId, {
+      deploymentConfig: { scriptId: id, versionNumber: ver.versionNumber, manifestFileName: 'appsscript', description: 'GitHub 자동 업데이트 ' + when },
+    });
+    props.setProperty('DEPLOYED_HASH', hash);
+    return '✅ ' + when + ' GitHub 최신 코드로 업데이트하고 웹앱을 새 버전(' + ver.versionNumber + ')으로 배포했어요. 웹앱 주소는 그대로예요.';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 바꿀 웹앱 배포: 지금 쓰는 주소의 배포가 있으면 그것, 없으면 가장 최근에 고친 웹앱 배포
+function webAppDeploymentId_(scriptId) {
+  const res = scriptApi_('get', scriptId + '/deployments?pageSize=50');
+  const web = (res.deployments || []).filter(d => d.deploymentConfig && d.deploymentConfig.versionNumber
+    && (d.entryPoints || []).some(e => e.entryPointType === 'WEB_APP'));
+  if (!web.length) throw new Error('웹앱 배포를 찾지 못했어요. 배포 → 새 배포로 웹앱을 한 번 만들어 주세요.');
+  const mine = web.find(d => d.deploymentId === AUTO_UPDATE.DEPLOYMENT_ID);
+  if (mine) return mine.deploymentId;
+  web.sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)));
+  return web[0].deploymentId;
+}
+
+function scriptApi_(method, path, body) {
+  const res = UrlFetchApp.fetch(AUTO_UPDATE.API + path, {
+    method: method,
+    contentType: 'application/json',
+    payload: body ? JSON.stringify(body) : undefined,
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+  });
+  const code = res.getResponseCode(), text = res.getContentText();
+  if (code >= 300) {
+    if (/has not been used|is disabled|SERVICE_DISABLED|User has not enabled/i.test(text)) {
+      throw new Error('Apps Script API가 꺼져 있어요. https://script.google.com/home/usersettings 에서 "Google Apps Script API"를 사용으로 바꿔 주세요.');
+    }
+    if (code === 401 || code === 403) {
+      throw new Error('권한이 없어요 (' + code + '). appsscript.json에 oauthScopes를 넣었는지 확인하고 setupAutoUpdate를 다시 실행해 권한을 허용해 주세요.');
+    }
+    throw new Error('Apps Script API 오류 (' + code + '): ' + text.slice(0, 300));
+  }
+  return text ? JSON.parse(text) : {};
+}
 
 // ════════════════════════════════════════════════════
 //  관리자용: 최초 설정 / 테스트 (편집기에서 직접 실행)
