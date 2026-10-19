@@ -218,6 +218,18 @@
     .a4 .tile div { position: relative; flex: 1; min-height: 0; border: 1px solid #aaa; background: #f3f4f6; display: grid; place-items: center; overflow: hidden; color: #888; }
     .a4 .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
     .a4 .tile.own em { color: #1d7a4a; font-weight: 700; }
+    .a4-frame, .sheets .a4 { cursor: zoom-in; }
+    .a4-frame:hover, .sheets .a4:hover { outline: 2px solid var(--gov-navy); }
+    .sheet-zoom { position: fixed; inset: 0; z-index: 1800; background: rgba(20,28,40,.72); overflow: auto; padding: 56px 16px 24px; }
+    .sheet-zoom.d-none { display: none !important; }
+    .sheet-zoom .zoom-close { position: fixed; top: 10px; right: 16px; z-index: 2; }
+    .sheet-zoom .zoom-body { margin: 0 auto; width: fit-content; }
+    .sheet-zoom .zoom-page { background: #fff; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+    .sheet-zoom .zoom-page iframe { width: 794px; height: 1123px; border: 0; transform-origin: 0 0; display: block; }
+    .sheet-zoom .a4 { width: min(760px, calc(100vw - 32px)); max-width: none; font-size: 20px; gap: 10px; padding: 28px; cursor: default; box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+    .sheet-zoom .a4 .t { font-size: 26px; }
+    .sheet-zoom .a4 .tile em { font-size: 15px; }
+    .sheet-zoom .a4 .pg { font-size: 14px; }
     .a4-frame { width: 280px; max-width: 100%; aspect-ratio: 210 / 297; position: relative; overflow: hidden; border: 1px solid #cfd6df; box-shadow: 0 1px 4px rgba(0,0,0,.12); background: #fff; }
     .a4-frame iframe { width: 794px; height: 1123px; border: 0; transform: scale(.3526); transform-origin: 0 0; pointer-events: none; }
     .a4-frame .pg { position: absolute; right: 8px; bottom: 6px; color: #888; font-size: 10px; }
@@ -941,7 +953,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
             <p class="small text-secondary">아래 내용으로 청구서 PDF가 만들어져요. 고칠 곳이 있으면 왼쪽(휴대폰은 위쪽) 단계를 눌러 돌아가세요.</p>
             <div id="problemBox"></div>
             <div id="reviewBody"></div>
-            <div class="sec-title mt-4">청구서 PDF <small>1쪽 여비 청구 및 영수증 · 2쪽 증빙 서류</small></div>
+            <div class="sec-title mt-4">청구서 PDF <small>1쪽 여비 청구 및 영수증 · 2쪽 증빙 서류 · 눌러서 크게 보기</small></div>
             <div class="sheets" id="sheets"></div>
           </div></div>
 
@@ -968,6 +980,12 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
   </div>
 
   <footer class="gov-footer">한국승강기안전공단노동조합 · 출장 여비 청구</footer>
+
+  <!-- 청구서 미리보기 크게 보기 -->
+  <div id="sheetZoom" class="sheet-zoom d-none" onclick="if (event.target === this) closeSheetZoom()" role="dialog" aria-label="청구서 크게 보기">
+    <button type="button" class="btn btn-light zoom-close" onclick="closeSheetZoom()">닫기 ✕</button>
+    <div class="zoom-body" id="sheetZoomBody"></div>
+  </div>
 
   <div id="loading">
     <div class="spinner-border text-primary" role="status"></div>
@@ -2421,6 +2439,24 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       + '<td style="width:40%"><span class="sig">(서 &nbsp; 명)' + sig + '</span></td>'
       + '</tr></table></body></html>';
   }
+
+  // 미리보기를 누르면 크게: 1쪽은 실제 크기(A4 794px, 화면이 좁으면 맞춰 줄임), 2쪽은 넓혀서
+  $('sheets').addEventListener('click', e => {
+    const page = e.target.closest('.a4-frame, .a4');
+    if (!page) return;
+    const body = $('sheetZoomBody');
+    if (page.classList.contains('a4-frame')) {
+      const scale = Math.min(1, (window.innerWidth - 32) / 794);
+      body.innerHTML = `<div class="zoom-page" style="width:${Math.round(794 * scale)}px;height:${Math.round(1123 * scale)}px"><iframe title="청구서 1쪽" style="transform:scale(${scale})"></iframe></div>`;
+      body.querySelector('iframe').srcdoc = page.querySelector('iframe').srcdoc;
+    } else {
+      body.innerHTML = '';
+      body.appendChild(page.cloneNode(true));
+    }
+    $('sheetZoom').classList.remove('d-none');
+  });
+  function closeSheetZoom() { $('sheetZoom').classList.add('d-none'); $('sheetZoomBody').innerHTML = ''; }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheetZoom').classList.contains('d-none')) closeSheetZoom(); });
 
   function renderSheets(rows, total) {
     const img = f => f.data ? `<img src="data:${f.mimeType};base64,${f.data}" alt="">` : '이전 제출';
