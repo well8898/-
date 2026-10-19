@@ -2469,7 +2469,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.10';
+const PAGE_VER = '3.11';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3340,7 +3340,7 @@ function nameAsk(note, local) {
   $('nmIn').focus();
 }
 // 화면 아래: 누가 언제 올렸는지 · 이전 일정표로 되돌리기 · 인터넷 없을 때 안내
-// 내 정보: 이름·지사, 이름 바꾸기, 어둡게, 위젯 추가
+// 내 정보: 이름·지사, 어둡게, 위젯 추가
 function meBox() {
   const el = $('meBox');
   if (!el) return;
@@ -3349,18 +3349,9 @@ function meBox() {
   const ab = APP && appBridge();
   el.innerHTML = `<h2 class="ez-hi">${name ? esc(name) + ' 님' : '내 정보'}</h2>${br ? `<p class="ez-hisub">${esc(br)}</p>` : ''}
     <div class="me-list">
-      ${LINK && API ? `<div class="set-it"><div><b>이름</b><span>${esc(name || '–')}</span></div><button type="button" class="go" id="meName">바꾸기</button></div>` : ''}
       <div class="set-it"><div><b>화면 밝기</b><span>${isDark() ? '어둡게' : '밝게'}</span></div><button type="button" class="go" id="meTheme">${isDark() ? '밝게 보기' : '어둡게 보기'}</button></div>
       ${ab ? `<div class="set-it"><div><b>홈 화면 위젯</b><span>첫 화면에서 오늘 현장·길안내</span></div><button type="button" class="go" id="meWidget">추가</button></div>` : ''}
     </div>`;
-  if ($('meName'))
-    $('meName').onclick = () => {
-      document.body.classList.remove('tab-me');
-      $('name').value = '';
-      data = null;
-      render();
-      nameAsk('');
-    };
   $('meTheme').onclick = () => {
     $('themeBtn').click();
     meBox();
