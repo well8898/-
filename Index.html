@@ -977,6 +977,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
 <script>
   const FARE_REASONS = [
     '대중교통 이용',
+    '도보',
     '1. 산간오지 도서벽지 등 대중교통수단이 없어 자가용을 이용할 수 밖에 없는 경우',
     '2. 출장경로가 매우 복잡 다양하여 대중교통을 사실상 이용할 수 없는 경우',
     '3. 공무목적상 부득이한 심야시간대 이용 또는 긴급한 사유가 있는 경우',
@@ -985,6 +986,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     '해당없음',
   ];
   const NO_REASON = '해당없음';   // 근무지내 기본값
+  const WALK = '도보';            // 운임청구사유 '도보' = 교통편 '도보'
   const INNER = '근무지내';       // 식비 없음, 일비는 출장 시간(4시간 이상/미만) 기준
   const CAR = '자차';
   const CALC_WAIT_MSG = '거리 계산 중입니다. (30초~60초 정도 걸립니다.)';
@@ -1385,11 +1387,11 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     return rows;
   }
 
-  // 운임청구사유 → 기본 교통편 (대중교통 이용 = KTX, 1~5번 = 자차)
+  // 운임청구사유 → 기본 교통편 (대중교통 이용 = KTX, 도보 = 도보, 1~5번 = 자차)
   // (해당없음 = 교통편을 바꾸지 않음)
   function reasonTransport() {
     const v = $('fareReason').value;
-    return v === NO_REASON ? '' : v === FARE_REASONS[0] ? 'KTX' : CAR;
+    return v === NO_REASON ? '' : v === WALK ? WALK : v === FARE_REASONS[0] ? 'KTX' : CAR;
   }
 
   function onReasonChange() {
@@ -1628,15 +1630,15 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
     recalc();
   }
 
-  // 이동한 줄의 교통편이 모두 '도보'면 운임청구사유를 '해당없음'으로,
+  // 이동한 구간의 교통편이 모두 '도보'면 운임청구사유를 '도보'로 (근무지내 '해당없음'은 그대로),
   // 도보만 있다가 다른 교통편이 생기면 '대중교통 이용'으로 되돌림 (교통편 자동 변경은 하지 않음)
-  const WALK = '도보';
   function syncWalkReason() {
     const moves = state.rows.filter(r => filled(r) && isMove(r) && r.transport);
     if (!moves.length) return;
     const allWalk = moves.every(r => r.transport === WALK);
-    if (allWalk) $('fareReason').value = NO_REASON;
-    else if ($('fareReason').value === NO_REASON && !isInner()) $('fareReason').value = FARE_REASONS[0];
+    const v = $('fareReason').value;
+    if (allWalk) { if (v !== NO_REASON || !isInner()) $('fareReason').value = WALK; }
+    else if ((v === NO_REASON && !isInner()) || v === WALK) $('fareReason').value = FARE_REASONS[0];
   }
 
   // 자동 계산: 자차 운임(km×유류대) · 일비(날짜별 1회, 전체 km 기준) · 식비(끼니×단가)
