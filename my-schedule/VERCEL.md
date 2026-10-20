@@ -23,6 +23,9 @@
    - 연결하면 `KV_REST_API_URL`, `KV_REST_API_TOKEN` 환경 변수가 자동으로 생긴다
 5. **키 넣기**: Project → Settings → Environment Variables (앱스 스크립트 '스크립트 속성'에 있던 값 그대로)
    - `KAKAO_REST_API_KEY`, `KAKAO_JS_KEY`, `TMAP_APP_KEY`, `DATA_GO_KR_KEY`
+   - (여비입력 거리를 네이버 「최적」 경로로) `NAVER_MAP_KEY_ID`, `NAVER_MAP_KEY`
+     - 네이버 클라우드 플랫폼 콘솔 → Maps → Application 등록 → **Directions 5** 체크 → 인증 정보의 Client ID / Client Secret
+     - 없으면 지금처럼 TMAP(없으면 카카오)으로 계산
 6. **다시 배포**: Deployments → 맨 위 → Redeploy (환경 변수는 다시 배포해야 적용)
 7. **카카오 지도 도메인**: 카카오 디벨로퍼스 → 내 애플리케이션 → 플랫폼 → Web → 사이트 도메인에
    Vercel 주소(`https://○○○.vercel.app`) 추가

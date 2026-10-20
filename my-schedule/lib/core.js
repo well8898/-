@@ -5,6 +5,7 @@
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도) — 카카오 디벨로퍼스 Web 도메인에 Vercel 주소 등록
  *   - TMAP_APP_KEY       : (선택) 티맵 앱키 — 구간 거리·시간을 티맵 추천경로로
+ *   - NAVER_MAP_KEY_ID · NAVER_MAP_KEY : (선택) 네이버 클라우드 지도 API(Directions 5) — 있으면 구간 거리를 네이버 「최적」 경로로 (여비입력 기준)
  *   - DATA_GO_KR_KEY     : (선택) 공공데이터포털 인증키 — 검사접수정보·승강기 정보
  *   - 저장소: Vercel Storage의 Redis(REDIS_URL) 또는 Upstash(KV_REST_API_URL·TOKEN / UPSTASH_REDIS_REST_URL·TOKEN)
  * ▶ 키는 저장소에 올리지 않음. 위 환경 변수에만 넣기
@@ -12,9 +13,10 @@
 'use strict';
 
 const CACHE_SEC = 21600; // 6시간
+const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.7';
-const PAGE_VER = '3.11'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.8';
+const PAGE_VER = '3.12'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -539,7 +541,7 @@ async function geocodeSites(sites, origin, branch) {
     const o = origin && origin.lat ? origin : null;
     const J = juris_(branch || (o && o.name));
     const list = (Array.isArray(sites) ? sites : []).slice(0, 60);
-    const ckOf = s => 'site4:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+    const ckOf = s => 'site5:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
     const fixes = await siteFixes_(list.map(s => [s.name || s.q, s.area]));
     const todo = [];
     list.forEach((s, i) => {
@@ -561,7 +563,7 @@ async function geocodeSites(sites, origin, branch) {
       try { p = await findSite_(s, o, J, book); } catch (e) { /* 이 현장만 건너뜀 */ }
       if (p) { places[String(s.q).trim()] = p; put[ckOf(s)] = JSON.stringify(p); }
     });
-    try { await cache.putAll(put, CACHE_SEC); } catch (e) {}
+    try { await cache.putAll(put, LONG_SEC); } catch (e) {}
     Object.keys(places).forEach(q => { if (!places[q]) delete places[q]; });
     return { ok: true, places: places };
   } catch (e) {
@@ -600,13 +602,13 @@ async function findSite_(s, o, J, book) {
   for (let i = 0; i < queries.length; i++) {
     const kw = await kakaoGet_(base + 'keyword.json?size=15&query=' + encodeURIComponent(queries[i]) + near);
     const d = (kw.documents || []).find(ok);
-    if (d) return { lat: Number(d.y), lng: Number(d.x), name: d.place_name || name };
+    if (d) return { lat: Number(d.y), lng: Number(d.x), name: d.place_name || name, addr: d.road_address_name || d.address_name || '' };
   }
   if (/\d/.test(name)) {
     const q = [s.region, area, name.indexOf(area) === 0 ? name.slice(area.length) : name].filter(Boolean).join(' ');
     const ad = await kakaoGet_(base + 'address.json?size=5&query=' + encodeURIComponent(q));
     const d = (ad.documents || []).find(ok);
-    if (d) return { lat: Number(d.y), lng: Number(d.x), name: name };
+    if (d) return { lat: Number(d.y), lng: Number(d.x), name: name, addr: (d.road_address && d.road_address.address_name) || d.address_name || '' };
   }
   return null;
 }
@@ -754,8 +756,10 @@ async function dayBundle(need, origin, branch, order) {
 async function routeLegs(pairs) {
   try {
     const tmapKey = env_('TMAP_APP_KEY');
+    const nvId = env_('NAVER_MAP_KEY_ID'), nvKey = env_('NAVER_MAP_KEY');
     const list = (Array.isArray(pairs) ? pairs : []).slice(0, 30);
-    const ids = list.map(p => 'leg3:' + p.map(v => Number(v).toFixed(5)).join(','));
+    // 네이버 키가 있으면 네이버 거리만 따로 오래 보관 (여비입력 기준)
+    const ids = list.map(p => (nvId && nvKey ? 'legN:' : 'leg3:') + p.map(v => Number(v).toFixed(5)).join(','));
     const hit = await cache.getAll(ids);
     const out = list.map((p, i) => (hit[ids[i]] ? JSON.parse(hit[ids[i]]) : null));
     let src = tmapKey ? 'TMAP' : '카카오';
@@ -764,6 +768,24 @@ async function routeLegs(pairs) {
       const p = list[i];
       if (Math.abs(p[0] - p[2]) < 1e-5 && Math.abs(p[1] - p[3]) < 1e-5) out[i] = { km: 0, min: 0 };
     });
+    if (nvId && nvKey) {
+      src = '네이버';
+      await pool_(todo(), 6, async i => {
+        const q = 'start=' + list[i][1] + ',' + list[i][0] + '&goal=' + list[i][3] + ',' + list[i][2] + '&option=traoptimal';
+        const hd = { headers: { 'x-ncp-apigw-api-key-id': nvId, 'x-ncp-apigw-api-key': nvKey } };
+        for (const host of ['https://maps.apigw.ntruss.com', 'https://naveropenapi.apigw.ntruss.com']) {
+          const r = await getText_(host + '/map-direction/v1/driving?' + q, hd);
+          try {
+            if (r.code !== 200) continue;
+            const j = JSON.parse(r.text);
+            if (j.code === 1) { out[i] = { km: 0, min: 0 }; return; } // 출발지 = 도착지
+            const sm = j.route && j.route.traoptimal && j.route.traoptimal[0] && j.route.traoptimal[0].summary;
+            if (sm) { out[i] = { km: Math.round(sm.distance / 100) / 10, min: Math.round(sm.duration / 60000) }; return; }
+          } catch (e) { /* 다음 주소로 */ }
+        }
+      });
+      if (todo().length) src = '네이버·' + (tmapKey ? 'TMAP' : '카카오');
+    }
     if (tmapKey && todo().length) {
       await pool_(todo(), 6, async i => {
         const r = await getText_('https://apis.openapi.sk.com/tmap/routes?version=1&format=json', {
@@ -789,13 +811,13 @@ async function routeLegs(pairs) {
           if (!route) return;
           if (route.result_code === 104) out[i] = { km: 0, min: 0 };
           else if (route.result_code === 0) out[i] = { km: Math.round(route.summary.distance / 100) / 10, min: Math.round(route.summary.duration / 60) };
-          if (tmapKey && out[i]) src = 'TMAP·카카오';
+          if (tmapKey && out[i] && src === 'TMAP') src = 'TMAP·카카오';
         } catch (e) { /* 계산 실패 구간 */ }
       });
     }
     const put = {};
     out.forEach((r, i) => { if (r && !hit[ids[i]]) put[ids[i]] = JSON.stringify(r); });
-    try { await cache.putAll(put, CACHE_SEC); } catch (e) {}
+    try { await cache.putAll(put, LONG_SEC); } catch (e) {}
     return { ok: true, km: out.map(r => (r ? r.km : null)), min: out.map(r => (r ? r.min : null)), src: src };
   } catch (e) {
     return { ok: false, message: e.message };
@@ -918,11 +940,74 @@ async function shareWeek(branch, data, force, by, ctx) {
     const cmds = [['SET', 'p:' + k, json], ['SET', 'p:' + k + ':meta', JSON.stringify(meta)]];
     if (curJson) cmds.push(['SET', 'p:' + k + ':prev', curJson], ['SET', 'p:' + k + ':prev:meta', curMeta || '{}']);
     await redis_(cmds);
+    await archiveWeek_(branch, data);
     const all = JSON.parse((await props.get('WEEKS')) || '[]');
     if (all.indexOf(branch) < 0) { all.push(branch); await props.set('WEEKS', JSON.stringify(all)); }
     return { ok: true, at, by: meta.by, hasPrev: !!curJson };
   } catch (e) {
     return { ok: false, message: e.message };
+  }
+}
+
+// ════════ 지난 일정표 기록 (여비입력용: 지난달 1일 ~ 이번 달) ════════
+// 주마다 p:HIST:지사:첫날 에 압축해 두고, 지난달보다 오래된 주는 지움
+const zlib = require('zlib');
+const kstToday_ = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const prevMonth1_ = () => { const t = kstToday_(); const y = +t.slice(0, 4), m = +t.slice(5, 7); return (m === 1 ? y - 1 + '-12' : y + '-' + String(m - 1).padStart(2, '0')) + '-01'; };
+async function archiveWeek_(branch, data) {
+  try {
+    const isos = (data.days || []).map(d => d.iso).filter(Boolean).sort();
+    if (!isos.length) return;
+    const ik = 'p:HIST:' + branch;
+    const idx = JSON.parse((await redis_([['GET', ik]]))[0] || '[]');
+    const first = isos[0], keep = prevMonth1_();
+    const z = zlib.gzipSync(JSON.stringify({ source: data.source || '', days: data.days })).toString('base64');
+    let list = idx.filter(x => x.first !== first);
+    list.push({ first, last: isos[isos.length - 1] });
+    const drop = list.filter(x => x.last < keep);
+    list = list.filter(x => x.last >= keep).sort((a, b) => (a.first < b.first ? -1 : 1));
+    const cmds = [['SET', ik + ':' + first, z, 'EX', 75 * 86400], ['SET', ik, JSON.stringify(list)]];
+    drop.forEach(x => cmds.push(['DEL', ik + ':' + x.first]));
+    await redis_(cmds);
+  } catch (e) { /* 기록 실패해도 공유는 그대로 */ }
+}
+// 한 달 동안 지사 일정표의 날들 (기록 + 지금 올라가 있는 주)
+async function monthDays_(branch, ym) {
+  const byIso = {};
+  const add = d => (d.days || []).forEach(x => { if (x.iso && x.iso.slice(0, 7) === ym) byIso[x.iso] = x; });
+  // 바로 전 일정표(기록 기능 전에 올린 주일 수 있음) → 기록 → 지금 것 순으로 덮어씀
+  const [pj] = await redis_([['GET', 'p:WEEK:' + branch + ':prev']]);
+  try { if (pj) add(JSON.parse(pj)); } catch (e) {}
+  const idx = JSON.parse((await redis_([['GET', 'p:HIST:' + branch]]))[0] || '[]').filter(x => x.last.slice(0, 7) >= ym && x.first.slice(0, 7) <= ym);
+  if (idx.length) {
+    const vals = (await redis_([['MGET', ...idx.map(x => 'p:HIST:' + branch + ':' + x.first)]]))[0] || [];
+    vals.forEach(v => { try { if (v) add(JSON.parse(zlib.gunzipSync(Buffer.from(v, 'base64')).toString())); } catch (e) {} });
+  }
+  const cur = await getWeek(branch);
+  if (cur.ok) add(cur);
+  return Object.keys(byIso).sort().map(k => byIso[k]);
+}
+// 여비입력: 그 달 내 근무일·휴가 (ym: 'YYYY-MM' — 지난달·이번 달만)
+async function travelMonth(branch, name, ym) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch) && !(branch === DEMO_BRANCH && demoOn_())) return { ok: false, message: '지사가 올바르지 않아요.' };
+    const t = kstToday_();
+    const okYm = [t.slice(0, 7), prevMonth1_().slice(0, 7)];
+    if (okYm.indexOf(String(ym)) < 0) return { ok: false, message: '지난달과 이번 달만 볼 수 있어요.' };
+    const n = nmKey_(name);
+    if (!n) return { ok: false, needName: true, message: '이름을 넣어 주세요.' };
+    const all = branch === DEMO_BRANCH ? demoWeek_().days.filter(d => d.iso.slice(0, 7) === ym) : await monthDays_(branch, ym);
+    const days = [];
+    all.forEach(d => {
+      const me = (d.teams || []).find(tm => (tm.members || []).some(m => nmKey_(m) === n));
+      const off = (d.vacation || []).some(v => nmKey_(v) === n);
+      if (me) days.push({ iso: d.iso, label: d.label, team: me.team, members: me.members, stops: me.stops || [] });
+      else if (off) days.push({ iso: d.iso, label: d.label, off: true });
+    });
+    return { ok: true, ym, days };
+  } catch (e) {
+    return { ok: false, message: '여비 기록을 읽지 못했어요: ' + e.message };
   }
 }
 
@@ -936,6 +1021,7 @@ async function restoreWeek(branch, by, ctx) {
     if (!pj) return { ok: false, message: '되돌릴 이전 일정표가 없어요.' };
     const m = Object.assign(JSON.parse(pm || '{}'), { restored: { at: Date.now(), by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' } });
     await redis_([['SET', k, pj], ['SET', k + ':meta', JSON.stringify(m)], ['SET', k + ':prev', cj], ['SET', k + ':prev:meta', cm || '{}']]);
+    await archiveWeek_(branch, JSON.parse(pj));
     return { ok: true, source: m.source };
   } catch (e) {
     return { ok: false, message: e.message };
@@ -1196,7 +1282,7 @@ async function widget(key, fmt) {
 }
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
-const RPC = { listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
+const RPC = { travelMonth, listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, restoreWeek, myWeek };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)

@@ -1099,6 +1099,41 @@ body.ver-old .btabs-dot{display:block}
 @media (prefers-color-scheme:dark){:root:not([data-theme='light']) .ez-dp .on span,:root:not([data-theme='light']) .ez-dp .on b,:root:not([data-theme='light']) .ez-dp .on em{color:#0d1420}}
 #tabs.tabs{display:block!important;border:0;padding:0 0 10px;margin-top:6px}
 body.easy .ez-hi{margin-top:16px}
+/* 여비입력 */
+.btabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}
+body.no-trv #trvTab{display:none}
+body.tab-trv #modeSeg{visibility:hidden}
+body:not(.tab-trv) #trvBox{display:none}
+body.tab-trv #panel,body.tab-trv #homeCard,body.tab-trv #tabs,body.tab-trv #week,body.tab-trv .setbox{display:none!important}
+.trv-seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-radius:12px;padding:3px;margin:10px 0}
+.trv-seg button{border:0;background:none;font:700 15px var(--font-body);padding:10px 0;border-radius:9px;color:var(--mute);cursor:pointer}
+.trv-seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.msum{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-radius:18px;padding:14px 4px;text-align:center}
+.msum b{display:block;font-size:24px;font-weight:800}.msum span{font-size:13px;font-weight:600;color:var(--muted)}
+.trv-all{margin-top:8px;width:100%;min-height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:800 16px var(--font-body);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+.trv-all svg{width:19px;height:19px}.trv-all:disabled{opacity:.4}
+.trv-note{font-size:12.5px;line-height:1.45;color:var(--mute);margin:8px 0 6px}
+.trv-msg .spin{display:inline-block;width:18px;height:18px;border-width:2.5px;vertical-align:-3px}
+.trv-msg{text-align:center;color:var(--muted);font-size:15px;padding:28px 0}.trv-msg small{font-size:13px}
+.dy{border-top:1px solid var(--line);padding:12px 0 6px}
+.dh{display:flex;align-items:center;gap:8px}
+.dh b{font-size:18px;font-weight:800;white-space:nowrap}.dh b span{font-size:15px;font-weight:700;color:var(--muted)}
+.dh em{font-size:14px;font-weight:600;font-style:normal;color:var(--muted);flex:1}
+.dh strong{font-size:17px;font-weight:800}
+.dy .cp{flex:none;border:0;background:var(--surface);color:var(--muted);border-radius:10px;display:grid;place-items:center;cursor:pointer;padding:0}
+.dh .cp{width:40px;height:40px}.dh .cp svg{width:18px;height:18px}
+.dy ul{list-style:none;margin:6px 0 0;padding:0}
+.dy li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:9px;align-items:start;padding:7px 0}
+.dy .pin{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:12px;font-weight:800;font-style:normal;margin-top:1px}
+.dy .pin.base{background:var(--ink);color:var(--bg);border-radius:6px}
+.sn{font-size:16.5px;line-height:1.3;font-weight:700;word-break:keep-all}
+.sn .kb{font-size:12px;padding:0 6px;margin-left:6px;vertical-align:1px}
+.ad{display:flex;align-items:center;gap:6px;margin-top:3px}
+.ad span{font-size:13.5px;line-height:1.4;color:var(--muted);word-break:keep-all}.ad .na{color:var(--done)}
+.ad .cp{width:36px;height:36px}.ad .cp svg{width:16px;height:16px}
+.lk{font-size:15.5px;font-weight:800;text-align:right;white-space:nowrap}.lk small{display:block;font-size:12.5px;font-weight:500;color:var(--mute)}
+.dy li.bk .sn{font-size:15px;color:var(--muted)}
+.dy.off .dh b,.dy.off .dh em{color:var(--off)}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1170,6 +1205,7 @@ window.addEventListener(
     <div class="week" id="week"></div>
     <div class="homecard" id="homeCard" hidden></div>
     <section class="panel" id="panel" role="tabpanel"></section>
+    <section class="trvbox" id="trvBox"></section>
     <section class="setbox" id="setBox">
       <section class="mebox" id="meBox"></section>
       <h3 class="set-h">일정표 · 지사 · 위젯</h3>
@@ -1188,6 +1224,7 @@ window.addEventListener(
   <nav class="btabs" id="btabs" aria-label="화면 고르기">
     <button type="button" data-tab="day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</button>
     <button type="button" data-tab="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</button>
+    <button type="button" data-tab="trv" id="trvTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>여비입력</button>
     <button type="button" data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보<i class="btabs-dot" id="meDot"></i></button>
   </nav>
 </div>
@@ -2308,17 +2345,189 @@ async function easyLoad(d) {
   }
 }
 
+// ════ 여비입력: 지난달·이번 달 날짜별 경로 · km · 실제 주소 (네이버 「최적」 경로, 키가 있을 때) ════
+const COPY_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+const TRV = {}; // 'YYYY-MM' → { days, ready }
+let trvYm = '';
+const ymOf = (k) => {
+  const [y, m] = todayIso.split('-').map(Number);
+  const t = k === 'prev' ? new Date(y, m - 2, 1) : new Date(y, m - 1, 1);
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0');
+};
+const cleanAddr = a => String(a || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+async function copyText(t, msg) {
+  try {
+    await navigator.clipboard.writeText(t);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e2) {}
+    ta.remove();
+  }
+  toast(msg);
+}
+const trvOn = () => !!(API && LINK && LINK.b);
+// 하루 구간: 지사→1, 1→2, …, 마지막→지사 (ezLegs 와 같은 계산)
+const trvLegs = x => ezLegs({ t: { stops: x.stops } });
+function trvDayText(x, withAddr) {
+  const [, m, dd] = x.iso.split('-').map(Number);
+  const dow = DOW[new Date(x.iso + 'T00:00:00').getDay()];
+  const head = m + '/' + dd + '(' + dow + ')';
+  if (x.off) return head + ' 휴가';
+  const L = trvLegs(x);
+  const home = BRANCH ? BRANCH[0] : '지사';
+  const names = [home, ...x.stops.map(s => placeName(s.name)), home];
+  const tot = L.tot ? ' ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
+  if (!withAddr) return head + ' ' + names.join(' → ') + tot;
+  const ad = s => cleanAddr((GEO[mapQuery(s)] || {}).addr);
+  const lines = [head + tot, home + (BRANCH && BRANCH[1] ? ' (' + BRANCH[1] + ')' : '')];
+  x.stops.forEach((s, i) => lines.push('→ ' + placeName(s.name) + (ad(s) ? ' (' + ad(s) + ')' : '') + (L.out[i] && L.out[i].km != null ? ' ' + L.out[i].km.toFixed(1) + 'km' : '')));
+  lines.push('→ ' + home + (L.back ? ' ' + L.back.km.toFixed(1) + 'km' : ''));
+  return lines.join('\n');
+}
+function drawTrv() {
+  const el = $('trvBox');
+  if (!el) return;
+  if (!trvYm) trvYm = ymOf('prev');
+  const P = ymOf('prev'), C = ymOf('cur');
+  const mon = ym => +ym.slice(5) + '월';
+  let h = `<h2 class="ez-hi">여비입력</h2>
+    <div class="trv-seg" role="group" aria-label="볼 달"><button type="button" data-ym="${P}" aria-pressed="${trvYm === P}">지난달 ${mon(P)}</button><button type="button" data-ym="${C}" aria-pressed="${trvYm === C}">이번 달 ${mon(C)}</button></div>`;
+  if (!trvOn()) {
+    el.innerHTML = h + `<p class="trv-msg">앱(또는 지사·이름으로 연 화면)에서만 볼 수 있어요.</p>`;
+    return trvBind(el);
+  }
+  const T = TRV[trvYm];
+  if (!T) {
+    el.innerHTML = h + `<p class="trv-msg"><span class="spin"></span> ${mon(trvYm)} 일정을 불러오는 중…</p>`;
+    trvBind(el);
+    return trvLoad(trvYm);
+  }
+  if (T.err) {
+    el.innerHTML = h + `<p class="trv-msg">${esc(T.err)}</p><button type="button" class="ez-info" id="trvRe">다시 불러오기</button>`;
+    trvBind(el);
+    $('trvRe').onclick = () => { delete TRV[trvYm]; drawTrv(); };
+    return;
+  }
+  const work = T.days.filter(x => !x.off);
+  const sites = work.reduce((a, x) => a + places(x.stops).length, 0);
+  let tot = 0, unk = false;
+  work.forEach(x => { const L = trvLegs(x); tot += L.tot; if (L.unk || !L.tot) unk = true; });
+  h += `<div class="msum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${sites}</b><span>현장</span></div><div><b>${!work.length ? 0 : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}</b><span>총 km</span></div></div>
+    <button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사 (날짜·경로·km)</button>
+    <p class="trv-note">${esc(ROUTE_SRC && /네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적) 기준' : (ROUTE_SRC || '자동차 길찾기') + ' 기준')} · 지사 출발 → 현장 → 지사 복귀${T.ready ? '' : ' · 거리를 계산하는 중이에요'}</p>`;
+  if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>앱에 일정표가 올라온 주부터 기록돼요.</small></p>`;
+  const home = BRANCH ? BRANCH[0] : '지사';
+  T.days.forEach((x, k) => {
+    const [, , dd] = x.iso.split('-').map(Number);
+    const dow = DOW[new Date(x.iso + 'T00:00:00').getDay()];
+    if (x.off) {
+      h += `<section class="dy off"><div class="dh"><b>${dd} <span>${dow}</span></b><em>휴가</em></div></section>`;
+      return;
+    }
+    const L = trvLegs(x);
+    const km = v => (!v ? '' : v.same ? '같은 곳' : v.km.toFixed(1) + 'km');
+    const mn = v => (v && !v.same && v.mn != null ? v.mn + '분' : '');
+    h += `<section class="dy"><div class="dh"><b>${dd} <span>${dow}</span></b><em>${places(x.stops).length}현장 ${sumUnits(x.stops)}대</em><strong>${L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : T.ready ? '' : '…'}</strong><button type="button" class="cp" data-cday="${k}" aria-label="${dd}일 복사">${COPY_IC}</button></div><ul>`;
+    x.stops.forEach((s, i) => {
+      const a = cleanAddr((GEO[mapQuery(s)] || {}).addr);
+      h += `<li><i class="pin">${i + 1}</i><div class="sx"><div class="sn">${esc(placeName(s.name))}${kb(s.kind)}</div><div class="ad">${a ? `<span>${esc(a)}</span><button type="button" class="cp" data-addr="${esc(a)}" aria-label="주소 복사">${COPY_IC}</button>` : `<span class="na">${T.ready ? '주소를 찾지 못했어요' : '주소 찾는 중…'}</span>`}</div></div><span class="lk">${km(L.out[i])}<small>${mn(L.out[i])}</small></span></li>`;
+    });
+    const ba = BRANCH && BRANCH[1] ? BRANCH[1] : '';
+    h += `<li class="bk"><i class="pin base">지</i><div class="sx"><div class="sn">복귀 · ${esc(home)}</div>${ba ? `<div class="ad"><span>${esc(ba)}</span><button type="button" class="cp" data-addr="${esc(ba)}" aria-label="지사 주소 복사">${COPY_IC}</button></div>` : ''}</div><span class="lk">${km(L.back)}<small>${mn(L.back)}</small></span></li></ul></section>`;
+  });
+  el.innerHTML = h;
+  trvBind(el);
+  if ($('trvAll'))
+    $('trvAll').onclick = () => {
+      const lines = T.days.map(x => trvDayText(x, false));
+      lines.push('합계 ' + tot.toFixed(1) + 'km (' + work.length + '일)');
+      copyText(lines.join('\n'), mon(trvYm) + ' 전체를 복사했어요');
+    };
+  el.querySelectorAll('[data-cday]').forEach(b => (b.onclick = () => copyText(trvDayText(T.days[+b.dataset.cday], true), '이날 경로를 복사했어요')));
+  el.querySelectorAll('[data-addr]').forEach(b => (b.onclick = () => copyText(b.dataset.addr, '주소를 복사했어요')));
+}
+function trvBind(el) {
+  el.querySelectorAll('[data-ym]').forEach(b => (b.onclick = () => { trvYm = b.dataset.ym; drawTrv(); }));
+}
+async function trvLoad(ym) {
+  if (trvLoad.busy === ym) return;
+  trvLoad.busy = ym;
+  try {
+    await cfgReady;
+    const r = await run('travelMonth', LINK.b, curName(), ym);
+    if (!r || !r.ok) {
+      TRV[ym] = { err: (r && r.message) || '불러오지 못했어요.' };
+      return;
+    }
+    TRV[ym] = { days: r.days, ready: false };
+    if (curTab() === 'trv') drawTrv();
+    await ensureOrigin();
+    // 현장 위치(실제 주소)를 한꺼번에 — 20곳씩
+    const need = [];
+    r.days.filter(x => !x.off).forEach(x => needFor({ t: { stops: x.stops } }).forEach(n => { if (!need.some(y => y.q === n.q)) need.push(n); }));
+    for (let i = 0; i < need.length; i += 20) {
+      const part = need.slice(i, i + 20);
+      const g = await run('geocodeSites', part, ORIGIN, BRANCH ? BRANCH[0] : '');
+      part.forEach(n => (GEO[n.q] = (g && g.ok && g.places[n.q]) || null));
+      if (curTab() === 'trv' && trvYm === ym) drawTrv();
+    }
+    // 구간 거리 — 30구간씩
+    const pairs = [];
+    r.days.filter(x => !x.off).forEach(x => {
+      let prev = ORIGIN && ORIGIN.lat ? ORIGIN : null;
+      x.stops.forEach(s => {
+        const g = GEO[mapQuery(s)];
+        if (!g) return;
+        if (prev && ll(prev) !== ll(g)) {
+          const k = ll(prev) + '>' + ll(g);
+          if (!(k in LEGS) && !pairs.some(p => p.k === k)) pairs.push({ k, a: prev, b: g });
+        }
+        prev = g;
+      });
+      if (ORIGIN && ORIGIN.lat && prev && prev !== ORIGIN) {
+        const k = ll(prev) + '>' + ll(ORIGIN);
+        if (!(k in LEGS) && !pairs.some(p => p.k === k)) pairs.push({ k, a: prev, b: ORIGIN });
+      }
+    });
+    for (let i = 0; i < pairs.length; i += 30) {
+      const part = pairs.slice(i, i + 30);
+      const q = await run('routeLegs', part.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng]));
+      if (q && q.ok) {
+        part.forEach((p, j) => {
+          LEGS[p.k] = q.km[j];
+          MINS[p.k] = q.min ? q.min[j] : null;
+        });
+        if (q.src) ROUTE_SRC = q.src;
+      }
+      if (curTab() === 'trv' && trvYm === ym) drawTrv();
+    }
+    TRV[ym].ready = true;
+  } catch (e) {
+    if (!TRV[ym] || !TRV[ym].days) TRV[ym] = { err: '인터넷 연결을 확인하고 다시 불러와 주세요.' };
+    else TRV[ym].ready = true;
+  } finally {
+    trvLoad.busy = '';
+    if (curTab() === 'trv' && trvYm === ym) drawTrv();
+  }
+}
 // 아래 탭: 오늘(하루) · 이번 주 · 내 정보
 let lastDay = null;
-const curTab = () => (document.body.classList.contains('tab-me') ? 'me' : sel === 'week' ? 'week' : 'day');
+const curTab = () => (document.body.classList.contains('tab-me') ? 'me' : document.body.classList.contains('tab-trv') ? 'trv' : sel === 'week' ? 'week' : 'day');
 function syncTabs() {
   const t = curTab();
+  document.body.classList.toggle('no-trv', !trvOn());
   document.querySelectorAll('#btabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === t ? 'page' : 'false'));
 }
 function setTab(t) {
   const was = curTab();
   document.body.classList.toggle('tab-me', t === 'me');
-  if (days.length) {
+  document.body.classList.toggle('tab-trv', t === 'trv');
+  if (t === 'trv') drawTrv();
+  if (days.length && t !== 'trv') {
     if (t === 'week' && sel !== 'week') {
       lastDay = sel;
       sel = 'week';
@@ -2339,7 +2548,7 @@ function setTab(t) {
 }
 document.querySelectorAll('#btabs button').forEach(b => (b.onclick = () => setTab(b.dataset.tab)));
 function go(iso, dx) {
-  document.body.classList.remove('tab-me');
+  document.body.classList.remove('tab-me', 'tab-trv');
   if (!iso || iso === sel) return syncTabs();
   sel = iso;
   if (iso !== 'week') lastDay = iso;
@@ -2469,7 +2678,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.11';
+const PAGE_VER = '3.12';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
