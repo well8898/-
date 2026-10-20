@@ -2425,7 +2425,7 @@ function drawTrv() {
   work.forEach(x => { const L = trvLegs(x); tot += L.tot; if (L.unk || !L.tot) unk = true; });
   h += `<div class="msum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${sites}</b><span>현장</span></div><div><b>${!work.length ? 0 : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}</b><span>총 km</span></div></div>
     <button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사 (날짜·경로·km)</button>
-    <p class="trv-note">${esc(ROUTE_SRC && /네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적) 기준' : (ROUTE_SRC || '자동차 길찾기') + ' 기준')} · 지사 출발 → 현장 → 지사 복귀${T.ready ? '' : ' · 거리를 계산하는 중이에요'}</p>`;
+    <p class="trv-note">${esc(/네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적)' : /TMAP/.test(ROUTE_SRC) && !/카카오/.test(ROUTE_SRC) ? '티맵 추천경로' : '카카오 길찾기(추천경로)')} 기준 · 지사 출발 → 현장 → 지사 복귀${T.ready ? '' : ' · 거리를 계산하는 중이에요'}</p>`;
   if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>앱에 일정표가 올라온 주부터 기록돼요.</small></p>`;
   const home = BRANCH ? BRANCH[0] : '지사';
   T.days.forEach((x, k) => {
@@ -2685,7 +2685,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.12';
+const PAGE_VER = '3.13';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);

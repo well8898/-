@@ -4,7 +4,7 @@
  * ▶ Vercel 환경 변수 (Project → Settings → Environment Variables)
  *   - KAKAO_REST_API_KEY : 카카오 REST API 키 (현장 위치 검색·자동차 길찾기)
  *   - KAKAO_JS_KEY       : 카카오 JavaScript 키 (화면 지도) — 카카오 디벨로퍼스 Web 도메인에 Vercel 주소 등록
- *   - TMAP_APP_KEY       : (선택) 티맵 앱키 — 구간 거리·시간을 티맵 추천경로로
+ *   - TMAP_APP_KEY       : (선택) 티맵 앱키 — 티맵 길안내 버튼, 카카오 길찾기가 실패한 구간의 거리
  *   - NAVER_MAP_KEY_ID · NAVER_MAP_KEY : (선택) 네이버 클라우드 지도 API(Directions 5) — 있으면 구간 거리를 네이버 「최적」 경로로 (여비입력 기준)
  *   - DATA_GO_KR_KEY     : (선택) 공공데이터포털 인증키 — 검사접수정보·승강기 정보
  *   - 저장소: Vercel Storage의 Redis(REDIS_URL) 또는 Upstash(KV_REST_API_URL·TOKEN / UPSTASH_REDIS_REST_URL·TOKEN)
@@ -16,7 +16,7 @@ const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
 const SERVER_VER = 'v2.8';
-const PAGE_VER = '3.12'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const PAGE_VER = '3.13'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -755,21 +755,22 @@ async function dayBundle(need, origin, branch, order) {
 // 자동차 구간 거리: 티맵(앱키 있으면) → 실패 구간은 카카오내비. 6시간 캐시
 async function routeLegs(pairs) {
   try {
+    // 구간 거리: 카카오 자동차 길찾기(추천경로)가 기본 — 무료 쿼터 안에서
+    // (네이버 키가 있으면 네이버 「최적」, 카카오가 실패한 구간만 티맵)
     const tmapKey = env_('TMAP_APP_KEY');
     const nvId = env_('NAVER_MAP_KEY_ID'), nvKey = env_('NAVER_MAP_KEY');
+    const nv = !!(nvId && nvKey);
     const list = (Array.isArray(pairs) ? pairs : []).slice(0, 30);
-    // 네이버 키가 있으면 네이버 거리만 따로 오래 보관 (여비입력 기준)
-    const ids = list.map(p => (nvId && nvKey ? 'legN:' : 'leg3:') + p.map(v => Number(v).toFixed(5)).join(','));
+    const ids = list.map(p => (nv ? 'legN:' : 'legK:') + p.map(v => Number(v).toFixed(5)).join(','));
     const hit = await cache.getAll(ids);
     const out = list.map((p, i) => (hit[ids[i]] ? JSON.parse(hit[ids[i]]) : null));
-    let src = tmapKey ? 'TMAP' : '카카오';
+    const used = new Set();
     const todo = () => out.map((r, i) => (r ? -1 : i)).filter(i => i >= 0);
     todo().forEach(i => {
       const p = list[i];
       if (Math.abs(p[0] - p[2]) < 1e-5 && Math.abs(p[1] - p[3]) < 1e-5) out[i] = { km: 0, min: 0 };
     });
-    if (nvId && nvKey) {
-      src = '네이버';
+    if (nv && todo().length) {
       await pool_(todo(), 6, async i => {
         const q = 'start=' + list[i][1] + ',' + list[i][0] + '&goal=' + list[i][3] + ',' + list[i][2] + '&option=traoptimal';
         const hd = { headers: { 'x-ncp-apigw-api-key-id': nvId, 'x-ncp-apigw-api-key': nvKey } };
@@ -780,11 +781,23 @@ async function routeLegs(pairs) {
             const j = JSON.parse(r.text);
             if (j.code === 1) { out[i] = { km: 0, min: 0 }; return; } // 출발지 = 도착지
             const sm = j.route && j.route.traoptimal && j.route.traoptimal[0] && j.route.traoptimal[0].summary;
-            if (sm) { out[i] = { km: Math.round(sm.distance / 100) / 10, min: Math.round(sm.duration / 60000) }; return; }
+            if (sm) { out[i] = { km: Math.round(sm.distance / 100) / 10, min: Math.round(sm.duration / 60000) }; used.add('네이버'); return; }
           } catch (e) { /* 다음 주소로 */ }
         }
       });
-      if (todo().length) src = '네이버·' + (tmapKey ? 'TMAP' : '카카오');
+    }
+    if (todo().length) {
+      const key = getKakaoKey_();
+      await pool_(todo(), 6, async i => {
+        const r = await getText_('https://apis-navi.kakaomobility.com/v1/directions?origin=' + list[i][1] + ',' + list[i][0]
+          + '&destination=' + list[i][3] + ',' + list[i][2] + '&priority=RECOMMEND', { headers: { Authorization: 'KakaoAK ' + key } });
+        try {
+          const route = (JSON.parse(r.text).routes || [])[0];
+          if (!route) return;
+          if (route.result_code === 104) out[i] = { km: 0, min: 0 };
+          else if (route.result_code === 0) { out[i] = { km: Math.round(route.summary.distance / 100) / 10, min: Math.round(route.summary.duration / 60) }; used.add('카카오'); }
+        } catch (e) { /* 티맵으로 */ }
+      });
     }
     if (tmapKey && todo().length) {
       await pool_(todo(), 6, async i => {
@@ -797,24 +810,11 @@ async function routeLegs(pairs) {
           if (r.code !== 200) return;
           const f = (JSON.parse(r.text).features || [])[0];
           const pr = f && f.properties;
-          if (pr && pr.totalDistance != null) out[i] = { km: Math.round(pr.totalDistance / 100) / 10, min: Math.round((pr.totalTime || 0) / 60) };
-        } catch (e) { /* 카카오로 */ }
-      });
-    }
-    if (todo().length) {
-      const key = getKakaoKey_();
-      await pool_(todo(), 6, async i => {
-        const r = await getText_('https://apis-navi.kakaomobility.com/v1/directions?origin=' + list[i][1] + ',' + list[i][0]
-          + '&destination=' + list[i][3] + ',' + list[i][2] + '&priority=RECOMMEND', { headers: { Authorization: 'KakaoAK ' + key } });
-        try {
-          const route = (JSON.parse(r.text).routes || [])[0];
-          if (!route) return;
-          if (route.result_code === 104) out[i] = { km: 0, min: 0 };
-          else if (route.result_code === 0) out[i] = { km: Math.round(route.summary.distance / 100) / 10, min: Math.round(route.summary.duration / 60) };
-          if (tmapKey && out[i] && src === 'TMAP') src = 'TMAP·카카오';
+          if (pr && pr.totalDistance != null) { out[i] = { km: Math.round(pr.totalDistance / 100) / 10, min: Math.round((pr.totalTime || 0) / 60) }; used.add('TMAP'); }
         } catch (e) { /* 계산 실패 구간 */ }
       });
     }
+    const src = used.size ? [...used].join('·') : nv ? '네이버' : '카카오';
     const put = {};
     out.forEach((r, i) => { if (r && !hit[ids[i]]) put[ids[i]] = JSON.stringify(r); });
     try { await cache.putAll(put, LONG_SEC); } catch (e) {}
