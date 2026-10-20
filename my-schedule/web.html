@@ -1142,6 +1142,11 @@ body.tab-trv #panel,body.tab-trv #homeCard,body.tab-trv #tabs,body.tab-trv #week
 .dy.off .dh b,.dy.off .dh em{color:var(--off)}
 .trv-up{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 7px;margin-top:8px;min-height:50px;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:700 15.5px var(--font-body);cursor:pointer;padding:8px 12px;text-align:center}
 .trv-up svg{width:18px;height:18px}.trv-up small{flex-basis:100%;font-size:12.5px;font-weight:500;color:var(--mute)}
+.cp{flex:none;border:0;background:var(--surface);color:var(--muted);border-radius:10px;display:grid;place-items:center;cursor:pointer;padding:0;width:36px;height:36px}
+.cp svg{width:16px;height:16px}
+.ez-card .ez-ad{margin-top:6px}.ez-card .ez-ad span{font-size:15px}.ez-card .cp{background:var(--bg);width:40px;height:40px}
+.tl-card .cp-in{background:var(--bg)}
+.cp-in{display:inline-grid;vertical-align:middle;width:34px;height:34px;margin-left:6px}
 </style>
 </head>
 <body>
@@ -2188,7 +2193,7 @@ function ezDetail(d, s, i) {
   const g = GEO[mapQuery(s)];
   const v = ELV[mapQuery(s)];
   const rows = [];
-  rows.push(['주소', g && g.addr ? g.addr : s.area ? (REGION[s.area] || '') + ' ' + s.area : '주소 미기재']);
+  if (!(g && g.addr)) rows.push(['주소', s.area ? (REGION[s.area] || '') + ' ' + s.area + ' (실주소 못 찾음)' : '주소 미기재']);
   if (v && v.list && v.list.length) {
     const L = elvToday(v, d, s) || v.list;
     const mr = L.filter(x => x.mr === 'Y').length,
@@ -2260,18 +2265,20 @@ function drawEasy() {
       h += `<section class="ez-card${past(pick) ? ' past' : ''}">
         <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : isToday ? '오늘 현장' : '이날 현장'}</div>
         <div class="ez-n">${esc(placeName(s.name))}${kb(s.kind)}</div>
+        ${addrRow(cleanAddr((GEO[mapQuery(s)] || {}).addr))}
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
         ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
         ${dl ? `<div class="ez-d">${ARROW}${dl}</div>` : ''}
         ${othersTxt(d, s) ? `<div class="ez-same">${othersChunks(d, s)}</div>` : ''}
         ${ezNav(s)}
-        <button type="button" class="ez-info" data-info aria-expanded="${ezInfo}">주소 · 승강기 정보 ${ezInfo ? '접기' : '보기'}</button>
+        <button type="button" class="ez-info" data-info aria-expanded="${ezInfo}">승강기 정보 ${ezInfo ? '접기' : '보기'}</button>
         ${ezInfo ? ezDetail(d, s, pick) : ''}
       </section>`;
     } else {
       h += `<section class="ez-card">
         <div class="ez-lab"><i></i>복귀</div>
         <div class="ez-n">${esc(homeNm)}</div>
+        ${addrRow(BRANCH && BRANCH[1] ? BRANCH[1] : '')}
         ${L.back ? `<div class="ez-d">${ARROW}${esc(placeName(st[n - 1].name))}에서 ${L.back.km.toFixed(1)}km${L.back.mn != null ? ' · ' + L.back.mn + '분' : ''}</div>` : ''}
         ${navLinks(homeNm, home, null)}
       </section>`;
@@ -2381,6 +2388,8 @@ async function copyText(t, msg) {
   toast(msg);
 }
 const trvOn = () => !!(API && LINK && LINK.b);
+// 현장명 밑 실제 주소 + 복사 버튼 (간단히·자세히 공용, 누르면 원주소만 복사)
+const addrRow = a => (a ? `<div class="ad ez-ad"><span>${esc(a)}</span><button type="button" class="cp" data-addr="${esc(a)}" aria-label="주소 복사">${COPY_IC}</button></div>` : '');
 // 지난 일정표 올리기: 파일마다 읽어서 내 지사 기록에만 넣음 (지금 보는 일정표는 그대로)
 async function trvUpload(files) {
   if (!trvOn() || !files.length) return;
@@ -2610,6 +2619,8 @@ $('tabs').addEventListener('click', e => {
   if (t) go(t.dataset.go);
 });
 $('panel').addEventListener('click', e => {
+  const cp = e.target.closest('[data-addr]');
+  if (cp) return copyText(cp.dataset.addr, '주소를 복사했어요');
   const g = e.target.closest('[data-go]');
   if (g) go(g.dataset.go);
   const fx = e.target.closest('[data-fix]');
@@ -2723,7 +2734,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.14';
+const PAGE_VER = '3.15';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -2967,7 +2978,8 @@ async function dayExtras(d) {
         return;
       }
       if (el)
-        el.innerHTML = (g.addr ? esc(g.addr) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>')
+        el.innerHTML = (g.addr ? esc(cleanAddr(g.addr)) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>') +
+            `<button type="button" class="cp cp-in" data-addr="${esc(cleanAddr(g.addr))}" aria-label="주소 복사">${COPY_IC}</button>`
           : esc(el.textContent.replace(/위치 고치기|위치 못 찾음|주소 직접 넣기/g, '').trim())) +
           '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>';
       if (mp) {
