@@ -213,6 +213,7 @@
     .a4 .t { font-size: 12px; font-weight: 700; border-bottom: 1.5px solid #222; padding-bottom: 2px; }
     .a4 .h { background: #eee; border-left: 3px solid #222; padding: 1px 4px; font-weight: 700; }
     .a4 .tiles { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 6px; flex: 1 1 0; min-height: 0; }
+    .a4 .tiles.g4 { grid-template-rows: repeat(2, minmax(0, 1fr)); }  /* 3~4장은 2열 2줄 (청구서 PDF와 같은 배치) */
     .a4 .tile { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
     .a4 .tile em { font-style: normal; font-size: 8px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .a4 .tile div { position: relative; flex: 1; min-height: 0; border: 1px solid #aaa; background: #f3f4f6; display: grid; place-items: center; overflow: hidden; color: #888; }
@@ -2467,8 +2468,8 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       return `<div class="tile"><em>${i + 1}. ${esc(r.date.slice(5))} 카카오 ${r.map ? r.map.km : '-'}km</em><div>${r.map && r.map.image ? `<img src="data:image/png;base64,${r.map.image}" alt="">` : '경로 지도'}</div></div>`;
     });
     const evid = rTiles.length || mTiles.length ? `<div class="a4"><div class="t">증빙 서류</div>
-      ${rTiles.length ? `<div class="h">운임 영수증 ${rTiles.length}장</div><div class="tiles">${rTiles.slice(0, 4).join('')}</div>` : ''}
-      ${mTiles.length ? `<div class="h">이동 경로 증빙 ${mTiles.length}구간</div><div class="tiles">${mTiles.slice(0, 4).join('')}</div>` : ''}
+      ${rTiles.length ? `<div class="h">운임 영수증 ${rTiles.length}장</div><div class="tiles ${rTiles.length > 2 ? 'g4' : ''}">${rTiles.slice(0, 4).join('')}</div>` : ''}
+      ${mTiles.length ? `<div class="h">이동 경로 증빙 ${mTiles.length}구간</div><div class="tiles ${mTiles.length > 2 ? 'g4' : ''}">${mTiles.slice(0, 4).join('')}</div>` : ''}
       <span class="pg">2쪽${rTiles.length > 4 || mTiles.length > 4 ? ' (이어서 다음 쪽)' : ''}</span></div>` : '';
     $('sheets').innerHTML = '<div class="a4-frame"><iframe title="청구서 1쪽 미리보기" tabindex="-1"></iframe><span class="pg">1쪽</span></div>' + evid;
     $('sheets').querySelector('iframe').srcdoc = formSheetHtml(rows, total);

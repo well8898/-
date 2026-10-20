@@ -1192,9 +1192,14 @@ function buildClaimHtml_(d) {
     }
     routeTiles.push({ head: m.caption, sub: m.error || '', mime: m.mime, b64: m.b64 });
   });
-  // 칸 묶음 → 표 (2장 이하는 2열, 3장 이상은 3열)
+  // 칸 묶음 → 표: 4장까지는 2열(3~4장은 2줄), 5장 이상은 3열.
+  // 사진 높이는 영수증·경로 증빙 줄 수를 합쳐 한 쪽(약 220mm)에 들어가게 나눔 (최대 100mm, 최소 40mm)
+  const colsOf = n => (n <= 4 ? 2 : 3);
+  const rowsOf = n => Math.ceil(n / colsOf(n));
+  const rowCount = rowsOf(receiptTiles.length) + rowsOf(routeTiles.length);
+  const imgH = Math.max(40, Math.min(100, Math.floor((220 - 14 * rowCount) / Math.max(rowCount, 1))));
   const tileTable = list => {
-    const cols = list.length <= 2 ? 2 : 3;
+    const cols = colsOf(list.length);
     let t = '<table class="tiles">';
     for (let i = 0; i < list.length; i += cols) {
       t += '<tr>';
@@ -1202,7 +1207,7 @@ function buildClaimHtml_(d) {
         const x = list[j];
         t += '<td style="width:' + (100 / cols) + '%">' + (!x ? '' : '<div class="cap b">' + e(x.head) + '</div>'
           + (x.sub ? '<div class="cap">' + e(x.sub) + '</div>' : '')
-          + (x.b64 ? '<img src="data:' + x.mime + ';base64,' + x.b64 + '">' : '')) + '</td>';
+          + (x.b64 ? '<img style="max-height:' + imgH + 'mm" src="data:' + x.mime + ';base64,' + x.b64 + '">' : '')) + '</td>';
       }
       t += '</tr>';
     }
