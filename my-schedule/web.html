@@ -1114,39 +1114,51 @@ body.tab-trv #panel,body.tab-trv #homeCard,body.tab-trv #tabs,body.tab-trv #week
 .trv-seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-radius:12px;padding:3px;margin:10px 0}
 .trv-seg button{border:0;background:none;font:700 15px var(--font-body);padding:10px 0;border-radius:9px;color:var(--mute);cursor:pointer}
 .trv-seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.msum{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-radius:18px;padding:14px 4px;text-align:center}
-.msum b{display:block;font-size:24px;font-weight:800}.msum span{font-size:13px;font-weight:600;color:var(--muted)}
-.trv-all{margin-top:8px;width:100%;min-height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--bg);font:800 16px var(--font-body);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
-.trv-all svg{width:19px;height:19px}.trv-all:disabled{opacity:.4}
-.trv-note{font-size:12.5px;line-height:1.45;color:var(--mute);margin:8px 0 6px}
 .trv-msg .spin{display:inline-block;width:18px;height:18px;border-width:2.5px;vertical-align:-3px}
 .trv-msg{text-align:center;color:var(--muted);font-size:15px;padding:28px 0}.trv-msg small{font-size:13px}
-.dy{border-top:1px solid var(--line);padding:12px 0 6px}
-.dh{display:flex;align-items:center;gap:8px}
-.dh b{font-size:18px;font-weight:800;white-space:nowrap}.dh b span{font-size:15px;font-weight:700;color:var(--muted)}
-.dh em{font-size:14px;font-weight:600;font-style:normal;color:var(--muted);flex:1}
-.dh strong{font-size:17px;font-weight:800}
-.dy .cp{flex:none;border:0;background:var(--surface);color:var(--muted);border-radius:10px;display:grid;place-items:center;cursor:pointer;padding:0}
-.dh .cp{width:40px;height:40px}.dh .cp svg{width:18px;height:18px}
-.dy ul{list-style:none;margin:6px 0 0;padding:0}
-.dy li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:9px;align-items:start;padding:7px 0}
-.dy .pin{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:12px;font-weight:800;font-style:normal;margin-top:1px}
-.dy .pin.base{background:var(--ink);color:var(--bg);border-radius:6px}
-.sn{font-size:16.5px;line-height:1.3;font-weight:700;word-break:keep-all}
-.sn .kb{font-size:12px;padding:0 6px;margin-left:6px;vertical-align:1px}
-.ad{display:flex;align-items:center;gap:6px;margin-top:3px}
-.ad span{font-size:13.5px;line-height:1.4;color:var(--muted);word-break:keep-all}.ad .na{color:var(--done)}
-.ad .cp{width:36px;height:36px}.ad .cp svg{width:16px;height:16px}
-.lk{font-size:15.5px;font-weight:800;text-align:right;white-space:nowrap}.lk small{display:block;font-size:12.5px;font-weight:500;color:var(--mute)}
-.dy li.bk .sn{font-size:15px;color:var(--muted)}
-.dy.off .dh b,.dy.off .dh em{color:var(--off)}
-.trv-up{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 7px;margin-top:8px;min-height:50px;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:700 15.5px var(--font-body);cursor:pointer;padding:8px 12px;text-align:center}
-.trv-up svg{width:18px;height:18px}.trv-up small{flex-basis:100%;font-size:12.5px;font-weight:500;color:var(--mute)}
 .cp{flex:none;border:0;background:var(--surface);color:var(--muted);border-radius:10px;display:grid;place-items:center;cursor:pointer;padding:0;width:36px;height:36px}
 .cp svg{width:16px;height:16px}
 .ez-card .ez-ad{margin-top:6px}.ez-card .ez-ad span{font-size:15px}.ez-card .cp{background:var(--bg);width:40px;height:40px}
 .tl-card .cp-in{background:var(--bg)}
 .cp-in{display:inline-grid;vertical-align:middle;width:34px;height:34px;margin-left:6px}
+/* 여비입력 (다듬음) */
+#trvBox .ez-hisub{margin-bottom:10px}
+body.tab-trv #bar{display:none}
+body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.dy .cp{background:var(--bg)}
+.tsum{background:var(--surface);border-radius:20px;padding:16px 18px;display:flex;flex-direction:column;gap:2px}
+.tsum span{font-size:14px;font-weight:600;color:var(--muted)}
+.tsum b{font-size:34px;font-weight:800;letter-spacing:-.8px;line-height:1.15}.tsum b small{font-size:18px;font-weight:700;margin-left:2px}
+.tsum em{font-style:normal;font-size:14.5px;font-weight:600;color:var(--muted)}
+.trv-act{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.trv-all,.trv-up{min-height:52px;border-radius:14px;font:800 15.5px var(--font-body);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;padding:0 8px;text-align:center}
+.trv-all{border:0;background:var(--ink);color:var(--bg)}.trv-all:disabled{opacity:.4}
+.trv-up{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font-weight:700;word-break:keep-all;line-height:1.25}
+@media (min-width:400px){.trv-up .br{display:none}}
+.trv-all svg,.trv-up svg{width:18px;height:18px;flex:none}
+.trv-home{display:grid;grid-template-columns:24px 1fr auto;gap:9px;align-items:center;margin:14px 0 4px;padding:0 2px}
+.trv-home b{display:block;font-size:15px}.trv-home span{display:block;font-size:13.5px;color:var(--muted);word-break:keep-all}
+.cpt{flex:none;display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 11px;border:0;border-radius:10px;background:var(--surface);color:var(--muted);font:700 13.5px var(--font-body);cursor:pointer;white-space:nowrap}
+.cpt svg{width:15px;height:15px}
+.dy{background:var(--surface);border:0;border-radius:18px;padding:12px 14px 6px;margin-top:10px}
+.dy .cpt{background:var(--bg)}
+.dh{display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.dh b{font-size:19px;font-weight:800;white-space:nowrap}.dh b span{font-size:15px;font-weight:700;color:var(--muted);margin-left:2px}
+.dh em{flex:1;font-size:14px;font-weight:600;font-style:normal;color:var(--muted)}
+.dh strong{font-size:18px;font-weight:800;white-space:nowrap}
+.dy ul{list-style:none;margin:4px 0 0;padding:0}
+.dy li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;column-gap:9px;row-gap:2px;align-items:center;padding:8px 0}
+.dy li+li{border-top:1px dashed var(--line)}
+.dy .pin{width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:12px;font-weight:800;font-style:normal}
+.dy .pin.base,.trv-home .pin{width:22px;height:22px;display:grid;place-items:center;font-size:12px;font-weight:800;font-style:normal;background:var(--ink);color:var(--bg);border-radius:6px}
+.sn{font-size:16.5px;line-height:1.3;font-weight:700;word-break:keep-all}
+.sn .kb{font-size:12px;padding:0 6px;margin-left:6px;vertical-align:1px}
+.lk{font-size:16px;font-weight:800;text-align:right;white-space:nowrap}.lk small{font-size:12.5px;font-weight:500;color:var(--mute);margin-left:4px}
+.dy .ad{grid-column:2/4;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0}
+.dy .ad span{font-size:13.5px;line-height:1.4;color:var(--muted);word-break:keep-all}.dy .ad .na{color:var(--done)}
+.dy li.bk .sn{font-size:15px;color:var(--muted);font-weight:600}
+.dy.off{padding:12px 14px}.dy.off .dh{border:0;padding:0}
+.dy.off .dh b,.dy.off .dh em{color:var(--off)}
 </style>
 </head>
 <body>
@@ -2445,7 +2457,8 @@ function drawTrv() {
   if (!trvYm) trvYm = ymOf('prev');
   const P = ymOf('prev'), C = ymOf('cur');
   const mon = ym => +ym.slice(5) + '월';
-  let h = `<h2 class="ez-hi">여비입력</h2>
+  const basis = (/네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적)' : /TMAP/.test(ROUTE_SRC) && !/카카오/.test(ROUTE_SRC) ? '티맵 추천경로' : '카카오 길찾기(추천경로)') + ' 기준';
+  let h = `<h2 class="ez-hi">여비입력</h2><p class="ez-hisub">${esc(basis)}</p>
     <div class="trv-seg" role="group" aria-label="볼 달"><button type="button" data-ym="${P}" aria-pressed="${trvYm === P}">지난달 ${mon(P)}</button><button type="button" data-ym="${C}" aria-pressed="${trvYm === C}">이번 달 ${mon(C)}</button></div>`;
   if (!trvOn()) {
     el.innerHTML = h + `<p class="trv-msg">앱(또는 지사·이름으로 연 화면)에서만 볼 수 있어요.</p>`;
@@ -2467,29 +2480,29 @@ function drawTrv() {
   const sites = work.reduce((a, x) => a + places(x.stops).length, 0);
   let tot = 0, unk = false;
   work.forEach(x => { const L = trvLegs(x); tot += L.tot; if (L.unk || !L.tot) unk = true; });
-  h += `<div class="msum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${sites}</b><span>현장</span></div><div><b>${!work.length ? 0 : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}</b><span>총 km</span></div></div>
-    <button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사 (날짜·경로·km)</button>
-    <label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표 올리기 <small>빠진 주가 있으면 · 여러 개 한 번에</small></label>
-    <p class="trv-note">${esc(/네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적)' : /TMAP/.test(ROUTE_SRC) && !/카카오/.test(ROUTE_SRC) ? '티맵 추천경로' : '카카오 길찾기(추천경로)')} 기준 · 지사 출발 → 현장 → 지사 복귀${T.ready ? '' : ' · 거리를 계산하는 중이에요'}</p>`;
-  if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>위 「지난 일정표 올리기」로 그 달 일정표 파일을 올리면 채워져요.</small></p>`;
   const home = BRANCH ? BRANCH[0] : '지사';
+  const ba = BRANCH && BRANCH[1] ? BRANCH[1] : '';
+  h += `<div class="tsum"><span>${mon(trvYm)} 총 이동거리</span><b>${!work.length ? '0' : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}<small>km</small></b><em>근무 ${work.length}일 · ${sites}현장${T.days.length > work.length ? ' · 휴가 ' + (T.days.length - work.length) + '일' : ''}${T.ready ? '' : ' · 거리 계산 중'}</em></div>
+    <div class="trv-act"><button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사</button><label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표<br class="br">올리기</label></div>
+    ${ba ? `<div class="trv-home"><i class="pin base">지</i><div><b>출발·복귀 ${esc(home)}</b><span>${esc(ba)}</span></div><button type="button" class="cpt" data-addr="${esc(ba)}" aria-label="지사 주소 복사">${COPY_IC}복사</button></div>` : ''}`;
+  if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>「지난 일정표 올리기」로 그 달 일정표 파일을 올리면 채워져요. 여러 개를 한 번에 골라도 돼요.</small></p>`;
   T.days.forEach((x, k) => {
     const [, , dd] = x.iso.split('-').map(Number);
     const dow = DOW[new Date(x.iso + 'T00:00:00').getDay()];
     if (x.off) {
-      h += `<section class="dy off"><div class="dh"><b>${dd} <span>${dow}</span></b><em>휴가</em></div></section>`;
+      h += `<section class="dy off"><div class="dh"><b>${dd}<span>(${dow})</span></b><em>휴가</em></div></section>`;
       return;
     }
     const L = trvLegs(x);
-    const km = v => (!v ? '' : v.same ? '같은 곳' : v.km.toFixed(1) + 'km');
+    const km = v => (!v ? '–' : v.same ? '같은 곳' : v.km.toFixed(1) + 'km');
     const mn = v => (v && !v.same && v.mn != null ? v.mn + '분' : '');
-    h += `<section class="dy"><div class="dh"><b>${dd} <span>${dow}</span></b><em>${places(x.stops).length}현장 ${sumUnits(x.stops)}대</em><strong>${L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : T.ready ? '' : '…'}</strong><button type="button" class="cp" data-cday="${k}" aria-label="${dd}일 복사">${COPY_IC}</button></div><ul>`;
+    h += `<section class="dy"><div class="dh"><b>${dd}<span>(${dow})</span></b><em>${places(x.stops).length}현장 ${sumUnits(x.stops)}대</em><strong>${L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : T.ready ? '–' : '…'}</strong><button type="button" class="cpt" data-cday="${k}" aria-label="${dd}일 경로 복사">${COPY_IC}복사</button></div><ul>`;
     x.stops.forEach((s, i) => {
       const a = cleanAddr((GEO[mapQuery(s)] || {}).addr);
-      h += `<li><i class="pin">${i + 1}</i><div class="sx"><div class="sn">${esc(placeName(s.name))}${kb(s.kind)}</div><div class="ad">${a ? `<span>${esc(a)}</span><button type="button" class="cp" data-addr="${esc(a)}" aria-label="주소 복사">${COPY_IC}</button>` : `<span class="na">${T.ready ? '주소를 찾지 못했어요' : '주소 찾는 중…'}</span>`}</div></div><span class="lk">${km(L.out[i])}<small>${mn(L.out[i])}</small></span></li>`;
+      h += `<li><i class="pin">${i + 1}</i><div class="sn">${esc(placeName(s.name))}${kb(s.kind)}</div><span class="lk">${km(L.out[i])}<small>${mn(L.out[i])}</small></span>
+        <div class="ad">${a ? `<span>${esc(a)}</span><button type="button" class="cp" data-addr="${esc(a)}" aria-label="주소 복사">${COPY_IC}</button>` : `<span class="na">${T.ready ? '주소를 찾지 못했어요' : '주소 찾는 중…'}</span>`}</div></li>`;
     });
-    const ba = BRANCH && BRANCH[1] ? BRANCH[1] : '';
-    h += `<li class="bk"><i class="pin base">지</i><div class="sx"><div class="sn">복귀 · ${esc(home)}</div>${ba ? `<div class="ad"><span>${esc(ba)}</span><button type="button" class="cp" data-addr="${esc(ba)}" aria-label="지사 주소 복사">${COPY_IC}</button></div>` : ''}</div><span class="lk">${km(L.back)}<small>${mn(L.back)}</small></span></li></ul></section>`;
+    h += `<li class="bk"><i class="pin base">지</i><div class="sn">복귀</div><span class="lk">${km(L.back)}<small>${mn(L.back)}</small></span></li></ul></section>`;
   });
   el.innerHTML = h;
   trvBind(el);
@@ -2734,7 +2747,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.15';
+const PAGE_VER = '3.16';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
