@@ -190,7 +190,10 @@
     .route-bar label { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--gov-muted); }
     .route-bar .km-in { width: 120px; }
     .route-bar input.edited { border-color: #c2560c; box-shadow: inset 0 0 0 1px #c2560c; }
-    .diff-callout:empty { display: none; }
+    .diff-callout:empty, .leg-proof:empty { display: none; }
+    .leg-proof { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+    .proof-chip { display: inline-flex; align-items: center; gap: 4px; background: #e6f4ec; color: #1d7a4a; border-radius: 3px; padding: 1px 4px 1px 8px; font-size: 15px; }
+    .proof-chip button { border: 0; background: none; color: #b42318; padding: 0 4px; line-height: 1; }
     .diff-callout { background: #fdf0e6; border-left: 4px solid #c2560c; border-radius: 0 4px 4px 0; padding: 8px 12px; font-size: 16px; }
     .diff-callout.ok { background: #e6f4ec; border-left-color: #1d7a4a; }
     .leg-sum { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 15px; color: var(--gov-muted); border-top: 1px dashed var(--gov-line); padding-top: 8px; }
@@ -1550,6 +1553,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
           <label>이동거리 <input type="number" class="form-control km-in" data-k="km" min="0" step="0.1" inputmode="decimal" value="${esc(r.km)}"> km</label>
         </div>
         <div class="diff-callout" data-note="kmproof"></div>
+        <div class="leg-proof" data-note="legproof"></div>
         <div class="leg-sum" data-note="day"></div>
       </article>`).join('');
 
@@ -1760,11 +1764,19 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       const proofs = routeProofs(r).length, need = needsRouteProof(r);
       kmEl.classList.toggle('edited', need);
       const callout = tr.querySelector('[data-note="kmproof"]');
-      callout.innerHTML = !need ? (proofs ? `길찾기 캡처 ${proofs}장 연결됨 · 청구서에 이 캡처가 들어가요` : '')
-        : proofs ? `<b>자동 거리와 달라요 · 길찾기 캡처 ${proofs}장 연결됨</b>`
-        : `<b>자동 거리와 달라요.</b> ${r.calcError ? '거리 자동 계산이 안 된 구간이라' : `카카오 길찾기 ${r.map.km}km와 다르게 적어서`} 실제로 간 경로의 길찾기(네비) 캡처가 필요해요.
-          <button type="button" class="btn btn-sm btn-warning ms-1" onclick="pickRouteProof(${r.uid})">이 구간 캡처 올리기</button>`;
+      callout.innerHTML = !need ? ''
+        : proofs ? `<b>자동 거리와 달라요 · 경로 증빙 사진 ${proofs}장 연결됨</b>`
+        : `<b>자동 거리와 달라요.</b> ${r.calcError ? '거리 자동 계산이 안 된 구간이라' : `카카오 길찾기 ${r.map.km}km와 다르게 적어서`} 실제로 간 경로의 길찾기(네비) 캡처가 필요해요. 아래 [경로 증빙 사진 올리기]로 올려 주세요.`;
       callout.classList.toggle('ok', proofs > 0);
+      // 구간마다 별도 경로 증빙 사진 올리기 + 올린 사진 목록 (그 구간 PDF 증빙은 자동 지도 대신 이 사진)
+      const pf = tr.querySelector('[data-note="legproof"]');
+      const own = [];
+      state.routeKept.forEach((f, k) => { if (f.uid === r.uid) own.push({ f, kind: 'kept', k }); });
+      state.routeFiles.forEach((f, k) => { if (f.uid === r.uid) own.push({ f, kind: 'new', k }); });
+      const pfHtml = !(counted && move) ? '' : `<button type="button" class="btn btn-sm ${need && !proofs ? 'btn-warning' : 'btn-outline-secondary'}" onclick="pickRouteProof(${r.uid})">경로 증빙 사진 올리기</button>
+        <span class="small text-secondary">${proofs ? '청구서에는 자동 지도 대신 이 사진이 들어가요' : '자동 거리와 다르게 갔을 때 길찾기(네비) 캡처'}</span>
+        ${own.map(o => `<span class="proof-chip">${esc(o.f.name)}<button type="button" title="삭제" onclick="${o.kind === 'kept' ? 'removeKept' : 'removeFile'}('route', ${o.k})">✕</button></span>`).join('')}`;
+      if (pf.dataset.html !== pfHtml) { pf.dataset.html = pfHtml; pf.innerHTML = pfHtml; }
 
       r.calc = { daily, meal };
       const dayTotal = pos(r.fare) + daily + meal + pos(r.lodging) + pos(r.etc);
@@ -2079,7 +2091,7 @@ SUVORK5CYII=" alt="한국승강기안전공단노동조합">
       recalc();
       if (bucket === 'route') {
         renderMaps();
-        if (state.panel === 2 && uid) alertMsg(`${rowNo(uid)}번째 구간에 길찾기 캡처를 연결했어요. 3단계 영수증·증빙에서 확인할 수 있어요.`, 'success');
+        if (state.panel === 2 && uid) alertMsg(`${rowNo(uid)}번째 구간에 경로 증빙 사진을 연결했어요. 3단계 영수증·증빙에서 크게 볼 수 있어요.`, 'success');
       }
     } finally {
       loading(false);
