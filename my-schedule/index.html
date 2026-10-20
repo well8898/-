@@ -1134,9 +1134,12 @@ body.tab-trv #panel,body.tab-trv #homeCard,body.tab-trv #tabs,body.tab-trv #week
 .lk{font-size:15.5px;font-weight:800;text-align:right;white-space:nowrap}.lk small{display:block;font-size:12.5px;font-weight:500;color:var(--mute)}
 .dy li.bk .sn{font-size:15px;color:var(--muted)}
 .dy.off .dh b,.dy.off .dh em{color:var(--off)}
+.trv-up{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 7px;margin-top:8px;min-height:50px;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);font:700 15.5px var(--font-body);cursor:pointer;padding:8px 12px;text-align:center}
+.trv-up svg{width:18px;height:18px}.trv-up small{flex-basis:100%;font-size:12.5px;font-weight:500;color:var(--mute)}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
+<input type="file" id="pastFile" multiple accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
 <div class="err-bar" id="errBar" hidden></div>
 <script>
 // 화면 스크립트가 멈추면 이유를 아래 빨간 줄에 표시 (문제 줄의 실제 내용도 같이)
@@ -2347,6 +2350,7 @@ async function easyLoad(d) {
 
 // ════ 여비입력: 지난달·이번 달 날짜별 경로 · km · 실제 주소 (네이버 「최적」 경로, 키가 있을 때) ════
 const COPY_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+const UP_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>';
 const TRV = {}; // 'YYYY-MM' → { days, ready }
 let trvYm = '';
 const ymOf = (k) => {
@@ -2370,6 +2374,37 @@ async function copyText(t, msg) {
   toast(msg);
 }
 const trvOn = () => !!(API && LINK && LINK.b);
+// 지난 일정표 올리기: 파일마다 읽어서 내 지사 기록에만 넣음 (지금 보는 일정표는 그대로)
+async function trvUpload(files) {
+  if (!trvOn() || !files.length) return;
+  const ok = [], bad = [];
+  toast(files.length + '개 파일을 읽는 중…');
+  for (const f of files) {
+    try {
+      const d = await parseFile(f);
+      // 제목에 다른 지사 이름이 있으면 올리지 않음 (지사 기록이 섞이지 않게)
+      const other = ((d.source || '') + ' ' + f.name).match(/[가-힣]{2,8}지사/g);
+      if (other && !other.some(x => x === LINK.b)) {
+        bad.push(f.name + ': ' + other[0] + ' 일정표예요. ' + LINK.b + ' 일정표만 올릴 수 있어요');
+        continue;
+      }
+      const r = await run('archiveUpload', LINK.b, { source: d.source, days: d.days }, curName());
+      if (r && r.ok) ok.push(r.first.slice(5).replace('-', '/') + '~' + r.last.slice(5).replace('-', '/'));
+      else bad.push(f.name + ': ' + ((r && r.message) || '올리지 못했어요'));
+    } catch (e) {
+      bad.push(f.name + ': ' + (e.message || '읽지 못했어요'));
+    }
+  }
+  Object.keys(TRV).forEach(k => delete TRV[k]);
+  if (curTab() === 'trv') drawTrv();
+  if (bad.length) alert((ok.length ? '올렸어요: ' + ok.join(', ') + '\n\n' : '') + '올리지 못한 파일\n' + bad.join('\n'));
+  else toast('✓ ' + LINK.b + ' 기록에 올렸어요 (' + ok.join(', ') + ')');
+}
+$('pastFile').onchange = e => {
+  const fs = [...e.target.files];
+  e.target.value = '';
+  trvUpload(fs);
+};
 // 하루 구간: 지사→1, 1→2, …, 마지막→지사 (ezLegs 와 같은 계산)
 const trvLegs = x => ezLegs({ t: { stops: x.stops } });
 function trvDayText(x, withAddr) {
@@ -2418,8 +2453,9 @@ function drawTrv() {
   work.forEach(x => { const L = trvLegs(x); tot += L.tot; if (L.unk || !L.tot) unk = true; });
   h += `<div class="msum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${sites}</b><span>현장</span></div><div><b>${!work.length ? 0 : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}</b><span>총 km</span></div></div>
     <button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사 (날짜·경로·km)</button>
+    <label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표 올리기 <small>빠진 주가 있으면 · 여러 개 한 번에</small></label>
     <p class="trv-note">${esc(/네이버/.test(ROUTE_SRC) ? '네이버 길찾기(최적)' : /TMAP/.test(ROUTE_SRC) && !/카카오/.test(ROUTE_SRC) ? '티맵 추천경로' : '카카오 길찾기(추천경로)')} 기준 · 지사 출발 → 현장 → 지사 복귀${T.ready ? '' : ' · 거리를 계산하는 중이에요'}</p>`;
-  if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>앱에 일정표가 올라온 주부터 기록돼요.</small></p>`;
+  if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>위 「지난 일정표 올리기」로 그 달 일정표 파일을 올리면 채워져요.</small></p>`;
   const home = BRANCH ? BRANCH[0] : '지사';
   T.days.forEach((x, k) => {
     const [, , dd] = x.iso.split('-').map(Number);
@@ -2451,6 +2487,8 @@ function drawTrv() {
   el.querySelectorAll('[data-addr]').forEach(b => (b.onclick = () => copyText(b.dataset.addr, '주소를 복사했어요')));
 }
 function trvBind(el) {
+  const up = el.querySelector('.trv-up');
+  if (up) up.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('pastFile').click(); } };
   el.querySelectorAll('[data-ym]').forEach(b => (b.onclick = () => { trvYm = b.dataset.ym; drawTrv(); }));
 }
 async function trvLoad(ym) {
@@ -2678,7 +2716,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.13';
+const PAGE_VER = '3.14';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3963,49 +4001,53 @@ function loadLibs() {
 (window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => {
   if (!data) loadLibs().catch(() => {});
 });
+// 일정표 파일(PDF·엑셀) → { source, days }
+async function parseFile(file) {
+  try {
+    await loadLibs();
+  } catch (e) {}
+  if (typeof pdfjsLib === 'undefined' || typeof XLSX === 'undefined')
+    throw new Error(
+      '파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.'
+    );
+  const buf = await file.arrayBuffer();
+  const yr = (file.name.match(/20\d\d/) || [])[0];
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+  const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
+  const t = items.find(i => /일정표/.test(i.s));
+  const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
+  // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
+  const gsw = isPdf && isGsWeek(items);
+  const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
+  const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
+  let ds;
+  try {
+    ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
+  } catch (e1) {
+    // 양식 구분이 애매하면 다른 방식으로도 한 번 더
+    try {
+      ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
+    } catch (e2) {
+      throw e1;
+    }
+  }
+  if (!ds.some(d => d.teams.length))
+    throw new Error(
+      '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
+    );
+  const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
+  return {
+    source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
+    days: ds
+  };
+}
 async function load(file) {
   const prev = data;
   const msg = $('msg');
   msg.className = 'msg';
   msg.textContent = file.name + ' 읽는 중…';
   try {
-    try {
-      await loadLibs();
-    } catch (e) {}
-    if (typeof pdfjsLib === 'undefined' || typeof XLSX === 'undefined')
-      throw new Error(
-        '파일 읽기 도구(cdnjs.cloudflare.com)를 불러오지 못했어요. 인터넷 연결이나 회사망 차단을 확인해 주세요.'
-      );
-    const buf = await file.arrayBuffer();
-    const yr = (file.name.match(/20\d\d/) || [])[0];
-    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
-    const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
-    const t = items.find(i => /일정표/.test(i.s));
-    const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
-    // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
-    const gsw = isPdf && isGsWeek(items);
-    const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
-    const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
-    let ds;
-    try {
-      ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
-    } catch (e1) {
-      // 양식 구분이 애매하면 다른 방식으로도 한 번 더
-      try {
-        ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
-      } catch (e2) {
-        throw e1;
-      }
-    }
-    if (!ds.some(d => d.teams.length))
-      throw new Error(
-        '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
-      );
-    const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
-    data = {
-      source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
-      days: ds
-    };
+    data = await parseFile(file);
     sel = null;
     shared = null;
     msg.textContent = '';

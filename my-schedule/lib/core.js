@@ -16,7 +16,7 @@ const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
 const SERVER_VER = 'v2.8';
-const PAGE_VER = '3.13'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const PAGE_VER = '3.14'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -954,14 +954,14 @@ async function shareWeek(branch, data, force, by, ctx) {
 const zlib = require('zlib');
 const kstToday_ = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const prevMonth1_ = () => { const t = kstToday_(); const y = +t.slice(0, 4), m = +t.slice(5, 7); return (m === 1 ? y - 1 + '-12' : y + '-' + String(m - 1).padStart(2, '0')) + '-01'; };
-async function archiveWeek_(branch, data) {
+async function archiveWeek_(branch, data, strict) {
   try {
     const isos = (data.days || []).map(d => d.iso).filter(Boolean).sort();
     if (!isos.length) return;
     const ik = 'p:HIST:' + branch;
     const idx = JSON.parse((await redis_([['GET', ik]]))[0] || '[]');
     const first = isos[0], keep = prevMonth1_();
-    const z = zlib.gzipSync(JSON.stringify({ source: data.source || '', days: data.days })).toString('base64');
+    const z = zlib.gzipSync(JSON.stringify({ source: data.source || '', days: data.days, by: data.by || '', email: data.email || '', at: data.at || Date.now() })).toString('base64');
     let list = idx.filter(x => x.first !== first);
     list.push({ first, last: isos[isos.length - 1] });
     const drop = list.filter(x => x.last < keep);
@@ -969,7 +969,27 @@ async function archiveWeek_(branch, data) {
     const cmds = [['SET', ik + ':' + first, z, 'EX', 75 * 86400], ['SET', ik, JSON.stringify(list)]];
     drop.forEach(x => cmds.push(['DEL', ik + ':' + x.first]));
     await redis_(cmds);
-  } catch (e) { /* 기록 실패해도 공유는 그대로 */ }
+  } catch (e) {
+    if (strict) throw e; // 기록 실패해도 공유는 그대로
+  }
+}
+// 지난 일정표 올리기 (여비입력): 기록에만 넣고, 지금 보고 있는 일정표는 그대로
+async function archiveUpload(branch, data, by, ctx) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) throw new Error('지사를 먼저 골라 주세요.');
+    if (!data || !Array.isArray(data.days) || !data.days.length) throw new Error('일정표가 비어 있어요.');
+    const isos = data.days.map(d => d.iso).filter(Boolean).sort();
+    const keep = prevMonth1_(), today = kstToday_();
+    if (!isos.length || isos[isos.length - 1] < keep) return { ok: false, old: true, message: '지난달 1일보다 이전 일정표는 올릴 수 없어요 (' + isos[0] + ' ~).' };
+    if (isos[0] > today) return { ok: false, message: '아직 오지 않은 주의 일정표예요. 「내 정보 → 일정표 바꾸기」로 올려 주세요.' };
+    const json = JSON.stringify({ source: data.source || '', days: data.days });
+    if (json.length > 400000) throw new Error('일정표가 너무 커서 올리지 못했어요.');
+    await archiveWeek_(branch, { source: data.source || '', days: data.days, by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '', at: Date.now() }, true);
+    return { ok: true, first: isos[0], last: isos[isos.length - 1] };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
 }
 // 한 달 동안 지사 일정표의 날들 (기록 + 지금 올라가 있는 주)
 async function monthDays_(branch, ym) {
@@ -1282,7 +1302,7 @@ async function widget(key, fmt) {
 }
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
-const RPC = { travelMonth, listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
+const RPC = { travelMonth, archiveUpload, listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, restoreWeek, myWeek };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)
