@@ -1154,6 +1154,15 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .dy.off{padding:12px 14px}.dy.off .dh{border:0;padding:0}
 .dy.off .dh b,.dy.off .dh em{color:var(--off)}
 .trv-re{width:100%;margin-top:8px;min-height:46px;border:0;border-radius:12px;background:var(--amber-soft);color:var(--amber);font:700 14.5px var(--font-body);cursor:pointer}
+.wsel{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-radius:12px;padding:3px;margin:4px 0 8px}
+.wsel button{position:relative;border:0;background:none;font:700 14.5px var(--font-body);color:var(--mute);min-height:40px;border-radius:9px;cursor:pointer}
+.wsel button small{font-size:12.5px;font-weight:600;margin-left:2px}
+.wsel button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.wsel button i{position:absolute;top:8px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+#tabs .wsel{margin-top:2px}
+.ez-ad{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ez-ad span{color:var(--muted);word-break:keep-all}
+.toast{width:max-content;text-align:center}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1982,18 +1991,21 @@ function render() {
   const work = days.filter(d => d.t);
   $('week').innerHTML =
     `<span>이번 주 근무 <b>${work.length}</b>일</span><span><b>${work.reduce((a, d) => a + places(d.t.stops).length, 0)}</b>현장</span><span>승강기 <b>${sumUnits(work.flatMap(d => d.t.stops))}</b>대</span>${days.some(d => d.off) ? `<span>휴가 <b>${days.filter(d => d.off).length}</b>일</span>` : ''}`;
-  $('tabs').innerHTML = dayPick(sel);
+  syncWk();
+  $('tabs').innerHTML = weekSel() + dayPick(sel);
   $('fileRow').innerHTML = `<div><b>${esc(data.source || '검사 일정표')}</b><span>${days.length ? mdow(days[0]).md + ' ~ ' + mdow(days[days.length - 1]).md : ''}</span></div><label class="go" for="file" role="button" tabindex="0">바꾸기</label>`;
   meBox();
   syncTabs();
   drawPanel();
 }
 function drawWeek() {
-  const work = days.filter(d => d.t);
+  syncWk();
+  const wds = wkDays().length ? wkDays() : days;
+  const work = wds.filter(d => d.t);
   const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
     wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
-  let h = `<div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
-  days.forEach(d => {
+  let h = weekSel() + `<div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
+  wds.forEach(d => {
     const { md, dow } = mdow(d);
     const km = d.t ? ezLegs(d) : null;
     const info = d.t
@@ -2114,14 +2126,16 @@ function dayTabs(easy) {
 }
 // 쉬운 화면 · 이번 주: 합계 3칸 + 날마다 한 줄 (누르면 그날로)
 function drawEasyWeek() {
-  const work = days.filter(d => d.t);
+  syncWk();
+  const wds = wkDays().length ? wkDays() : days;
+  const work = wds.filter(d => d.t);
   const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
     wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
-  let h = `<div class="ez-dtx">${mdow(days[0]).md} ~ ${mdow(days[days.length - 1]).md}</div>
-    <h2 class="ez-hi">이번 주</h2>
+  let h = weekSel() + `<div class="ez-dtx">${mdow(wds[0]).md} ~ ${mdow(wds[wds.length - 1]).md}</div>
+    <h2 class="ez-hi">${wkName(wkSel)}</h2>
     <div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>
     <ul class="ewk2">`;
-  days.forEach(d => {
+  wds.forEach(d => {
     if (!d.t && !d.off) return;
     const { md, dow } = mdow(d);
     const pl = d.t ? places(d.t.stops) : [];
@@ -2219,8 +2233,53 @@ const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" strok
 let ezPick = {}; // iso → 크게 볼 현장 번호 (현장 수 = 복귀). 시간으로 정하지 않고 사용자가 고름
 let ezInfo = false; // 주소·승강기 정보 펼침
 // 날짜 고르기: 월~금(일정표에 있는 날) 칸을 눌러 이동. 밀어서 넘기기는 없음(현장 칩 넘기다 날짜가 바뀌지 않게)
+// ── 이번 주 · 다음 주: 지사 일정표를 주마다 따로 받아 함께 보여 줌 ──
+const monOf = iso => {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() - ((d.getDay() || 7) - 1));
+  return isoOf(d);
+};
+let wkSel = ''; // 보고 있는 주(월요일)
+const weekMons = () => [...new Set(days.map(d => monOf(d.iso)))].sort();
+const curMon = () => {
+  const ms = weekMons(),
+    t = monOf(todayIso);
+  return ms.includes(t) ? t : ms.filter(m => m < t).pop() || ms[0];
+};
+const wkDays = () => days.filter(d => monOf(d.iso) === wkSel);
+const wkName = m => (m === curMon() ? '이번 주' : m > curMon() ? '다음 주' : '지난 주');
+function syncWk() {
+  if (sel && sel !== 'week' && days.some(d => d.iso === sel)) wkSel = monOf(sel);
+  if (!weekMons().includes(wkSel)) wkSel = curMon();
+}
+// 「이번 주 10/19~ | 다음 주 10/26~」 (두 주가 있을 때만)
+function weekSel() {
+  const ms = weekMons();
+  if (ms.length < 2) return '';
+  const seen = store.get('sched.nextSeen') || '';
+  return `<div class="wsel" role="group" aria-label="주 고르기">${ms
+    .slice(-2)
+    .map(m => {
+      const [, mm, dd] = m.split('-').map(Number);
+      return `<button type="button" data-wk="${m}" aria-pressed="${m === wkSel}">${wkName(m)} <small>${mm}/${dd}~</small>${m > curMon() && seen !== m ? '<i></i>' : ''}</button>`;
+    })
+    .join('')}</div>`;
+}
+function setWeek(m) {
+  if (!m || m === wkSel) return;
+  wkSel = m;
+  if (m > curMon()) store.set('sched.nextSeen', m);
+  if (sel !== 'week') {
+    const ds = wkDays();
+    sel = (ds.find(d => d.iso === todayIso && d.t) || ds.find(d => d.t && d.iso >= todayIso) || ds.find(d => d.t) || ds[0]).iso;
+  }
+  if (!document.body.classList.contains('easy')) $('tabs').innerHTML = weekSel() + dayPick(sel);
+  drawPanel();
+  window.scrollTo({ top: 0 });
+}
 function dayPick(iso) {
-  return `<div class="ez-dp" role="group" aria-label="날짜 고르기" style="--n:${days.length}">${days
+  const ds = wkDays().length ? wkDays() : days;
+  return `<div class="ez-dp" role="group" aria-label="날짜 고르기" style="--n:${ds.length}">${ds
     .map(x => {
       const { md, dow } = mdow(x);
       const lab = x.iso === todayIso ? '오늘' : x.t ? places(x.t.stops).length + '현장' : x.off ? '휴가' : '–';
@@ -2242,7 +2301,8 @@ function drawEasy() {
   const name = curName();
   const isToday = d.iso === todayIso;
   const when = isToday ? '오늘' : mdow(d).dow + '요일';
-  let h = dayPick(d.iso);
+  syncWk();
+  let h = weekSel() + dayPick(d.iso);
   if (d.t) {
     const st = d.t.stops,
       n = st.length;
@@ -2252,7 +2312,7 @@ function drawEasy() {
     const homeNm = BRANCH ? BRANCH[0] : home ? home.name : '지사';
     const tot = L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
     h += `<h2 class="ez-hi">${esc(name)} 님,<br>${when} <em>${places(st).length}현장 ${sumUnits(st)}대</em></h2>
-      <p class="ez-hisub">${[esc(d.t.team), mates.length ? esc(mates.join(', ')) + ' 님과' : '', tot ? '총 경로 ' + tot : ''].filter(Boolean).join(' · ')}</p>`;
+      <p class="ez-hisub">${[esc(d.t.team), mates.length ? esc(mates.join(', ')) + ' 님과' : '', tot ? '총 경로 ' + tot : '', monOf(d.iso) > curMon() ? '다음 주 일정표' : ''].filter(Boolean).join(' · ')}</p>`;
     // 오늘 시간이 지난 현장은 흐리게만 (고르는 건 사용자)
     const hm = nowHm();
     const past = i => isToday && st[i].time && st[i].time < hm && i < n - 1 && st[i + 1].time && st[i + 1].time <= hm;
@@ -2633,7 +2693,8 @@ function go(iso, dx) {
   sel = iso;
   if (iso !== 'week') lastDay = iso;
   syncTabs();
-  if (!document.body.classList.contains('easy')) $('tabs').innerHTML = dayPick(sel);
+  if (iso !== 'week') wkSel = monOf(iso);
+  if (!document.body.classList.contains('easy')) $('tabs').innerHTML = weekSel() + dayPick(sel);
   $('tabs')
     .querySelectorAll('.dtab')
     .forEach(t => t.setAttribute('aria-selected', t.dataset.iso === sel));
@@ -2641,10 +2702,14 @@ function go(iso, dx) {
   window.scrollTo({ top: 0 });
 }
 $('tabs').addEventListener('click', e => {
+  const w = e.target.closest('[data-wk]');
+  if (w) return setWeek(w.dataset.wk);
   const t = e.target.closest('[data-go]');
   if (t) go(t.dataset.go);
 });
 $('panel').addEventListener('click', e => {
+  const w = e.target.closest('[data-wk]');
+  if (w) return setWeek(w.dataset.wk);
   const cp = e.target.closest('[data-addr]');
   if (cp) return copyText(cp.dataset.addr, '주소를 복사했어요');
   const g = e.target.closest('[data-go]');
@@ -2760,7 +2825,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.18';
+const PAGE_VER = '3.19';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3400,7 +3465,17 @@ async function doShare(force) {
         MINE_META = { at: r.at, by: r.by, hasPrev: r.hasPrev, prevSource: '' };
         upInfo();
       }
-      if (LINK) toast('✓ ' + br + '에 공유했어요. 지사 분들도 이 일정표로 봐요.');
+      if (LINK) toast(r.next ? '✓ 다음 주 일정표로 올렸어요. 이번 주 일정도 그대로 보여요.' : r.past ? '✓ 지난주 일정표로 올렸어요 (여비입력 기록).' : '✓ ' + br + '에 공유했어요. 지사 분들도 이 일정표로 봐요.');
+      if (LINK && API && !r.past) {
+        // 이번 주·다음 주를 함께 다시 받아서 (올린 주만 보이지 않게)
+        loadMine(LINK.b, curName()).then(m2 => {
+          if (!m2 || !m2.ok) return;
+          applyMine(m2);
+          sel = null;
+          render();
+          if (r.mon && r.mon !== curMon()) setWeek(r.mon);
+        });
+      }
       if (LINK) LINK.b = BRANCH[0];
       appWidgetUser(BRANCH[0]);
       rememberName();
@@ -3581,8 +3656,15 @@ function applyMine(r) {
   data = { source: r.source || LINK.b + ' 공유 일정표', days: r.days };
   $('name').value = r.name;
   store.set('sched.name', r.name);
-  MINE_META = { at: r.at, by: r.by, hasPrev: r.hasPrev, prevSource: r.prevSource, offline: !!r.offline, savedAt: r.savedAt };
+  MINE_META = { at: r.at, by: r.by, hasPrev: r.hasPrev, prevSource: r.prevSource, offline: !!r.offline, savedAt: r.savedAt, weeks: r.weeks || [] };
   upInfo();
+  // 다음 주 일정표가 새로 올라왔으면 한 번 알려 줌
+  const nx = (r.weeks || []).find(w => w.next);
+  if (nx && store.get('sched.nextToast') !== nx.mon + nx.at) {
+    store.set('sched.nextToast', nx.mon + nx.at);
+    const [, mm, dd] = nx.mon.split('-').map(Number);
+    setTimeout(() => toast('다음 주(' + mm + '/' + dd + '~) 일정표가 올라왔어요'), 900);
+  }
 }
 // 이름 입력: 서버(또는 방금 올린 파일 local)에서 내 이름을 찾음
 function nameAsk(note, local) {
@@ -3666,21 +3748,28 @@ function upInfo() {
   if (!el) return;
   if (!m || !m.at || m.offline) return (el.hidden = true);
   el.hidden = false;
-  el.innerHTML = `${esc(whenTxt(m.at))}${m.by ? ' · ' + esc(m.by) + ' 님이' : ''} 올린 일정표${m.hasPrev ? ` · <button type="button" class="linkbtn" id="undoUp">이전 일정표로 되돌리기</button>` : ''}`;
-  if ($('undoUp'))
-    $('undoUp').onclick = async () => {
-      if (!confirm(`이전 일정표(${m.prevSource || '바로 전에 올린 것'})로 되돌릴까요?\n${LINK.b} 분들 모두 이전 일정표로 보게 돼요. 한 번 더 누르면 다시 지금 것으로 돌아와요.`)) return;
-      try {
-        const r = await run('restoreWeek', LINK.b, curName());
-        if (r && r.ok) {
-          toast('이전 일정표로 되돌렸어요');
-          return setTimeout(() => location.reload(), 800);
+  const ws = m.weeks && m.weeks.length ? m.weeks : [{ mon: '', at: m.at, by: m.by, hasPrev: m.hasPrev, prevSource: m.prevSource }];
+  const lab = w => (ws.length > 1 ? (w.next ? '다음 주' : '이번 주') + ' · ' : '');
+  el.innerHTML = ws
+    .map((w, i) => `${lab(w)}${esc(whenTxt(w.at))}${w.by ? ' · ' + esc(w.by) + ' 님이' : ''} 올린 일정표${w.hasPrev ? ` · <button type="button" class="linkbtn" data-undo="${i}">이전 일정표로 되돌리기</button>` : ''}`)
+    .join('<br>');
+  el.querySelectorAll('[data-undo]').forEach(
+    b =>
+      (b.onclick = async () => {
+        const w = ws[+b.dataset.undo];
+        if (!confirm(`${ws.length > 1 ? (w.next ? '다음 주' : '이번 주') + ' ' : ''}이전 일정표(${w.prevSource || '바로 전에 올린 것'})로 되돌릴까요?\n${LINK.b} 분들 모두 이전 일정표로 보게 돼요. 한 번 더 누르면 다시 지금 것으로 돌아와요.`)) return;
+        try {
+          const r = await run('restoreWeek', LINK.b, curName(), w.mon || '');
+          if (r && r.ok) {
+            toast('이전 일정표로 되돌렸어요');
+            return setTimeout(() => location.reload(), 800);
+          }
+          toast((r && r.message) || '되돌리지 못했어요.');
+        } catch (e) {
+          toast('인터넷 연결을 확인하고 다시 눌러 주세요.');
         }
-        toast((r && r.message) || '되돌리지 못했어요.');
-      } catch (e) {
-        toast('인터넷 연결을 확인하고 다시 눌러 주세요.');
-      }
-    };
+      })
+  );
 }
 const whenTxt = t => {
   const d = new Date(t);

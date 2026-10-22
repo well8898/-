@@ -15,8 +15,8 @@
 const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.8';
-const PAGE_VER = '3.18'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v2.9';
+const PAGE_VER = '3.19'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -369,7 +369,8 @@ function dayView_(data, main, today, now) {
   });
   const units = main.stops.reduce((a, s) => a + (s.units || 0), 0);
   const places = new Set(main.stops.map(s => s.name)).size;
-  const title = (when ? when + ' ' : '') + main.label + (main.team ? ' · ' + main.team : '');
+  const nx = monOf_(main.iso) > monOf_(today) ? ' · 다음 주' : '';
+  const title = (when ? when + ' ' : '') + main.label + nx + (main.team ? ' · ' + main.team : '');
   const back = main.backKm != null ? ' (복귀 ' + main.backKm + ')' : '';
   const sub = places + '현장 ' + units + '대' + (main.legKm ? ' · 총 ' + main.legKm + 'km' + back : main.km ? ' · ' + main.km + 'km' : '')
     + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
@@ -922,31 +923,81 @@ async function siteElevators(list, branch) {
 
 // ════════ 지사 공유 일정표 ════════
 const BRANCH_RE = /^[가-힣]{2,12}(지사|출장소)$/;
+// 주마다 따로 보관: p:WEEK:지사@월요일 (+ :meta, :prev, :prev:meta), 목록은 p:WEEKIDX:지사
+// 다음 주 일정표를 올려도 이번 주는 그대로 — 화면은 「이번 주 + 다음 주」를 함께 받음
+const monOf_ = iso => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() || 7) - 1)); return d.toISOString().slice(0, 10); };
+const addDays_ = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const wkK_ = (b, mon) => 'p:WEEK:' + b + '@' + mon;
 async function shareWeek(branch, data, force, by, ctx) {
   try {
     branch = String(branch || '').trim();
     if (!BRANCH_RE.test(branch)) throw new Error('지사를 먼저 골라 주세요.');
     if (!data || !Array.isArray(data.days) || !data.days.length) throw new Error('일정표가 비어 있어요.');
-    const k = 'WEEK:' + branch;
-    const last = data.days.map(d => d.iso).sort().pop();
-    const old = JSON.parse((await props.get(k + ':meta')) || 'null');
-    if (old && old.last > last && !force) return { ok: false, older: true, message: '지사에 이미 더 최근 일정표(' + old.source + ')가 올라가 있어요.' };
+    const isos = data.days.map(d => d.iso).filter(Boolean).sort();
+    if (!isos.length) throw new Error('일정표 날짜를 찾지 못했어요.');
+    const mon = monOf_(isos[0]), last = isos[isos.length - 1];
+    const thisMon = monOf_(kstToday_());
     const json = JSON.stringify({ source: data.source || '', days: data.days });
     if (json.length > 400000) throw new Error('일정표가 너무 커서 공유하지 못했어요.');
     const at = Date.now();
-    // 바로 전 일정표 하나는 남겨 둠 (잘못 올렸을 때 「이전 일정표로 되돌리기」)
-    const [curJson, curMeta] = await redis_([['GET', 'p:' + k], ['GET', 'p:' + k + ':meta']]);
-    const meta = { branch, at, source: data.source || '', last, by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' };
-    const cmds = [['SET', 'p:' + k, json], ['SET', 'p:' + k + ':meta', JSON.stringify(meta)]];
-    if (curJson) cmds.push(['SET', 'p:' + k + ':prev', curJson], ['SET', 'p:' + k + ':prev:meta', curMeta || '{}']);
+    const k = wkK_(branch, mon), ik = 'p:WEEKIDX:' + branch, lk = 'p:WEEK:' + branch;
+    // 바로 전 일정표 하나는 남겨 둠 (잘못 올렸을 때 「이전 일정표로 되돌리기」) — 주마다
+    const [curJson, curMeta, idxJ, lj, lm, lpj, lpm] = await redis_([['GET', k], ['GET', k + ':meta'], ['GET', ik], ['GET', lk], ['GET', lk + ':meta'], ['GET', lk + ':prev'], ['GET', lk + ':prev:meta']]);
+    let idx = JSON.parse(idxJ || '[]');
+    const cmds = [];
+    // 예전 방식(한 칸)으로 올라가 있던 일정표는 그 주 칸으로 옮겨 둠
+    if (!idxJ && lj) {
+      try {
+        const om = monOf_(JSON.parse(lj).days.map(d => d.iso).sort()[0]);
+        if (om !== mon) {
+          cmds.push(['SET', wkK_(branch, om), lj], ['SET', wkK_(branch, om) + ':meta', lm || '{}']);
+          if (lpj) cmds.push(['SET', wkK_(branch, om) + ':prev', lpj], ['SET', wkK_(branch, om) + ':prev:meta', lpm || '{}']);
+          idx.push(om);
+        }
+      } catch (e) {}
+    }
+    const meta = { branch, at, source: data.source || '', last, mon, by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' };
+    cmds.push(['SET', k, json], ['SET', k + ':meta', JSON.stringify(meta)]);
+    const prevJ = curJson || (!idxJ && lj && monOf_(JSON.parse(lj).days.map(d => d.iso).sort()[0]) === mon ? lj : null);
+    const prevM = curJson ? curMeta : lm;
+    if (prevJ) cmds.push(['SET', k + ':prev', prevJ], ['SET', k + ':prev:meta', prevM || '{}']);
+    if (idx.indexOf(mon) < 0) idx.push(mon);
+    idx.sort();
+    // 3주보다 오래된 주는 지움 (여비입력용 기록은 따로 있음)
+    const keep = addDays_(thisMon, -21);
+    idx.filter(m => m < keep).forEach(m => cmds.push(['DEL', wkK_(branch, m), wkK_(branch, m) + ':meta', wkK_(branch, m) + ':prev', wkK_(branch, m) + ':prev:meta']));
+    idx = idx.filter(m => m >= keep);
+    cmds.push(['SET', ik, JSON.stringify(idx)]);
+    // 지사 목록(「일정표 있음」)용 한 칸은 가장 늦은 주로
+    if (mon >= idx[idx.length - 1]) cmds.push(['SET', lk, json], ['SET', lk + ':meta', JSON.stringify(meta)]);
     await redis_(cmds);
     await archiveWeek_(branch, data);
     const all = JSON.parse((await props.get('WEEKS')) || '[]');
     if (all.indexOf(branch) < 0) { all.push(branch); await props.set('WEEKS', JSON.stringify(all)); }
-    return { ok: true, at, by: meta.by, hasPrev: !!curJson };
+    return { ok: true, at, by: meta.by, hasPrev: !!prevJ, mon, past: mon < thisMon, next: mon > thisMon };
   } catch (e) {
     return { ok: false, message: e.message };
   }
+}
+// 지사에 올라온 주들 중 화면에 보일 것: 이번 주(없으면 가장 가까운 지난 주) + 다음 주
+async function weekSlots_(branch) {
+  const thisMon = monOf_(kstToday_()), nextMon = addDays_(thisMon, 7);
+  const idx = JSON.parse((await redis_([['GET', 'p:WEEKIDX:' + branch]]))[0] || '[]');
+  if (!idx.length) {
+    // 예전 방식(한 칸)
+    const lk = 'p:WEEK:' + branch;
+    const [json, meta, pm] = await redis_([['GET', lk], ['GET', lk + ':meta'], ['GET', lk + ':prev:meta']]);
+    if (!json) return [];
+    const d = JSON.parse(json);
+    return [{ mon: monOf_(d.days.map(x => x.iso).sort()[0]), d, m: JSON.parse(meta || '{}'), p: pm ? JSON.parse(pm) : null, legacy: true }];
+  }
+  const cur = idx.indexOf(thisMon) >= 0 ? thisMon : idx.filter(m => m < thisMon).pop();
+  const pick = [cur, idx.indexOf(nextMon) >= 0 ? nextMon : null].filter(Boolean);
+  if (!pick.length && idx.length) pick.push(idx[0]); // 앞으로 올 주만 있으면 가장 가까운 것
+  const ks = [];
+  pick.forEach(m => ks.push(wkK_(branch, m), wkK_(branch, m) + ':meta', wkK_(branch, m) + ':prev:meta'));
+  const v = (await redis_([['MGET', ...ks]]))[0] || [];
+  return pick.map((m, i) => v[i * 3] ? { mon: m, d: JSON.parse(v[i * 3]), m: JSON.parse(v[i * 3 + 1] || '{}'), p: v[i * 3 + 2] ? JSON.parse(v[i * 3 + 2]) : null } : null).filter(Boolean);
 }
 
 // ════════ 지난 일정표 기록 (여비입력용: 지난달 1일 ~ 이번 달) ════════
@@ -1032,11 +1083,14 @@ async function travelMonth(branch, name, ym) {
 }
 
 // 이전 일정표로 되돌리기 (지금 것과 맞바꿈 → 한 번 더 누르면 원래대로)
-async function restoreWeek(branch, by, ctx) {
+async function restoreWeek(branch, by, mon, ctx) {
   try {
     branch = String(branch || '').trim();
     if (!BRANCH_RE.test(branch)) throw new Error('지사가 올바르지 않아요.');
-    const k = 'p:WEEK:' + branch;
+    const slots = await weekSlots_(branch);
+    const sl = slots.find(x => x.mon === mon) || slots[0];
+    if (!sl) return { ok: false, message: '되돌릴 이전 일정표가 없어요.' };
+    const k = sl.legacy ? 'p:WEEK:' + branch : wkK_(branch, sl.mon);
     const [cj, cm, pj, pm] = await redis_([['GET', k], ['GET', k + ':meta'], ['GET', k + ':prev'], ['GET', k + ':prev:meta']]);
     if (!pj) return { ok: false, message: '되돌릴 이전 일정표가 없어요.' };
     const m = Object.assign(JSON.parse(pm || '{}'), { restored: { at: Date.now(), by: String(by || '').trim().slice(0, 20), email: (ctx && ctx.email) || '' } });
@@ -1065,10 +1119,15 @@ async function getWeek(branch) {
     branch = String(branch || '').trim();
     if (branch === DEMO_BRANCH && demoOn_()) return demoWeek_();
     if (!BRANCH_RE.test(branch)) return { ok: false, message: '지사 이름이 올바르지 않아요.' };
-    const [json, meta, pm] = await redis_([['GET', 'p:WEEK:' + branch], ['GET', 'p:WEEK:' + branch + ':meta'], ['GET', 'p:WEEK:' + branch + ':prev:meta']]);
-    if (!json) return { ok: false, message: branch + '에 공유된 일정표가 아직 없어요.' };
-    const d = JSON.parse(json), m = JSON.parse(meta || '{}'), p = pm ? JSON.parse(pm) : null;
-    return { ok: true, branch, source: d.source, days: d.days, at: m.at, last: m.last, by: m.by || '', hasPrev: !!pm, prevSource: p ? p.source || '' : '' };
+    const slots = await weekSlots_(branch);
+    if (!slots.length) return { ok: false, message: branch + '에 공유된 일정표가 아직 없어요.' };
+    const thisMon = monOf_(kstToday_());
+    const byIso = {};
+    slots.forEach(x => (x.d.days || []).forEach(d => { if (d.iso) byIso[d.iso] = d; }));
+    const days = Object.keys(byIso).sort().map(k => byIso[k]);
+    const weeks = slots.map(x => ({ mon: x.mon, next: x.mon > thisMon, source: x.d.source || '', at: x.m.at, by: x.m.by || '', hasPrev: !!x.p, prevSource: x.p ? x.p.source || '' : '' }));
+    const c = weeks[0];
+    return { ok: true, branch, source: c.source, days, at: Math.max(...weeks.map(w => w.at || 0)), last: days[days.length - 1].iso, by: c.by, hasPrev: c.hasPrev, prevSource: c.prevSource, weeks };
   } catch (e) {
     return { ok: false, message: '공유 일정표를 읽지 못했어요: ' + e.message };
   }
@@ -1098,7 +1157,7 @@ async function myWeek(branch, name) {
     return { label: d.label, iso: d.iso, teams: me ? [me].concat(others) : [], vacation, support };
   });
   if (!me0) return { ok: false, notFound: true, message: '이번 주 ' + wk.branch + ' 일정표에 \'' + bare_(name) + '\' 님이 없어요. 이름을 확인해 주세요.' };
-  return { ok: true, branch: wk.branch, name: me0, source: wk.source, days, at: wk.at, by: wk.by || '', hasPrev: !!wk.hasPrev, prevSource: wk.prevSource || '' };
+  return { ok: true, branch: wk.branch, name: me0, source: wk.source, days, at: wk.at, by: wk.by || '', hasPrev: !!wk.hasPrev, prevSource: wk.prevSource || '', weeks: wk.weeks || [] };
 }
 
 // ════════ 홈 화면 위젯 ════════
@@ -1275,7 +1334,7 @@ async function widgetByName(branch, name, fmt) {
   const key = nameKey_(branch, name);
   const raw = await props.get('W_' + key);
   const old = raw ? JSON.parse(raw) : null;
-  const src = 'week:' + (wk.at || '');
+  const src = 'week:' + (wk.weeks ? wk.weeks.map(w => w.mon + '.' + (w.at || '')).join('|') : wk.at || '');
   if (!old || old.src !== src) {
     const data = personWeek_(wk, branch, name);
     // 같은 현장 좌표는 예전 것을 그대로 써서 다시 찾지 않음
