@@ -1159,6 +1159,7 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .dy li.bk .sn{font-size:15px;color:var(--muted);font-weight:600}
 .dy.off{padding:12px 14px}.dy.off .dh{border:0;padding:0}
 .dy.off .dh b,.dy.off .dh em{color:var(--off)}
+.trv-re{width:100%;margin-top:8px;min-height:46px;border:0;border-radius:12px;background:var(--amber-soft);color:var(--amber);font:700 14.5px var(--font-body);cursor:pointer}
 </style>
 </head>
 <body>
@@ -2483,6 +2484,7 @@ function drawTrv() {
   const home = BRANCH ? BRANCH[0] : '지사';
   const ba = BRANCH && BRANCH[1] ? BRANCH[1] : '';
   h += `<div class="tsum"><span>${mon(trvYm)} 총 이동거리</span><b>${!work.length ? '0' : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}<small>km</small></b><em>근무 ${work.length}일 · ${sites}현장${T.days.length > work.length ? ' · 휴가 ' + (T.days.length - work.length) + '일' : ''}${T.ready ? '' : ' · 거리 계산 중'}</em></div>
+    ${T.ready && unk && work.length ? `<button type="button" class="trv-re" id="trvRe2">거리를 못 구한 날이 있어요 · 다시 계산</button>` : ''}
     <div class="trv-act"><button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사</button><label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표<br class="br">올리기</label></div>
     ${ba ? `<div class="trv-home"><i class="pin base">지</i><div><b>출발·복귀 ${esc(home)}</b><span>${esc(ba)}</span></div><button type="button" class="cpt" data-addr="${esc(ba)}" aria-label="지사 주소 복사">${COPY_IC}복사</button></div>` : ''}`;
   if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>「지난 일정표 올리기」로 그 달 일정표 파일을 올리면 채워져요. 여러 개를 한 번에 골라도 돼요.</small></p>`;
@@ -2512,6 +2514,12 @@ function drawTrv() {
       lines.push('합계 ' + tot.toFixed(1) + 'km (' + work.length + '일)');
       copyText(lines.join('\n'), mon(trvYm) + ' 전체를 복사했어요');
     };
+  if ($('trvRe2'))
+    $('trvRe2').onclick = () => {
+      delete TRV[trvYm];
+      Object.keys(GEO).forEach(k => { if (GEO[k] === null) delete GEO[k]; }); // 못 찾았던 곳은 다시 찾기
+      drawTrv();
+    };
   el.querySelectorAll('[data-cday]').forEach(b => (b.onclick = () => copyText(trvDayText(T.days[+b.dataset.cday], true), '이날 경로를 복사했어요')));
   el.querySelectorAll('[data-addr]').forEach(b => (b.onclick = () => copyText(b.dataset.addr, '주소를 복사했어요')));
 }
@@ -2535,11 +2543,18 @@ async function trvLoad(ym) {
     await ensureOrigin();
     // 현장 위치(실제 주소)를 한꺼번에 — 20곳씩
     const need = [];
-    r.days.filter(x => !x.off).forEach(x => needFor({ t: { stops: x.stops } }).forEach(n => { if (!need.some(y => y.q === n.q)) need.push(n); }));
+    // 날짜(iso)도 넘김 — 공단 검사접수 자료와 맞춰 볼 때 쓰임 (없으면 여기서 멈췄음)
+    r.days.filter(x => !x.off).forEach(x => needFor({ iso: x.iso, t: { stops: x.stops } }).forEach(n => { if (!need.some(y => y.q === n.q)) need.push(n); }));
     for (let i = 0; i < need.length; i += 20) {
       const part = need.slice(i, i + 20);
-      const g = await run('geocodeSites', part, ORIGIN, BRANCH ? BRANCH[0] : '');
-      part.forEach(n => (GEO[n.q] = (g && g.ok && g.places[n.q]) || null));
+      let g = null;
+      try {
+        g = await run('geocodeSites', part, ORIGIN, BRANCH ? BRANCH[0] : '');
+      } catch (e) {
+        TRV[ym].miss = true;
+      }
+      if (g && g.ok) part.forEach(n => (GEO[n.q] = g.places[n.q] || null));
+      else TRV[ym].miss = true;
       if (curTab() === 'trv' && trvYm === ym) drawTrv();
     }
     // 구간 거리 — 30구간씩
@@ -2562,7 +2577,12 @@ async function trvLoad(ym) {
     });
     for (let i = 0; i < pairs.length; i += 30) {
       const part = pairs.slice(i, i + 30);
-      const q = await run('routeLegs', part.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng]));
+      let q = null;
+      try {
+        q = await run('routeLegs', part.map(p => [+p.a.lat, +p.a.lng, +p.b.lat, +p.b.lng]));
+      } catch (e) {
+        TRV[ym].miss = true;
+      }
       if (q && q.ok) {
         part.forEach((p, j) => {
           LEGS[p.k] = q.km[j];
@@ -2747,7 +2767,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.16';
+const PAGE_VER = '3.17';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
