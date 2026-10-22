@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>망원 공무원 맛집 찾기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 결재 서류철 — 위에 자료 넣는 칸, 아래에 '여러 번 결재된 식당' 장부 */
+:root {
+  --paper: #eef1f4;
+  --sheet: #fbfcfd;
+  --ink: #1d2a3a;
+  --muted: #5d6b7c;
+  --line: #d3d9e1;
+  --seal: #c8322b;
+  --seal-soft: #f6e1df;
+  --near: #1f6f5c;
+  --near-soft: #dcefe8;
+  --f-display: "Gowun Batang", "Nanum Myeongjo", serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121922; --sheet: #19222d; --ink: #e3e8ee; --muted: #9aa7b6; --line: #2d3a49;
+    --seal: #ec6a60; --seal-soft: #3a2224; --near: #6cc9ae; --near-soft: #183a32; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121922; --sheet: #19222d; --ink: #e3e8ee; --muted: #9aa7b6; --line: #2d3a49;
+  --seal: #ec6a60; --seal-soft: #3a2224; --near: #6cc9ae; --near-soft: #183a32; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 22px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(1.7rem, 4.6vw, 2.5rem); line-height: 1.25; }
+h2 { font-size: 1.25rem; }
+p { margin: 0; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+
+header { display: grid; gap: 10px; }
+.eyebrow { font-size: 0.78rem; letter-spacing: 0.08em; color: var(--muted); }
+.lede { color: var(--muted); max-width: 62ch; }
+.seal {
+  display: inline-grid; place-items: center; width: 2.6em; height: 2.6em; border-radius: 50%;
+  border: 2px solid var(--seal); color: var(--seal); font: 700 0.72rem/1.1 var(--f-display);
+  text-align: center; transform: rotate(-8deg); margin-left: 6px; vertical-align: middle;
+}
+
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+
+.steps { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 0.92rem; }
+.steps li::before { content: counter(s); font: 500 0.85rem var(--f-num); width: 1.8em; height: 1.8em; border-radius: 50%; display: grid; place-items: center; background: var(--seal-soft); color: var(--seal); }
+.steps b { font-weight: 700; }
+
+.drop {
+  border: 1.5px dashed var(--line); border-radius: 6px; padding: 18px; text-align: center; display: grid; gap: 8px; cursor: pointer;
+}
+.drop.over { border-color: var(--seal); background: var(--seal-soft); }
+.drop small { color: var(--muted); }
+textarea { width: 100%; min-height: 110px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 10px; font-size: 0.85rem; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--sheet); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.btn.primary { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.btn:hover { border-color: var(--ink); }
+
+.sources { display: grid; gap: 6px; }
+.src { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.src .name { font-weight: 500; overflow-wrap: anywhere; min-width: 0; flex: 1 1 200px; }
+.src .meta { color: var(--muted); }
+.src select { max-width: 100%; border: 1px solid var(--line); border-radius: 4px; background: var(--paper); padding: 2px 6px; }
+.src.warn { border-color: var(--seal); }
+.note { font-size: 0.85rem; color: var(--muted); }
+.demo-flag { background: var(--seal-soft); color: var(--seal); border-radius: 4px; padding: 6px 10px; font-size: 0.85rem; }
+
+.controls { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.controls label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.controls input[type="text"], .controls select, .controls input[type="number"] { border: 1px solid var(--line); border-radius: 4px; background: var(--paper); padding: 6px 8px; font-size: 0.9rem; width: 100%; }
+.check { display: flex !important; align-items: center; gap: 8px; color: var(--ink) !important; font-size: 0.9rem !important; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.88rem; color: var(--muted); }
+.summary b { color: var(--ink); font-family: var(--f-num); font-weight: 500; }
+
+.ledger { display: grid; gap: 0; }
+.item { border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 2.4em minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 2px; }
+.item summary::-webkit-details-marker { display: none; }
+.rank { font: 500 1rem var(--f-num); color: var(--muted); text-align: right; }
+.item:nth-child(-n+3) .rank { color: var(--seal); }
+.place { min-width: 0; display: grid; gap: 2px; }
+.place strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.8rem; color: var(--muted); }
+.pill { border-radius: 999px; padding: 0 8px; font-size: 0.75rem; line-height: 1.6; }
+.pill.near { background: var(--near-soft); color: var(--near); }
+.pill.multi { background: var(--seal-soft); color: var(--seal); }
+.count { text-align: right; font-family: var(--f-num); line-height: 1.2; }
+.count b { font-size: 1.5rem; font-weight: 500; }
+.count span { display: block; font-size: 0.72rem; color: var(--muted); font-family: var(--f-body); }
+.detail { padding: 0 2px 14px calc(2.4em + 14px); display: grid; gap: 10px; }
+.maps { display: flex; flex-wrap: wrap; gap: 6px; }
+.maps a { text-decoration: none; }
+.tbl { overflow-x: auto; }
+.tbl table { border-collapse: collapse; font-size: 0.8rem; width: 100%; min-width: 520px; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+.tbl th { color: var(--muted); font-weight: 500; }
+.tbl td.n { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { padding: 24px 4px; color: var(--muted); text-align: center; }
+.excluded { font-size: 0.85rem; color: var(--muted); }
+.excluded button { background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: inherit; }
+footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
+@media (max-width: 520px) {
+  .sheet { padding: 16px 14px; }
+  .detail { padding-left: 2px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .item[open] .detail { animation: unfold .18s ease-out; }
+  @keyframes unfold { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">마포구 업무추진비 집행내역으로 찾는</div>
+    <h1>망원 공무원 맛집 찾기 <span class="seal" aria-hidden="true">여러<br>번</span></h1>
+    <p class="lede">구청 직원들이 업무추진비로 계산한 식당을 모아, 여러 번 다시 간 곳부터 보여 줍니다. 파일은 이 브라우저 안에서만 읽고 어디에도 보내지 않습니다.</p>
+  </header>
+
+  <section class="sheet" aria-labelledby="h-get">
+    <h2 id="h-get">자료 넣기</h2>
+    <ol class="steps">
+      <li><span><a href="https://www.mapo.go.kr" target="_blank" rel="noopener"><b>마포구청 홈페이지</b></a>에 들어갑니다.</span></li>
+      <li><span>검색창에 <b>업무추진비 공개</b>를 검색합니다.</span></li>
+      <li><span>구청장·부서별 <b>집행내역</b> 파일(엑셀·PDF)을 여러 달 치 내려받습니다.</span></li>
+      <li><span>아래에 한꺼번에 올리면 반복해서 나온 식당을 골라 줍니다.</span></li>
+    </ol>
+    <label class="drop" id="drop" for="file">
+      <strong>파일을 끌어다 놓거나 눌러서 고르기</strong>
+      <small>엑셀(xlsx·xls)·CSV·PDF·텍스트, 여러 개 한 번에. 한글(hwp) 파일은 내용을 복사해 아래에 붙여 넣으세요.</small>
+    </label>
+    <input type="file" id="file" multiple accept=".xlsx,.xls,.csv,.pdf,.txt,.tsv" hidden>
+    <textarea id="paste" placeholder="표를 복사해 붙여 넣어도 됩니다. 첫 줄에 '집행장소'처럼 칸 이름이 있으면 가장 정확합니다."></textarea>
+    <div class="row">
+      <button class="btn primary" id="addPaste" type="button">붙여 넣은 내용 추가</button>
+      <button class="btn" id="loadDemo" type="button">예시 다시 보기</button>
+      <button class="btn" id="clearAll" type="button">모두 지우기</button>
+    </div>
+    <p class="demo-flag" id="demoFlag" hidden>지금 보이는 것은 사용법을 보여 주는 <b>가짜 예시 자료</b>입니다. 실제 식당이 아닙니다. 구청 파일을 올리면 예시는 사라집니다.</p>
+    <div class="sources" id="sources"></div>
+  </section>
+
+  <section class="sheet" aria-labelledby="h-res">
+    <h2 id="h-res">여러 번 결재된 식당</h2>
+    <div class="controls">
+      <label>망원 근처로 볼 동네 (쉼표로 구분)
+        <input type="text" id="nearWords" value="망원, 합정, 성산, 서교, 연남, 상수">
+      </label>
+      <label>최소 등장 횟수
+        <input type="number" id="minCount" min="1" value="2">
+      </label>
+      <label>순서
+        <select id="sortBy">
+          <option value="count">많이 나온 순</option>
+          <option value="units">여러 부서가 간 순</option>
+          <option value="months">여러 달에 걸쳐 간 순</option>
+          <option value="perHead">1인당 금액 낮은 순</option>
+        </select>
+      </label>
+      <label>이름으로 찾기
+        <input type="text" id="query" placeholder="예: 국수">
+      </label>
+      <label class="check"><input type="checkbox" id="nearOnly"> 주소에 근처 동네가 적힌 곳만</label>
+      <label class="check"><input type="checkbox" id="foodOnly" checked> 마트·꽃집·편의점 등 빼기</label>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="ledger" id="ledger"></div>
+    <p class="excluded" id="excluded" hidden></p>
+  </section>
+
+  <footer>
+    <p>집행장소에 동네 이름이 없는 식당은 지도 버튼으로 위치를 확인하세요. 같은 식당이 띄어쓰기만 달라도 하나로 묶습니다.</p>
+    <p>업무추진비 내역은 지자체가 공개한 자료이며, 맛을 보증하지는 않습니다.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  // 칸 이름 찾기
+  const COL = {
+    place: /집행\s*장소|사용\s*장소|장\s*소|사용처|가맹점|집행처|업소|상호|거래처|식당/,
+    date: /일\s*자|일\s*시|날\s*짜|집행일|사용일/,
+    unit: /부\s*서|소\s*속|집행자|사용자|직\s*위|기관/,
+    amount: /금\s*액|집행액|사용액|결제액/,
+    people: /인\s*원|대상\s*인원|참석/,
+    purpose: /목\s*적|내\s*용|사\s*유|용\s*도|집행\s*목적/
+  };
+  const NOT_FOOD = /마트|편의점|GS25|지에스25|CU\b|씨유|세븐일레븐|이마트|홈플러스|롯데마트|코스트코|쿠팡|다이소|꽃|화원|플라워|문구|약국|주유|택시|우체국|올리브영|서점|교보|철물|인쇄|기프트|상품권|백화점|하이마트|쿠팡|배달의민족|우편/i;
+  const DONG = /^(망원|합정|서교|연남|성산|상수|상암|중동|동교|노고산|대흥|도화|마포|공덕|아현|염리|용강|토정|신수|구수|창전|당인|하중|신정|현석|신공덕|대흥|염리|중동)(\d*동|\d+가)?$|(동|로|길)\d*$|^\d+(-\d+)?(번지|호|층)?$|^마포구?$|^서울(특별시|시)?$/;
+
+  let sources = [];       // {id, name, demo, rows, header, cols:{...}, headerRow}
+  let excluded = new Set(store.get("mm-excluded", []));
+  let seq = 0;
+
+  // ---------- 읽기 ----------
+  function splitLine(line) {
+    if (line.includes("\t")) return line.split("\t").map(s => s.trim());
+    if (line.includes("|")) return line.split("|").map(s => s.trim()).filter((s, i, a) => !(s === "" && (i === 0 || i === a.length - 1)));
+    if (/\s{2,}/.test(line.trim())) return line.trim().split(/\s{2,}/);
+    if (/,/.test(line) && line.split(",").length >= 3) return parseCSVLine(line);
+    return [line.trim()];
+  }
+  function parseCSVLine(line) {
+    const out = []; let cur = "", q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+      else if (c === '"') q = true; else if (c === ",") { out.push(cur.trim()); cur = ""; } else cur += c;
+    }
+    out.push(cur.trim()); return out;
+  }
+  function textToRows(text) {
+    return text.split(/\r?\n/).filter(l => l.trim()).map(splitLine);
+  }
+
+  function findHeader(rows) {
+    const limit = Math.min(rows.length, 25);
+    for (let r = 0; r < limit; r++) {
+      const cells = rows[r].map(c => String(c ?? "").replace(/\s+/g, " ").trim());
+      if (cells.length < 2) continue;
+      const pi = cells.findIndex(c => c.length <= 12 && COL.place.test(c));
+      if (pi < 0) continue;
+      const cols = { place: pi };
+      for (const k of ["date", "unit", "amount", "people", "purpose"]) {
+        const i = cells.findIndex((c, j) => j !== pi && c.length <= 14 && COL[k].test(c) && !Object.values(cols).includes(j));
+        if (i >= 0) cols[k] = i;
+      }
+      return { headerRow: r, header: cells, cols };
+    }
+    return null;
+  }
+
+  function addSource(name, rows, demo) {
+    rows = rows.filter(r => r.some(c => String(c ?? "").trim() !== ""));
+    const h = findHeader(rows);
+    const width = Math.max(1, ...rows.slice(0, 40).map(r => r.length));
+    const src = { id: ++seq, name, demo: !!demo, rows, width,
+      headerRow: h ? h.headerRow : -1,
+      header: h ? h.header : Array.from({ length: width }, (_, i) => `${i + 1}번째 칸`),
+      cols: h ? h.cols : guessCols(rows, width) };
+    if (!demo) sources = sources.filter(s => !s.demo);
+    sources.push(src);
+    render();
+  }
+
+  // 칸 이름이 없을 때: 글자가 많고 숫자가 적은 칸을 장소로 짐작
+  function guessCols(rows, width) {
+    let best = 0, bestScore = -1;
+    for (let c = 0; c < width; c++) {
+      const vals = rows.slice(0, 60).map(r => String(r[c] ?? "").trim()).filter(Boolean);
+      const score = vals.filter(v => /[가-힣]{2,}/.test(v) && !/^\d/.test(v) && v.length <= 30).length;
+      if (score > bestScore) { bestScore = score; best = c; }
+    }
+    return { place: best };
+  }
+
+  async function readFile(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    try {
+      if (ext === "pdf") {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+        addSource(file.name, await pdfRows(await file.arrayBuffer()));
+      } else if (ext === "xlsx" || ext === "xls" || ext === "csv") {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+        const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+        for (const sn of wb.SheetNames) {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: false, defval: "" });
+          if (rows.length) addSource(wb.SheetNames.length > 1 ? `${file.name} · ${sn}` : file.name, rows);
+        }
+      } else {
+        addSource(file.name, textToRows(await file.text()));
+      }
+    } catch (e) {
+      addSource(file.name, []);
+      const s = sources[sources.length - 1];
+      s.error = `읽지 못했습니다 (${e.message || e}). 내용을 복사해 붙여 넣어 주세요.`;
+      render();
+    }
+  }
+
+  // PDF 글자를 줄·칸으로 되살리기: 같은 높이는 한 줄, 간격이 넓으면 다른 칸
+  async function pdfRows(buf) {
+    const pdf = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
+    const rows = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      const lines = [];
+      for (const it of tc.items) {
+        if (!it.str || !it.str.trim()) continue;
+        const x = it.transform[4], y = it.transform[5], w = it.width, h = Math.abs(it.transform[3]) || 8;
+        let ln = lines.find(l => Math.abs(l.y - y) < h * 0.5);
+        if (!ln) { ln = { y, h, items: [] }; lines.push(ln); }
+        ln.items.push({ x, w, s: it.str });
+      }
+      lines.sort((a, b) => b.y - a.y);
+      for (const ln of lines) {
+        ln.items.sort((a, b) => a.x - b.x);
+        const cells = []; let cur = null;
+        for (const it of ln.items) {
+          if (cur && it.x - cur.end < ln.h * 0.9) { cur.s += (it.x - cur.end > ln.h * 0.15 ? " " : "") + it.s; cur.end = it.x + it.w; }
+          else { cur = { s: it.s, end: it.x + it.w }; cells.push(cur); }
+        }
+        rows.push(cells.map(c => c.s.trim()));
+      }
+    }
+    return rows;
+  }
+
+  const loaded = {};
+  function loadScript(src) {
+    return loaded[src] ||= new Promise((ok, no) => {
+      const s = document.createElement("script");
+      s.src = src; s.onload = ok; s.onerror = () => no(new Error("라이브러리를 불러오지 못함"));
+      document.head.appendChild(s);
+    });
+  }
+
+  // ---------- 이름 다듬기 ----------
+  function splitPlace(raw) {
+    let s = String(raw ?? "").replace(/\s+/g, " ").trim();
+    const hints = [];
+    s = s.replace(/[\(\[（【]([^\)\]）】]*)[\)\]）】]/g, (_, h) => { hints.push(h); return " "; });
+    s = s.replace(/\(주\)|㈜|주식회사|유한회사/g, " ");
+    const words = s.split(/[\s\/·,]+/).filter(Boolean);
+    const keep = [];
+    for (const w of words) (DONG.test(w) ? hints : keep).push(w);
+    let name = keep.join(" ").trim();
+    if (!name) name = words.join(" ");
+    return { name, hint: hints.join(" ") };
+  }
+  const keyOf = (name) => name.replace(/[\s\-_.·'"’]/g, "").replace(/(본점)$/, "").toLowerCase();
+  const num = (v) => { const n = Number(String(v ?? "").replace(/[^\d.\-]/g, "")); return isFinite(n) ? n : 0; };
+  function monthOf(v) {
+    const m = String(v ?? "").match(/(20\d\d)\s*[.\-\/년]\s*(\d{1,2})/);
+    if (m) return `${m[1]}.${m[2].padStart(2, "0")}`;
+    const d = String(v ?? "").match(/^(\d{1,2})[.\-\/](\d{1,2})/);
+    return d ? `?.${d[1].padStart(2, "0")}` : "";
+  }
+
+  // ---------- 모으기 ----------
+  function collect() {
+    const map = new Map();
+    let rowsUsed = 0;
+    for (const s of sources) {
+      if (s.error) continue;
+      const c = s.cols;
+      s.rows.forEach((r, i) => {
+        if (i <= s.headerRow) return;
+        const raw = String(r[c.place] ?? "").trim();
+        if (!raw || raw.length > 60 || COL.place.test(raw) && raw.length <= 6) return;
+        if (/^[\d,.\s원-]+$/.test(raw) || /^(합\s*계|소\s*계|계)$/.test(raw)) return;
+        const { name, hint } = splitPlace(raw);
+        if (!/[가-힣A-Za-z]{2,}/.test(name)) return;
+        const key = keyOf(name);
+        rowsUsed++;
+        if (!map.has(key)) map.set(key, { key, names: new Map(), visits: [], units: new Set(), months: new Set(), amount: 0, people: 0, priced: 0, hints: new Set() });
+        const g = map.get(key);
+        g.names.set(name, (g.names.get(name) || 0) + 1);
+        if (hint) g.hints.add(hint);
+        const unit = c.unit != null && String(r[c.unit] ?? "").trim() || s.name;
+        const month = c.date != null ? monthOf(r[c.date]) : "";
+        const amount = c.amount != null ? num(r[c.amount]) : 0;
+        const people = c.people != null ? num(r[c.people]) : 0;
+        g.units.add(unit); if (month) g.months.add(month);
+        g.amount += amount;
+        if (amount && people) { g.people += people; g.priced += amount; }
+        g.visits.push({ raw, unit, date: c.date != null ? String(r[c.date] ?? "") : "", amount, people, purpose: c.purpose != null ? String(r[c.purpose] ?? "") : "", src: s.name });
+      });
+    }
+    const list = [...map.values()].map(g => {
+      g.name = [...g.names.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      g.count = g.visits.length;
+      g.perHead = g.people ? Math.round(g.priced / g.people) : 0;
+      g.text = g.name + " " + [...g.hints].join(" ") + " " + g.visits.map(v => v.raw).join(" ");
+      return g;
+    });
+    return { list, rowsUsed };
+  }
+
+  // ---------- 그리기 ----------
+  const won = (n) => n ? n.toLocaleString("ko-KR") + "원" : "–";
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function renderSources() {
+    $("demoFlag").hidden = !sources.some(s => s.demo);
+    $("sources").innerHTML = sources.map(s => {
+      if (s.error) return `<div class="src warn"><span class="name">${esc(s.name)}</span><span class="meta">${esc(s.error)}</span><button class="btn" data-del="${s.id}" type="button">빼기</button></div>`;
+      const opts = s.header.map((h, i) => `<option value="${i}"${i === s.cols.place ? " selected" : ""}>${esc(h || `${i + 1}번째 칸`)}</option>`).join("");
+      const n = s.rows.length - s.headerRow - 1;
+      const found = s.headerRow >= 0;
+      return `<div class="src${found ? "" : " warn"}">
+        <span class="name">${s.demo ? "예시 · " : ""}${esc(s.name)}</span>
+        <span class="meta">${n}줄${found ? "" : " · 칸 이름을 못 찾아 짐작했어요"}</span>
+        <label class="meta">식당 이름 칸 <select data-col="${s.id}">${opts}</select></label>
+        <button class="btn" data-del="${s.id}" type="button">빼기</button></div>`;
+    }).join("");
+  }
+
+  function render() {
+    renderSources();
+    const words = $("nearWords").value.split(/[,\s]+/).map(w => w.trim()).filter(Boolean);
+    const min = Math.max(1, Number($("minCount").value) || 1);
+    const q = keyOf($("query").value.trim());
+    const { list, rowsUsed } = collect();
+    let shown = list.filter(g => !excluded.has(g.key));
+    if ($("foodOnly").checked) shown = shown.filter(g => !NOT_FOOD.test(g.name));
+    shown.forEach(g => g.near = words.find(w => g.text.includes(w)) || "");
+    if ($("nearOnly").checked) shown = shown.filter(g => g.near);
+    if (q) shown = shown.filter(g => g.key.includes(q));
+    const repeated = shown.filter(g => g.count >= min);
+    const sort = $("sortBy").value;
+    const by = {
+      count: (a, b) => b.count - a.count || b.units.size - a.units.size,
+      units: (a, b) => b.units.size - a.units.size || b.count - a.count,
+      months: (a, b) => b.months.size - a.months.size || b.count - a.count,
+      perHead: (a, b) => (a.perHead || 1e12) - (b.perHead || 1e12) || b.count - a.count
+    }[sort];
+    repeated.sort(by);
+
+    $("summary").innerHTML = sources.length
+      ? `<span>자료 <b>${sources.filter(s => !s.error).length}</b>개</span><span>결재 <b>${rowsUsed}</b>건</span><span>식당·가게 <b>${list.length}</b>곳</span><span>${min}번 이상 나온 곳 <b>${repeated.length}</b>곳</span>`
+      : "";
+
+    const area = (words[0] || "망원") + "동";
+    $("ledger").innerHTML = repeated.length ? repeated.slice(0, 200).map((g, i) => {
+      const qName = encodeURIComponent(`${g.name} ${g.near ? g.near : area}`);
+      const rows = g.visits.map(v => `<tr><td>${esc(v.date)}</td><td>${esc(v.unit)}</td><td>${esc(v.purpose)}</td><td class="n">${v.people || ""}</td><td class="n">${won(v.amount)}</td><td>${esc(v.raw)}</td></tr>`).join("");
+      return `<details class="item">
+        <summary>
+          <span class="rank">${i + 1}</span>
+          <span class="place"><strong>${esc(g.name)}</strong>
+            <span class="tags">
+              ${g.near ? `<span class="pill near">${esc(g.near)} 근처</span>` : ""}
+              ${g.units.size >= 2 ? `<span class="pill multi">${g.units.size}개 부서·자료</span>` : ""}
+              ${g.months.size ? `<span>${g.months.size}개월에 걸쳐</span>` : ""}
+              ${g.perHead ? `<span>1인당 약 ${won(g.perHead)}</span>` : ""}
+            </span>
+          </span>
+          <span class="count"><b>${g.count}</b><span>번 결재</span></span>
+        </summary>
+        <div class="detail">
+          <div class="maps">
+            <a class="btn" href="https://map.naver.com/p/search/${qName}" target="_blank" rel="noopener">네이버 지도</a>
+            <a class="btn" href="https://map.kakao.com/?q=${qName}" target="_blank" rel="noopener">카카오맵</a>
+            <button class="btn" type="button" data-ex="${esc(g.key)}">목록에서 빼기</button>
+          </div>
+          ${g.hints.size ? `<p class="note">자료에 적힌 위치: ${esc([...g.hints].join(", "))}</p>` : ""}
+          <div class="tbl"><table><thead><tr><th>일시</th><th>부서·자료</th><th>목적</th><th>인원</th><th>금액</th><th>적힌 장소</th></tr></thead><tbody>${rows}</tbody></table></div>
+        </div>
+      </details>`;
+    }).join("") : `<p class="empty">${sources.length ? "조건에 맞는 식당이 없습니다. 최소 등장 횟수를 낮추거나 '식당 이름 칸'을 바꿔 보세요." : "위에 업무추진비 파일을 올리면 여기에 순위가 나옵니다."}</p>`;
+
+    $("excluded").hidden = !excluded.size;
+    $("excluded").innerHTML = `직접 뺀 곳 ${excluded.size}곳 · <button type="button" id="restore">다시 넣기</button>`;
+    store.set("mm-prefs", { near: $("nearWords").value, min: $("minCount").value, sort, nearOnly: $("nearOnly").checked, foodOnly: $("foodOnly").checked });
+  }
+
+  // ---------- 예시 (가짜 자료) ----------
+  function loadDemo() {
+    sources = sources.filter(s => !s.demo);
+    const H = "집행일시\t집행장소\t집행목적\t대상인원\t집행금액\t결제방법";
+    const a = [H,
+      "2026-07-03 12:10\t예시국수집(망원동)\t부서 현안 협의 간담회\t6\t54,000\t카드",
+      "2026-07-11 18:30\t예시 순댓국\t민원 대응 직원 격려\t8\t96,000\t카드",
+      "2026-07-19 12:00\t예시국수집 (망원동)\t업무 협의\t4\t36,000\t카드",
+      "2026-08-02 12:20\t예시 생선구이(망원시장)\t현장 점검 후 오찬\t5\t75,000\t카드",
+      "2026-08-14 12:05\t예시 편의점 망원점\t행사 물품 구입\t-\t23,000\t카드",
+      "2026-08-27 18:40\t예시 순댓국\t야간 근무 직원 격려\t7\t84,000\t카드",
+      "2026-09-05 12:15\t예시국수집\t유관기관 협의\t5\t45,000\t카드"].join("\n");
+    const b = [H,
+      "2026-07-08 12:30\t예시 생선구이(망원시장)\t부서 업무 협의\t4\t60,000\t카드",
+      "2026-08-09 12:00\t예시국수집(망원동)\t사업 추진 협의\t3\t27,000\t카드",
+      "2026-08-22 18:10\t예시 고깃집(성산동)\t직원 격려 만찬\t9\t198,000\t카드",
+      "2026-09-12 12:20\t예시 순댓국\t현안 협의\t5\t60,000\t카드",
+      "2026-09-26 12:10\t예시 생선구이 (망원시장)\t주민 간담회\t6\t90,000\t카드"].join("\n");
+    addSource("가짜 예시 A과 집행내역", textToRows(a), true);
+    addSource("가짜 예시 B과 집행내역", textToRows(b), true);
+  }
+
+  // ---------- 이벤트 ----------
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+  drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+  drop.tabIndex = 0;
+  $("file").addEventListener("change", e => { handleFiles(e.target.files); e.target.value = ""; });
+  async function handleFiles(files) { for (const f of [...files]) await readFile(f); }
+
+  $("addPaste").addEventListener("click", () => {
+    const t = $("paste").value.trim();
+    if (!t) return;
+    addSource(`붙여 넣은 자료 ${sources.filter(s => !s.demo).length + 1}`, textToRows(t));
+    $("paste").value = "";
+  });
+  $("loadDemo").addEventListener("click", loadDemo);
+  $("clearAll").addEventListener("click", () => { sources = []; render(); });
+
+  document.addEventListener("click", e => {
+    const del = e.target.closest("[data-del]");
+    if (del) { sources = sources.filter(s => s.id !== Number(del.dataset.del)); render(); return; }
+    const ex = e.target.closest("[data-ex]");
+    if (ex) { excluded.add(ex.dataset.ex); store.set("mm-excluded", [...excluded]); render(); return; }
+    if (e.target.id === "restore") { excluded.clear(); store.set("mm-excluded", []); render(); }
+  });
+  document.addEventListener("change", e => {
+    const sel = e.target.closest("[data-col]");
+    if (sel) { const s = sources.find(x => x.id === Number(sel.dataset.col)); if (s) { s.cols = { ...s.cols, place: Number(sel.value) }; render(); } }
+  });
+  ["nearWords", "minCount", "sortBy", "query", "nearOnly", "foodOnly"].forEach(id => $(id).addEventListener("input", render));
+
+  const p = store.get("mm-prefs", null);
+  if (p) {
+    $("nearWords").value = p.near ?? $("nearWords").value;
+    $("minCount").value = p.min ?? 2;
+    $("sortBy").value = p.sort ?? "count";
+    $("nearOnly").checked = !!p.nearOnly;
+    $("foodOnly").checked = p.foodOnly !== false;
+  }
+  loadDemo();
+})();
+</script>
+</body>
+</html>
