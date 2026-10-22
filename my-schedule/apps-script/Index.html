@@ -2483,7 +2483,7 @@ function drawTrv() {
   const ba = BRANCH && BRANCH[1] ? BRANCH[1] : '';
   h += `<div class="tsum"><span>${mon(trvYm)} 총 이동거리</span><b>${!work.length ? '0' : T.ready ? tot.toFixed(1) + (unk ? '+' : '') : '…'}<small>km</small></b><em>근무 ${work.length}일 · ${sites}현장${T.days.length > work.length ? ' · 휴가 ' + (T.days.length - work.length) + '일' : ''}${T.ready ? '' : ' · 거리 계산 중'}</em></div>
     ${T.ready && unk && work.length ? `<button type="button" class="trv-re" id="trvRe2">거리를 못 구한 날이 있어요 · 다시 계산</button>` : ''}
-    <div class="trv-act"><button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사</button><label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표<br class="br">올리기</label></div>
+    <div class="trv-act"><button type="button" class="trv-all" id="trvAll"${T.days.length ? '' : ' disabled'}>${COPY_IC}${mon(trvYm)} 전체 복사</button><label class="trv-up" for="pastFile" role="button" tabindex="0">${UP_IC}지난 일정표 <br class="br">올리기</label></div>
     ${ba ? `<div class="trv-home"><i class="pin base">지</i><div><b>출발·복귀 ${esc(home)}</b><span>${esc(ba)}</span></div><button type="button" class="cpt" data-addr="${esc(ba)}" aria-label="지사 주소 복사">${COPY_IC}복사</button></div>` : ''}`;
   if (!T.days.length) h += `<p class="trv-msg">${mon(trvYm)}에 기록된 일정이 없어요.<br><small>「지난 일정표 올리기」로 그 달 일정표 파일을 올리면 채워져요. 여러 개를 한 번에 골라도 돼요.</small></p>`;
   T.days.forEach((x, k) => {
