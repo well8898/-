@@ -2410,7 +2410,7 @@ async function trvUpload(files) {
     try {
       const d = await parseFile(f);
       // 제목에 다른 지사 이름이 있으면 올리지 않음 (지사 기록이 섞이지 않게)
-      const other = ((d.source || '') + ' ' + f.name).match(/[가-힣]{2,8}지사/g);
+      const other = ((d.source || '') + ' ' + (d.title || '') + ' ' + f.name).match(/[가-힣]{2,8}지사/g);
       if (other && !other.some(x => x === LINK.b)) {
         bad.push(f.name + ': ' + other[0] + ' 일정표예요. ' + LINK.b + ' 일정표만 올릴 수 있어요');
         continue;
@@ -2765,7 +2765,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.17';
+const PAGE_VER = '3.18';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -4086,10 +4086,11 @@ async function parseFile(file) {
       '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
     );
   const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
-  return {
+  // 제목 글자(지사 찾기용)는 숨은 값으로 — 서버에 보내는 일정표에는 안 들어감
+  return Object.defineProperty({
     source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
     days: ds
-  };
+  }, 'title', { value: (t ? t.s : '') + ' ' + (items.title || '') });
 }
 async function load(file) {
   const prev = data;
@@ -4102,7 +4103,7 @@ async function load(file) {
     shared = null;
     msg.textContent = '';
     saveLast();
-    const fromTitle = branchFromText((t ? t.s : '') + ' ' + (items.title || '') + ' ' + file.name);
+    const fromTitle = branchFromText((data.title || '') + ' ' + file.name);
     const saved = branchByName(store.get('sched.branch'));
     // 지사: 일정표 제목 → 앱에서 고른 지사 → 지난번 지사 → 현장 동네로 추측
     const linkB = LINK ? branchByName(LINK.b) : null;
