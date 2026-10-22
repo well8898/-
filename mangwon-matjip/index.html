@@ -185,7 +185,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
         <input type="text" id="query" placeholder="예: 국수">
       </label>
       <label class="check"><input type="checkbox" id="nearOnly"> 주소에 근처 동네가 적힌 곳만</label>
-      <label class="check"><input type="checkbox" id="foodOnly" checked> 마트·꽃집·편의점 등 빼기</label>
+      <label class="check"><input type="checkbox" id="foodOnly" checked> 물품 구입·온라인 쇼핑·마트 등 빼기</label>
     </div>
     <div class="summary" id="summary"></div>
     <div class="ledger" id="ledger"></div>
@@ -215,7 +215,9 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
     people: /인\s*원|대상\s*인원|참석/,
     purpose: /목\s*적|내\s*용|사\s*유|용\s*도|집행\s*목적/
   };
-  const NOT_FOOD = /마트|편의점|GS25|지에스25|CU\b|씨유|세븐일레븐|이마트|홈플러스|롯데마트|코스트코|쿠팡|다이소|꽃|화원|플라워|문구|약국|주유|택시|우체국|올리브영|서점|교보|철물|인쇄|기프트|상품권|백화점|하이마트|쿠팡|배달의민족|우편/i;
+  const NOT_FOOD = /마트|편의점|GS25|지에스25|CU\b|씨유|세븐일레븐|이마트|홈플러스|코스트코|쿠팡|다이소|꽃|화원|플라워|문구|약국|주유|택시|우체국|올리브영|서점|교보|철물|인쇄|기프트|상품권|백화점|하이마트|배달의민족|우편|닷컴|파이낸셜|컬리|11번가|지마켓|G마켓|옥션|위메프|티몬|카카오페이|네이버페이|애드컴|광고|기획|디자인|사무|오피스/i;
+  // 집행목적이 이런 것이면 밥 먹은 기록이 아님
+  const NOT_MEAL = /물품|구입|구매|명함|사무용품|격려품|기념품|선물|화환|조화|인쇄|제작/;
   const DONG = /^(망원|합정|서교|연남|성산|상수|상암|중동|동교|노고산|대흥|도화|마포|공덕|아현|염리|용강|토정|신수|구수|창전|당인|하중|신정|현석|신공덕|대흥|염리|중동)(\d*동|\d+가)?$|(동|로|길)\d*$|^\d+(-\d+)?(번지|호|층)?$|^마포구?$|^서울(특별시|시)?$/;
 
   let sources = [];       // {id, name, demo, rows, header, cols:{...}, headerRow}
@@ -309,10 +311,12 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
     }
   }
 
-  // PDF 글자를 줄·칸으로 되살리기: 같은 높이는 한 줄, 간격이 넓으면 다른 칸
+  // PDF 글자를 줄·칸으로 되살리기: 같은 높이는 한 줄.
+  // 칸 이름 줄을 찾으면 그 아래 글자는 가로 위치로 칸을 정하고, 못 찾으면 간격이 넓은 곳에서 칸을 나눈다.
   async function pdfRows(buf) {
     const pdf = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
     const rows = [];
+    let centers = null, pending = null;
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
@@ -320,7 +324,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
       for (const it of tc.items) {
         if (!it.str || !it.str.trim()) continue;
         const x = it.transform[4], y = it.transform[5], w = it.width, h = Math.abs(it.transform[3]) || 8;
-        let ln = lines.find(l => Math.abs(l.y - y) < h * 0.5);
+        let ln = lines.find(l => Math.abs(l.y - y) < Math.max(h, l.h) * 0.5);
         if (!ln) { ln = { y, h, items: [] }; lines.push(ln); }
         ln.items.push({ x, w, s: it.str });
       }
@@ -330,9 +334,31 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
         const cells = []; let cur = null;
         for (const it of ln.items) {
           if (cur && it.x - cur.end < ln.h * 0.9) { cur.s += (it.x - cur.end > ln.h * 0.15 ? " " : "") + it.s; cur.end = it.x + it.w; }
-          else { cur = { s: it.s, end: it.x + it.w }; cells.push(cur); }
+          else { cur = { s: it.s, x: it.x, end: it.x + it.w }; cells.push(cur); }
         }
-        rows.push(cells.map(c => c.s.trim()));
+        const texts = cells.map(c => c.s.trim());
+        if (texts.length >= 3 && texts.some(t => t.length <= 12 && COL.place.test(t))) {
+          centers = cells.map(c => (c.x + c.end) / 2);
+          rows.push(texts); pending = null; continue;
+        }
+        if (!centers) { rows.push(texts); continue; }
+        const row = centers.map(() => "");
+        for (const it of ln.items) {
+          const mid = it.x + it.w / 2;
+          let k = 0;
+          centers.forEach((c, i) => { if (Math.abs(c - mid) < Math.abs(centers[k] - mid)) k = i; });
+          row[k] = row[k] ? row[k] + (/\s$/.test(row[k]) ? "" : " ") + it.s.trim() : it.s.trim();
+        }
+        // 칸 안에서 두 줄로 꺾인 글자: 앞 줄의 빈 칸을 채우거나, 다음 줄에 붙인다
+        const filled = row.map((t, i) => t ? i : -1).filter(i => i >= 0);
+        const prev = rows[rows.length - 1];
+        if (!row[0] && filled.length && filled.length <= 2) {
+          if (prev && prev.length === row.length && filled.every(i => !prev[i])) filled.forEach(i => prev[i] = row[i]);
+          else pending = row;
+          continue;
+        }
+        if (pending) { pending.forEach((t, i) => { if (t) row[i] = row[i] ? t + " " + row[i] : t; }); pending = null; }
+        rows.push(row);
       }
     }
     return rows;
@@ -372,6 +398,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
   // ---------- 모으기 ----------
   function collect() {
     const map = new Map();
+    const foodOnly = $("foodOnly").checked;
     let rowsUsed = 0;
     for (const s of sources) {
       if (s.error) continue;
@@ -383,6 +410,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
         if (/^[\d,.\s원-]+$/.test(raw) || /^(합\s*계|소\s*계|계)$/.test(raw)) return;
         const { name, hint } = splitPlace(raw);
         if (!/[가-힣A-Za-z]{2,}/.test(name)) return;
+        if (foodOnly && (NOT_FOOD.test(name) || c.purpose != null && NOT_MEAL.test(String(r[c.purpose] ?? "")))) return;
         const key = keyOf(name);
         rowsUsed++;
         if (!map.has(key)) map.set(key, { key, names: new Map(), visits: [], units: new Set(), months: new Set(), amount: 0, people: 0, priced: 0, hints: new Set() });
@@ -435,7 +463,6 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
     const q = keyOf($("query").value.trim());
     const { list, rowsUsed } = collect();
     let shown = list.filter(g => !excluded.has(g.key));
-    if ($("foodOnly").checked) shown = shown.filter(g => !NOT_FOOD.test(g.name));
     shown.forEach(g => g.near = words.find(w => g.text.includes(w)) || "");
     if ($("nearOnly").checked) shown = shown.filter(g => g.near);
     if (q) shown = shown.filter(g => g.key.includes(q));
