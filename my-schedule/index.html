@@ -1264,14 +1264,15 @@ function parseItems(items, yearHint) {
   const Y = yearHint || new Date().getFullYear();
   // headers
   const heads = items.filter(
-    i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s) && !/~/.test(i.s)
+    // 「010/26 (월)」처럼 앞에 0이 하나 더 붙어 나오는 PDF도 있음
+    i => /^\s*0?\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s) && !/~/.test(i.s)
   );
   if (heads.length < 1)
     throw new Error('날짜 머리글(예: 10/12 (월))을 찾지 못했어요.');
   const hy = Math.min(...heads.map(h => h.y));
   const cols = heads
     .filter(h => Math.abs(h.y - hy) < 6)
-    .map(h => ({ c: h.x + h.w / 2, s: h.s.trim() }))
+    .map(h => ({ c: h.x + h.w / 2, s: h.s.trim().replace(/^0(?=\d{1,2}\/)/, '') }))
     .sort((a, b) => a.c - b.c);
   const sp =
     cols.length > 1
@@ -2826,7 +2827,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.20';
+const PAGE_VER = '3.21';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
