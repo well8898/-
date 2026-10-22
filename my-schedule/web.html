@@ -2011,7 +2011,8 @@ function drawWeek() {
   const work = wds.filter(d => d.t);
   const wp = work.reduce((a, d) => a + places(d.t.stops).length, 0),
     wu = work.reduce((a, d) => a + sumUnits(d.t.stops), 0);
-  let h = weekSel() + `<div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
+  // 자세히: 주 고르기는 맨 위 고정 칸에 이미 있음 (두 번 나오지 않게)
+  let h = `<div class="wsum"><div><b>${work.length}</b><span>근무일</span></div><div><b>${wp}</b><span>현장</span></div><div><b>${wu}</b><span>승강기(대)</span></div></div>`;
   wds.forEach(d => {
     const { md, dow } = mdow(d);
     const km = d.t ? ezLegs(d) : null;
@@ -2832,7 +2833,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.19';
+const PAGE_VER = '3.20';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
