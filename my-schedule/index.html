@@ -2827,7 +2827,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.21';
+const PAGE_VER = '3.22';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3927,6 +3927,14 @@ function rememberName() {
   LINK.n = n;
   try {
     const q = new URLSearchParams(location.search);
+    // 웹(아이폰 홈 화면 등)은 이름을 주소에 넣지 않음 — 홈 화면 아이콘이 그 주소를 그대로 기억해서 이름을 바꿀 수 없게 됨
+    if (!APP) {
+      if (q.get('b') === LINK.b && !q.has('n') && !q.has('pick')) return;
+      q.set('b', LINK.b);
+      q.delete('n');
+      q.delete('pick'); // 이름을 다 넣었으면 「다시 고르기」 표시도 지움 (홈 화면에 추가할 주소)
+      return history.replaceState(null, '', location.pathname + '?' + q.toString());
+    }
     if (q.get('n') === n && q.get('b') === LINK.b) return;
     q.set('b', LINK.b);
     q.set('n', n);
@@ -4341,6 +4349,11 @@ $('name').addEventListener('input', () => {
     }
     appAuth();
   }
+  // 웹: ?pick=1 로 열면 이름을 다시 넣음 (아이폰에서 다른 이름으로 굳었을 때 처음부터)
+  if (!APP && QS.get('pick') === '1') {
+    store.set('sched.name', '');
+    $('name').value = '';
+  }
   // 「다른 지사 고르기」 (고르기 화면 어디서든)
   $('namePick').addEventListener('click', e => {
     if (e.target.closest('[data-act="branch"]')) rePickBranch();
@@ -4365,7 +4378,8 @@ $('name').addEventListener('input', () => {
     document.querySelector('#startView h1').innerHTML = `<span id="who0"></span>${esc(LINK.b)} 이번 주 검사 일정`;
     if (!ez0) document.body.classList.toggle('easy', LINK.easy !== false);
     syncMode();
-    if (LINK.n) {
+    // 웹은 이 휴대폰에 저장된 이름이 먼저 (예전 홈 화면 아이콘 주소에 남은 이름보다)
+    if (LINK.n && !(!APP && store.get('sched.name'))) {
       $('name').value = LINK.n;
       store.set('sched.name', LINK.n);
     }
