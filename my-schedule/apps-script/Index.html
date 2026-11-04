@@ -2832,7 +2832,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.22';
+const PAGE_VER = '3.23';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -4364,7 +4364,9 @@ $('name').addEventListener('input', () => {
     if (e.target.closest('[data-act="branch"]')) rePickBranch();
   });
   // 앱 안에서 지사 정보가 없으면: 전국 지사 중에서 고르기 (일정표가 올라온 지사가 위에)
-  if ((APP || QS.get('pick') === '1') && !LINK && API) {
+  // 휴대폰(아이폰 홈 화면 아이콘 등)으로 그냥 주소만 열어도, 또는 지사를 고른 적이 있으면: 지사·이름 방식으로
+  // (예전 「파일만 읽는」 화면에는 여비입력·다음 주 등이 없음)
+  if ((APP || QS.get('pick') === '1' || IS_MOBILE || lockedBranch() || store.get('sched.appBranch')) && !LINK && API) {
     let list = [];
     try {
       const r = await run('listWeeks');
