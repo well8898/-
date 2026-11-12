@@ -1169,6 +1169,8 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .toast{width:max-content;text-align:center}
 /* 주검·보조 */
 .crew{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+.dz-h .crew{margin:10px 0 6px}
+.dz-h h2{word-break:keep-all}
 .crew.c3{grid-template-columns:repeat(3,1fr)}
 .crew div{background:var(--surface);border-radius:14px;padding:9px 11px;display:flex;align-items:center;gap:7px;min-width:0}
 .crew span{flex:none;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:7px;padding:2px 7px}
@@ -2093,7 +2095,8 @@ function drawPanel(dx) {
     const b = briefText(d, name);
     const m = daySum(d);
     h += `<section class="dz-h"><h2>${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''} · ${m.sites}현장 ${sumUnits(d.t.stops)}대</h2>
-      <p>${esc(d.t.team)} · ${crewTxt(d.t.members, true)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
+      ${crewBox(d.t.members, name)}
+      <p>${esc(d.t.team)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
       <ol class="tl">${d.t.stops
@@ -2859,7 +2862,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.24';
+const PAGE_VER = '3.25';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
