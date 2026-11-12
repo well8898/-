@@ -1192,6 +1192,18 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .crew .me{border-color:var(--accent);background:var(--accent-soft)}
 .crew .me b{color:var(--accent)}
 .dcrew .me{color:var(--accent)}
+/* 같은 현장 (시안 B) */
+.sx2{display:block;margin-top:8px;border-left:3px solid #f5b400;padding:2px 0 2px 10px;text-align:left;white-space:normal}
+.sx2 .hd{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.sx2 .tg{display:grid;grid-template-columns:auto 1fr auto;column-gap:8px;align-items:baseline;font-size:14.5px;font-weight:600;color:var(--ink);padding:2px 0}
+.sx2 .tg>i{font-style:normal;font-weight:800;color:var(--amber);min-width:26px}
+.sx2 em{font-style:normal;font-weight:800;margin-right:2px}
+.sx2 small{font-size:12px;font-weight:600;color:var(--muted);margin-right:3px;white-space:nowrap}
+.sx2 em{white-space:nowrap}
+.wd tr.wd-same td{padding-top:0}
+.sx2 .u{font-weight:800;white-space:nowrap}
+.ez-card .sx2{margin-top:14px}.ez-card .sx2 .tg{font-size:15.5px}
+.tl-card .sx2,.wd .sx2{margin-top:6px}
 </style>
 </head>
 <body>
@@ -1966,15 +1978,17 @@ function crewTxt(names, html) {
   const b = x => (html ? '<b>' + esc(x) + '</b>' : x);
   return '주검: ' + b(n[0]) + (n.length > 1 ? ' · 보조: ' + n.slice(1).map(b).join(', ') : '');
 }
-function othersHtml(d, s) {
+// 같은 현장 다른 조 (시안 B): 왼쪽 노란 선 + 조마다 한 줄 「3조  주검 박지호 보조 이도윤  4대」
+function othersHtml(d, s, lead) {
   const o = othersAt(d, s);
   if (!o.length) return '';
-  return `<div class="others">${o
-    .map(
-      x =>
-        `<span>같은 현장 · ${esc(x.team)}<br>${crewTxt(x.names, true)} · ${x.kinds.length ? esc(x.kinds.join('·')) + ' ' : ''}${x.units}대${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`
-    )
-    .join('')}</div>`;
+  const nm = x => {
+    const n = (x.names || []).map(bare).filter(Boolean);
+    return n.map((y, i) => `<small>${i ? '보조' : '주검'}</small><em>${esc(y)}</em>`).join(' ');
+  };
+  return `<span class="sx2"><span class="hd">같은 현장${lead ? ' · ' + esc(lead) : ''}</span>${o
+    .map(x => `<span class="tg"><i>${esc(x.team)}</i><span>${nm(x)}${x.times.length && x.times.join() !== s.time ? ` <small>(${esc(x.times.join(', '))})</small>` : ''}</span><span class="u">${x.units}대</span></span>`)
+    .join('')}</span>`;
 }
 let days = [];
 function curName() {
@@ -2055,7 +2069,7 @@ function drawWeek() {
       h += `<table>${d.t.stops
         .map(
           s =>
-            `<tr><td class="t">${esc(s.time || '')}</td><td><span class="nm">${esc(placeName(s.name))}</span>${s.area ? `<span class="ar">${esc(s.area)}</span>` : ''}${othersTxt(d, s) ? `<small class="wd-o">${othersChunks(d, s)}</small>` : ''}</td><td class="k">${kb(s.kind)}</td><td class="u">${s.units != null ? s.units : ''}</td></tr>`
+            `<tr><td class="t">${esc(s.time || '')}</td><td><span class="nm">${esc(placeName(s.name))}</span>${s.area ? `<span class="ar">${esc(s.area)}</span>` : ''}</td><td class="k">${kb(s.kind)}</td><td class="u">${s.units != null ? s.units : ''}</td></tr>${othersTxt(d, s) ? `<tr class="wd-same"><td></td><td colspan="3">${othersHtml(d, s)}</td></tr>` : ''}`
         )
         .join('')}</table>`;
     if (d.sup.length) h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
@@ -2134,11 +2148,6 @@ function drawPanel(dx) {
   if (SERVER && d.t) dayExtras(d);
 }
 // 같은 현장 안내를 덩어리로: 줄이 길면 이름 덩어리가 통째로 다음 줄로 (단어 중간에서 안 끊김)
-function othersChunks(d, s, lead) {
-  return othersAt(d, s)
-    .map((o, i) => `<span class="nw">${lead ? esc(lead.replace(/:\s*$/, '')) + ' · ' : i ? '' : '같은 현장 · '}${esc(o.team)}</span><br>${crewTxt(o.names, true)} · ${o.units}대${o.times.join() !== s.time && o.times.length ? ' (' + esc(o.times.join(', ')) + ')' : ''}`)
-    .join('<br>');
-}
 // 같은 현장 다른 조: "6조 정준하·안재현 2대" (시간이 다르면 시간도)
 function othersTxt(d, s) {
   return othersAt(d, s)
@@ -2186,7 +2195,7 @@ function drawEasyWeek() {
       <span class="dw"><b>${md.split('/')[1]}</b><span>${dow}${d.iso === todayIso ? ' · 오늘' : ''}</span></span>
       <span class="ct"><b>${first ? esc(placeName(first.name)) + (pl.length > 1 ? ' 외 ' + (pl.length - 1) : '') + kinds.map(kb).join('') : '휴가'}</b>
       <small>${d.t ? [esc(areas.join('·')), crewTxt(d.t.members)].filter(Boolean).join(' · ') : '쉬는 날이에요'}</small>
-      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">${othersChunks(d, s, pl.length > 1 ? placeName(s.name) + ': ' : '')}</small>`).join('') : ''}</span>
+      ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => othersHtml(d, s, pl.length > 1 ? placeName(s.name) : '')).join('') : ''}</span>
       <span class="cnt">${d.t ? pl.length + '현장 ' + sumUnits(d.t.stops) + '대' : ''}</span></button></li>`;
   });
   h += `</ul>`;
@@ -2384,7 +2393,7 @@ function drawEasy() {
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
         ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
         ${dl ? `<div class="ez-d">${ARROW}${dl}</div>` : ''}
-        ${othersTxt(d, s) ? `<div class="ez-same"><span>${othersChunks(d, s)}</span></div>` : ''}
+        ${othersHtml(d, s)}
         ${ezNav(s)}
         <button type="button" class="ez-info" data-info aria-expanded="${ezInfo}">승강기 정보 ${ezInfo ? '접기' : '보기'}</button>
         ${ezInfo ? ezDetail(d, s, pick) : ''}
@@ -2883,7 +2892,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.27';
+const PAGE_VER = '3.28';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
