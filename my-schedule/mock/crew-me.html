@@ -1,0 +1,77 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>이번 주·다음 주 시안</title><link rel="stylesheet" href="redesign.css"><style>
+.top .date:empty{display:none}.top{justify-content:flex-end}
+/* A: 요일 5칸 고정 */
+.dp{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 14px}
+.dp button{border:0;background:var(--well);border-radius:14px;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-family:P;color:var(--ink)}
+.dp span{font:600 13px P;color:var(--sub)}.dp b{font:800 19px P}.dp em{font:600 11.5px P;font-style:normal;color:var(--sub)}
+.dp .on{background:var(--accent)}.dp .on span,.dp .on b,.dp .on em{color:#fff}
+.dp .off b,.dp .off em{color:#c4373b}
+/* B: 큰 요일 + 밑줄 탭 */
+.dl{display:flex;align-items:baseline;gap:8px;margin-top:2px}.dl b{font:800 20px P}.dl span{font:600 15px P;color:var(--sub)}.dl i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}
+.dw2{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);margin:8px 0 12px}
+.dw2 span{text-align:center;font:700 17px P;color:var(--mute);padding:10px 0 11px}
+.dw2 .on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}.dw2 .x{color:#c4373b}
+/* C: 날짜 눌러 고르기 */
+.dd{display:flex;align-items:center;gap:6px;border:0;background:var(--well);border-radius:12px;height:44px;padding:0 12px 0 14px;font:700 16px P;color:var(--ink);margin-top:2px}
+.dd i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}.dd svg{width:18px;height:18px;color:var(--sub)}
+.sheetbg{position:absolute;inset:0;background:rgba(25,31,40,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 24px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}.st{font:800 20px P;display:block;margin-bottom:6px}
+.sheet ul{list-style:none;margin:0;padding:0}.sheet li{display:flex;flex-direction:column;padding:12px 12px;border-radius:14px}
+.sheet li span{font:800 17px P}.sheet li em{font:500 14px P;font-style:normal;color:var(--sub);margin-top:2px}
+.sheet li.on{background:var(--accent-soft)}.sheet li.on span{color:var(--accent)}.sheet li.off span{color:#c4373b}
+.tabs.t4{grid-template-columns:repeat(4,1fr)}</style><style>
+.v{width:360px;background:#fff;border-radius:24px;padding:18px 18px 16px;box-shadow:0 6px 18px rgba(25,31,40,.12)}
+.v h4{font:800 17px P;margin:0 0 4px}.v p.d{font:500 13.5px P;color:var(--sub);margin:0 0 12px}
+.crew{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.crew div{background:var(--well);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:8px;border:2px solid transparent}
+.crew span{font:800 12.5px P;color:var(--sub);background:#fff;border-radius:7px;padding:2px 7px}
+.crew b{font:800 17px P}
+.lab{font:700 12.5px P;color:var(--mute);margin:14px 0 6px}
+.line{display:flex;gap:12px;font:700 15px P;background:var(--well);border-radius:12px;padding:9px 12px}
+.line i{display:inline-block;font:800 12px P;font-style:normal;color:var(--sub);background:#fff;border-radius:6px;padding:1px 6px;margin-right:6px}
+/* A 파란 테두리 */
+.A .me{border-color:var(--accent);background:var(--accent-soft)}.A .me span{background:var(--accent);color:#fff}.A .me b{color:var(--accent)}
+.A .lme{color:var(--accent)}.A .lme i{background:var(--accent);color:#fff}
+/* B 이름만 파랗게 */
+.B .me b,.B .lme{color:var(--accent)}
+/* C 칸 전체를 채움 */
+.C .me{background:var(--accent)}.C .me span{background:rgba(255,255,255,.25);color:#fff}.C .me b{color:#fff}
+.C .lme{color:#fff;background:var(--accent);border-radius:8px;padding:0 8px}.C .lme i{background:rgba(255,255,255,.25);color:#fff}
+/* D 이름 밑줄 */
+.D .me b,.D .lme{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px;text-decoration-color:var(--accent)}
+</style><style>
+.role{font:600 16px P;color:var(--sub);margin:4px 0 2px}.role b{color:var(--ink);font-weight:800;margin-right:3px}
+.crew{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.crew div{background:var(--well);border-radius:14px;padding:9px 12px;display:flex;align-items:center;gap:8px;position:relative}
+.crew span{font:800 13px P;color:var(--sub);background:var(--bg);border-radius:7px;padding:2px 7px}
+.crew .me span{color:#fff;background:var(--accent)}
+.crew b{font:800 17px P}
+.crew i{font:700 12px P;font-style:normal;color:var(--accent);margin-left:auto}
+.dz h2{font:800 22px/1.3 P;margin:6px 0 4px;letter-spacing:-.5px}.dz p{font:500 14.5px P;color:var(--sub);margin:0}.dz p b{color:var(--ink);font-weight:800}
+.mini{margin-top:10px;padding:14px;border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.home .wg{margin-top:30px}
+</style><style>
+.wsel{display:grid;grid-template-columns:1fr 1fr;background:var(--well);border-radius:12px;padding:3px;margin:4px 0 8px}
+.wsel button{border:0;background:none;font:700 14.5px P;color:var(--mute);padding:8px 0;border-radius:9px;position:relative}
+.wsel button small{font:600 12.5px P;color:inherit;opacity:.85;margin-left:2px}
+.wsel button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.wsel button i{position:absolute;top:7px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.dp .past:not(.on){opacity:.55}
+.addr2{font:500 14px P;color:var(--sub);margin-top:4px}
+.hi .rng{font:600 15px P;color:var(--sub);margin-left:6px}
+.toast2{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;font:700 14px P;padding:11px 16px;border-radius:12px;white-space:nowrap}
+.dp{margin-top:0}
+</style></head><body><div class="board" style="display:grid;grid-template-columns:repeat(2,396px);gap:24px;width:auto"><div class="v A"><h4>A. 파란 테두리</h4><p class="d">내 칸만 파란 테두리·연한 바탕</p>
+<div class="lab">간단히 · 자세히</div><div class="crew"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div>
+<div class="lab">내가 보조인 날</div><div class="crew"><div><span>주검</span><b>박지호</b></div><div class="me"><span>보조</span><b>김민준</b></div></div>
+<div class="lab">여비입력</div><div class="line"><span class="lme"><i>주검</i>김민준</span><span><i>보조</i>윤서준</span></div></div><div class="v B"><h4>B. 이름만 파랗게</h4><p class="d">가장 조용함</p>
+<div class="lab">간단히 · 자세히</div><div class="crew"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div>
+<div class="lab">내가 보조인 날</div><div class="crew"><div><span>주검</span><b>박지호</b></div><div class="me"><span>보조</span><b>김민준</b></div></div>
+<div class="lab">여비입력</div><div class="line"><span class="lme"><i>주검</i>김민준</span><span><i>보조</i>윤서준</span></div></div><div class="v C"><h4>C. 칸을 파랗게 채움</h4><p class="d">가장 눈에 띔</p>
+<div class="lab">간단히 · 자세히</div><div class="crew"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div>
+<div class="lab">내가 보조인 날</div><div class="crew"><div><span>주검</span><b>박지호</b></div><div class="me"><span>보조</span><b>김민준</b></div></div>
+<div class="lab">여비입력</div><div class="line"><span class="lme"><i>주검</i>김민준</span><span><i>보조</i>윤서준</span></div></div><div class="v D"><h4>D. 이름 밑줄</h4><p class="d">글자 색은 그대로</p>
+<div class="lab">간단히 · 자세히</div><div class="crew"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div>
+<div class="lab">내가 보조인 날</div><div class="crew"><div><span>주검</span><b>박지호</b></div><div class="me"><span>보조</span><b>김민준</b></div></div>
+<div class="lab">여비입력</div><div class="line"><span class="lme"><i>주검</i>김민준</span><span><i>보조</i>윤서준</span></div></div></div></body></html>
