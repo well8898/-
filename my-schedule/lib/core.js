@@ -16,7 +16,7 @@ const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
 const SERVER_VER = 'v2.9';
-const PAGE_VER = '3.23'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const PAGE_VER = '3.24'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -373,7 +373,8 @@ function dayView_(data, main, today, now) {
   const title = (when ? when + ' ' : '') + main.label + nx + (main.team ? ' · ' + main.team : '');
   const back = main.backKm != null ? ' (복귀 ' + main.backKm + ')' : '';
   const sub = places + '현장 ' + units + '대' + (main.legKm ? ' · 총 ' + main.legKm + 'km' + back : main.km ? ' · ' + main.km + 'km' : '')
-    + (main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
+    + (main.crew && main.crew.length ? ' · 주검: ' + main.crew[0] + (main.crew.length > 1 ? ' · 보조: ' + main.crew.slice(1).join(', ') : '')
+      : main.mates && main.mates.length ? ' · 동행 ' + main.mates.join(', ') : '');
   const text = [title, ...lines.map(l => l.no + '. ' + l.time + ' ' + l.name + (l.area ? ' (' + l.area + ')' : '')
     + ' ' + l.kind + ' ' + l.units), sub].join('\n');
   const nowHm = Utilities.formatDate(now, tz, 'HH:mm');
@@ -1318,6 +1319,7 @@ function personWeek_(week, branch, name) {
         iso: d.iso, label: m + '/' + dd + '(' + dows[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()] + ')',
         off: (d.vacation || []).some(v => bare_(v) === name),
         team: t ? t.team : '', mates: t ? t.members.map(bare_).filter(x => x !== name) : [],
+        crew: t ? t.members.map(bare_) : [], // 일정표 순서: 앞 = 주검, 뒤 = 보조
         stops: t ? t.stops.map(s => ({ time: s.time, kind: s.kind, area: s.area, name: placeName_(s.name), units: s.units })) : [],
       };
     }),
@@ -1334,9 +1336,10 @@ async function widgetByName(branch, name, fmt) {
   const key = nameKey_(branch, name);
   const raw = await props.get('W_' + key);
   const old = raw ? JSON.parse(raw) : null;
-  const src = 'week:' + (wk.weeks ? wk.weeks.map(w => w.mon + '.' + (w.at || '')).join('|') : wk.at || '');
+  const src = 'w2:' + (wk.weeks ? wk.weeks.map(w => w.mon + '.' + (w.at || '')).join('|') : wk.at || '');
   if (!old || old.src !== src) {
     const data = personWeek_(wk, branch, name);
+    data.src = src; // 같은 일정표면 다음에 다시 만들지 않게
     // 같은 현장 좌표는 예전 것을 그대로 써서 다시 찾지 않음
     if (old) {
       const memo = {};

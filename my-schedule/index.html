@@ -1163,6 +1163,17 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .ez-ad{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ez-ad span{color:var(--muted);word-break:keep-all}
 .toast{width:max-content;text-align:center}
+/* 주검·보조 */
+.crew{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+.crew.c3{grid-template-columns:repeat(3,1fr)}
+.crew div{background:var(--surface);border-radius:14px;padding:9px 11px;display:flex;align-items:center;gap:7px;min-width:0}
+.crew span{flex:none;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:7px;padding:2px 7px}
+.crew .me span{color:#fff;background:var(--accent)}
+.crew b{font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crew i{font-size:12px;font-weight:700;font-style:normal;color:var(--accent);margin-left:auto;flex:none}
+.dz-h p b,.wd-crew b{color:var(--ink);font-weight:800}
+.wd-crew{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.ez-same b,.ez-oth b,.ewk-o b,.wd-o b,.others b{font-weight:800}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1929,13 +1940,20 @@ function othersAt(d, s) {
   });
   return out;
 }
+// 일정표 조원 순서: 앞 사람이 주검, 뒤 사람이 보조 → "주검: 김민준 · 보조: 윤서준"
+function crewTxt(names, html) {
+  const n = (names || []).map(bare).filter(Boolean);
+  if (!n.length) return '';
+  const b = x => (html ? '<b>' + esc(x) + '</b>' : x);
+  return '주검: ' + b(n[0]) + (n.length > 1 ? ' · 보조: ' + n.slice(1).map(b).join(', ') : '');
+}
 function othersHtml(d, s) {
   const o = othersAt(d, s);
   if (!o.length) return '';
   return `<div class="others">${o
     .map(
       x =>
-        `<span><span class="nw">같은 현장 · ${esc(x.team)}</span> <span class="nw"><b>${esc(x.names.join('·'))}</b> · ${esc(x.kinds.join('·'))} <b>${x.units}대</b>${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span></span>`
+        `<span>같은 현장 · ${esc(x.team)}<br>${crewTxt(x.names, true)} · ${x.kinds.length ? esc(x.kinds.join('·')) + ' ' : ''}${x.units}대${x.times.join() !== s.time ? ' (' + esc(x.times.join(', ')) + ')' : ''}</span>`
     )
     .join('')}</div>`;
 }
@@ -2013,7 +2031,7 @@ function drawWeek() {
     const info = d.t
       ? `${esc(d.t.team)} · ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대${km && km.tot ? ' · ' + km.tot.toFixed(1) + 'km' : ''}`
       : d.off ? '휴가' : '배정 없음';
-    h += `<section class="wd${d.t ? '' : d.off ? ' off' : ' none'}${d.iso === todayIso ? ' today' : ''}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${md.split('/')[1]} ${dow}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>`;
+    h += `<section class="wd${d.t ? '' : d.off ? ' off' : ' none'}${d.iso === todayIso ? ' today' : ''}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${md.split('/')[1]} ${dow}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>${d.t ? `<p class="wd-crew">${crewTxt(d.t.members, true)}</p>` : ''}`;
     if (d.t)
       h += `<table>${d.t.stops
         .map(
@@ -2070,7 +2088,7 @@ function drawPanel(dx) {
     const b = briefText(d, name);
     const m = daySum(d);
     h += `<section class="dz-h"><h2>${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''} · ${m.sites}현장 ${sumUnits(d.t.stops)}대</h2>
-      <p>${esc(d.t.team)}${b.mates.length ? ' · ' + esc(b.mates.join(', ')) + ' 님과' : ''} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
+      <p>${esc(d.t.team)} · ${crewTxt(d.t.members, true)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
       <ol class="tl">${d.t.stops
@@ -2098,13 +2116,13 @@ function drawPanel(dx) {
 // 같은 현장 안내를 덩어리로: 줄이 길면 이름 덩어리가 통째로 다음 줄로 (단어 중간에서 안 끊김)
 function othersChunks(d, s, lead) {
   return othersAt(d, s)
-    .map((o, i) => `<span class="nw">${i ? '' : '같은 현장 · ' + esc(lead || '')}${esc(o.team)}</span> <span class="nw"><b>${esc(o.names.join('·'))}</b> ${o.units}대${o.times.join() !== s.time && o.times.length ? ' (' + esc(o.times.join(', ')) + ')' : ''}</span>`)
-    .join('<span class="nw-sep"> / </span>');
+    .map((o, i) => `<span class="nw">${lead ? esc(lead.replace(/:\s*$/, '')) + ' · ' : i ? '' : '같은 현장 · '}${esc(o.team)}</span><br>${crewTxt(o.names, true)} · ${o.units}대${o.times.join() !== s.time && o.times.length ? ' (' + esc(o.times.join(', ')) + ')' : ''}`)
+    .join('<br>');
 }
 // 같은 현장 다른 조: "6조 정준하·안재현 2대" (시간이 다르면 시간도)
 function othersTxt(d, s) {
   return othersAt(d, s)
-    .map(o => o.team + ' ' + o.names.join('·') + ' ' + o.units + '대' + (o.times.join() !== s.time && o.times.length ? ' (' + o.times.join(', ') + ')' : ''))
+    .map(o => o.team + ' ' + crewTxt(o.names) + ' · ' + o.units + '대' + (o.times.join() !== s.time && o.times.length ? ' (' + o.times.join(', ') + ')' : ''))
     .join(' / ');
 }
 
@@ -2147,7 +2165,7 @@ function drawEasyWeek() {
     h += `<li class="${d.iso === todayIso ? 'today' : ''}${d.t ? '' : ' off'}"><button type="button" data-day="${d.iso}">
       <span class="dw"><b>${md.split('/')[1]}</b><span>${dow}${d.iso === todayIso ? ' · 오늘' : ''}</span></span>
       <span class="ct"><b>${first ? esc(placeName(first.name)) + (pl.length > 1 ? ' 외 ' + (pl.length - 1) : '') + kinds.map(kb).join('') : '휴가'}</b>
-      <small>${d.t ? esc(areas.join('·')) : '쉬는 날이에요'}</small>
+      <small>${d.t ? [esc(areas.join('·')), crewTxt(d.t.members)].filter(Boolean).join(' · ') : '쉬는 날이에요'}</small>
       ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => `<small class="ewk-o">${othersChunks(d, s, pl.length > 1 ? placeName(s.name) + ': ' : '')}</small>`).join('') : ''}</span>
       <span class="cnt">${d.t ? pl.length + '현장 ' + sumUnits(d.t.stops) + '대' : ''}</span></button></li>`;
   });
@@ -2290,6 +2308,14 @@ function dayPick(iso) {
     })
     .join('')}</div>`;
 }
+// 간단히: 「주검 김민준 · 나」 「보조 윤서준」 칸
+function crewBox(members, me) {
+  const n = (members || []).map(bare).filter(Boolean);
+  if (!n.length) return '';
+  return `<div class="crew${n.length > 2 ? ' c3' : ''}">${n
+    .map((x, i) => `<div class="${x === me ? 'me' : ''}"><span>${i ? '보조' : '주검'}</span><b>${esc(x)}</b>${x === me ? '<i>나</i>' : ''}</div>`)
+    .join('')}</div>`;
+}
 function drawEasy() {
   const p = $('panel');
   if (!days.length) return;
@@ -2314,7 +2340,8 @@ function drawEasy() {
     const homeNm = BRANCH ? BRANCH[0] : home ? home.name : '지사';
     const tot = L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
     h += `<h2 class="ez-hi">${esc(name)} 님,<br>${when} <em>${places(st).length}현장 ${sumUnits(st)}대</em></h2>
-      <p class="ez-hisub">${[esc(d.t.team), mates.length ? esc(mates.join(', ')) + ' 님과' : '', tot ? '총 경로 ' + tot : '', monOf(d.iso) > curMon() ? '다음 주 일정표' : ''].filter(Boolean).join(' · ')}</p>`;
+      ${crewBox(d.t.members, name)}
+      <p class="ez-hisub">${[esc(d.t.team), tot ? '총 경로 ' + tot : '', monOf(d.iso) > curMon() ? '다음 주 일정표' : ''].filter(Boolean).join(' · ')}</p>`;
     // 오늘 시간이 지난 현장은 흐리게만 (고르는 건 사용자)
     const hm = nowHm();
     const past = i => isToday && st[i].time && st[i].time < hm && i < n - 1 && st[i + 1].time && st[i + 1].time <= hm;
@@ -2337,7 +2364,7 @@ function drawEasy() {
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
         ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
         ${dl ? `<div class="ez-d">${ARROW}${dl}</div>` : ''}
-        ${othersTxt(d, s) ? `<div class="ez-same">${othersChunks(d, s)}</div>` : ''}
+        ${othersTxt(d, s) ? `<div class="ez-same"><span>${othersChunks(d, s)}</span></div>` : ''}
         ${ezNav(s)}
         <button type="button" class="ez-info" data-info aria-expanded="${ezInfo}">승강기 정보 ${ezInfo ? '접기' : '보기'}</button>
         ${ezInfo ? ezDetail(d, s, pick) : ''}
@@ -2827,7 +2854,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.23';
+const PAGE_VER = '3.24';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
