@@ -1,0 +1,84 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>이번 주·다음 주 시안</title><link rel="stylesheet" href="redesign.css"><style>
+.top .date:empty{display:none}.top{justify-content:flex-end}
+/* A: 요일 5칸 고정 */
+.dp{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 14px}
+.dp button{border:0;background:var(--well);border-radius:14px;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-family:P;color:var(--ink)}
+.dp span{font:600 13px P;color:var(--sub)}.dp b{font:800 19px P}.dp em{font:600 11.5px P;font-style:normal;color:var(--sub)}
+.dp .on{background:var(--accent)}.dp .on span,.dp .on b,.dp .on em{color:#fff}
+.dp .off b,.dp .off em{color:#c4373b}
+/* B: 큰 요일 + 밑줄 탭 */
+.dl{display:flex;align-items:baseline;gap:8px;margin-top:2px}.dl b{font:800 20px P}.dl span{font:600 15px P;color:var(--sub)}.dl i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}
+.dw2{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);margin:8px 0 12px}
+.dw2 span{text-align:center;font:700 17px P;color:var(--mute);padding:10px 0 11px}
+.dw2 .on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}.dw2 .x{color:#c4373b}
+/* C: 날짜 눌러 고르기 */
+.dd{display:flex;align-items:center;gap:6px;border:0;background:var(--well);border-radius:12px;height:44px;padding:0 12px 0 14px;font:700 16px P;color:var(--ink);margin-top:2px}
+.dd i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}.dd svg{width:18px;height:18px;color:var(--sub)}
+.sheetbg{position:absolute;inset:0;background:rgba(25,31,40,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 24px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}.st{font:800 20px P;display:block;margin-bottom:6px}
+.sheet ul{list-style:none;margin:0;padding:0}.sheet li{display:flex;flex-direction:column;padding:12px 12px;border-radius:14px}
+.sheet li span{font:800 17px P}.sheet li em{font:500 14px P;font-style:normal;color:var(--sub);margin-top:2px}
+.sheet li.on{background:var(--accent-soft)}.sheet li.on span{color:var(--accent)}.sheet li.off span{color:#c4373b}
+.tabs.t4{grid-template-columns:repeat(4,1fr)}</style><style>
+.dz h2{font:800 22px/1.3 P;margin:6px 0 4px;letter-spacing:-.5px;word-break:keep-all}
+.crewb{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px}
+.crewb div{background:var(--well);border-radius:14px;padding:9px 11px;display:flex;align-items:center;gap:7px;border:2px solid transparent}
+.crewb .me{border-color:var(--accent);background:var(--accent-soft)}.crewb .me b{color:var(--accent)}
+.crewb span{font:800 12.5px P;color:var(--sub);background:#fff;border-radius:7px;padding:2px 7px}.crewb .me span{background:var(--accent);color:#fff}.crewb b{font:800 16px P}
+.site2{background:var(--well);border-radius:20px;padding:14px;margin-top:10px}
+.site2.chg{box-shadow:inset 0 0 0 2px #f5b400}
+.site2 .r1{display:flex;align-items:center;gap:7px}.site2 .r1>b{font:800 16px P}
+.badge{font:700 13px P;border-radius:7px;padding:2px 8px;background:#fff;border:1px solid var(--line)}
+.site2 .ed{margin-left:auto;display:flex;align-items:center;gap:4px;height:34px;border:0;border-radius:10px;background:#fff;font:700 13.5px P;color:var(--sub);padding:0 10px}
+.site2 .ed svg,.dayact svg{width:15px;height:15px}
+.site2 .nm{font:800 20px P;margin-top:6px}.site2 .ad{font:500 13.5px P;color:var(--sub);margin-top:2px}
+.dayact button{width:100%;height:46px;margin-top:10px;border:1.5px dashed var(--line);border-radius:14px;background:none;font:700 14.5px P;color:var(--sub);display:flex;align-items:center;justify-content:center;gap:6px}
+.sheetbg{position:absolute;inset:0;background:rgba(25,31,40,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 22px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}.st{font:800 20px P;display:block}.sd{font:500 13px P;color:var(--sub);margin:3px 0 10px}
+.sheet label{display:block;font:700 13px P;color:var(--sub);margin-top:8px}
+.sheet input{display:block;width:100%;height:46px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;font:600 16px P;color:var(--ink);margin-top:4px}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}.lb{font:700 13px P;color:var(--sub);margin-top:10px}
+.kc{display:flex;gap:6px;margin-top:6px}.kc b{flex:1;text-align:center;height:40px;line-height:40px;border-radius:10px;border:1.5px solid var(--line);font:700 14px P;color:var(--sub)}.kc b.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btns{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;margin-top:16px}.btns button{height:52px;border-radius:14px;font:800 16px P;border:0}
+.btns .del{background:#fdecec;color:#c4373b}.btns .ok{background:var(--accent);color:#fff}
+.enote{background:var(--amber-soft);color:var(--amber);border-radius:14px;padding:10px 12px;margin-top:6px}
+.enote b{display:block;font:800 14.5px P}.enote span{display:block;font:600 13px P;margin-top:2px}
+.enote button{margin-top:8px;height:34px;border:0;border-radius:9px;background:#fff;color:var(--amber);font:700 13px P;padding:0 10px}
+.toast3{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;font:700 14px P;padding:11px 16px;border-radius:12px;white-space:nowrap}
+</style><style>
+.next .same{align-items:baseline}.next .same span{line-height:1.5}
+.next .same .rl{font:800 12px P;color:var(--amber);background:var(--amber-soft);border-radius:6px;padding:1px 6px}
+.next .same b{margin-right:4px}
+.site{background:var(--well);border-radius:22px;padding:16px}.site .row1{display:flex;align-items:center;gap:8px;font:700 15px P;color:var(--sub)}
+.site .n{font:800 23px P;margin-top:6px}.badge{font:700 13px P;border-radius:7px;padding:2px 8px;background:var(--bg);border:1px solid var(--line)}
+.samebox{margin-top:12px;background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:9px 12px;font:600 14.5px/1.5 P}.samebox b{font-weight:800}
+.wk .ct small{white-space:normal}
+</style><style>
+.role{font:600 16px P;color:var(--sub);margin:4px 0 2px}.role b{color:var(--ink);font-weight:800;margin-right:3px}
+.crew{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.crew div{background:var(--well);border-radius:14px;padding:9px 12px;display:flex;align-items:center;gap:8px;position:relative}
+.crew span{font:800 13px P;color:var(--sub);background:var(--bg);border-radius:7px;padding:2px 7px}
+.crew .me span{color:#fff;background:var(--accent)}
+.crew b{font:800 17px P}
+.crew i{font:700 12px P;font-style:normal;color:var(--accent);margin-left:auto}
+.dz h2{font:800 22px/1.3 P;margin:6px 0 4px;letter-spacing:-.5px}.dz p{font:500 14.5px P;color:var(--sub);margin:0}.dz p b{color:var(--ink);font-weight:800}
+.mini{margin-top:10px;padding:14px;border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.home .wg{margin-top:30px}
+</style><style>
+.wsel{display:grid;grid-template-columns:1fr 1fr;background:var(--well);border-radius:12px;padding:3px;margin:4px 0 8px}
+.wsel button{border:0;background:none;font:700 14.5px P;color:var(--mute);padding:8px 0;border-radius:9px;position:relative}
+.wsel button small{font:600 12.5px P;color:inherit;opacity:.85;margin-left:2px}
+.wsel button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.wsel button i{position:absolute;top:7px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.dp .past:not(.on){opacity:.55}
+.addr2{font:500 14px P;color:var(--sub);margin-top:4px}
+.hi .rng{font:600 15px P;color:var(--sub);margin-left:6px}
+.toast2{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;font:700 14px P;padding:11px 16px;border-radius:12px;white-space:nowrap}
+.dp{margin-top:0}
+</style></head><body><div class="board"><div class="col"><div class="cap">1. 자세히에서 「수정」<small>현장마다 수정 · 위에 조원 고치기</small></div><div class="phone"><div class="sb"><span>14:20</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div><div class="dz"><h2>11/12 목요일 · 오늘 · 2현장 13대</h2></div><div class="crewb"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div><div class="dayact"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>이날 우리 조 조원 고치기 (주검·보조)</button></div><div class="site2"><div class="r1"><b>09:40</b><span class="kb km">정밀</span><span class="badge">5대</span><button class="ed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>수정</button></div><div class="nm">한빛마을7단지</div><div class="ad">경기 고양시 덕양구 한빛로 00</div></div><div class="site2"><div class="r1"><b>13:00</b><span class="kb kj">정기</span><span class="badge">8대</span><button class="ed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>수정</button></div><div class="nm">유승아파트</div><div class="ad">경기 고양시 덕양구 통일로 00</div></div></div><div class="tabs t4"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>여비입력</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div><div class="col"><div class="cap">2. 고치기 창<small>시간·현장·동·대수·종류 · 현장 빼기</small></div><div class="phone"><div class="sb"><span>14:20</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div><div class="dz"><h2>11/12 목요일 · 오늘 · 2현장 13대</h2></div><div class="crewb"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div><div class="site2"><div class="r1"><b>09:40</b><span class="kb km">정밀</span><span class="badge">5대</span><button class="ed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>수정</button></div><div class="nm">한빛마을7단지</div><div class="ad">경기 고양시 덕양구 한빛로 00</div></div><div class="sheetbg"></div><div class="sheet"><div class="grab"></div><b class="st">현장 고치기</b><p class="sd">11/12 (목) · 3조 · 고양파주지사 모두에게 바뀌어요</p>
+<label>시간<input value="09:40"></label><label>현장 이름<input value="한빛마을7단지"></label>
+<div class="two"><label>동<input value="야당동"></label><label>대수<input value="5"></label></div>
+<div class="lb">검사 종류</div><div class="kc"><b>정기</b><b class="on">정밀</b><b>수시</b><b>설치</b></div>
+<div class="btns"><button class="del">이 현장 빼기</button><button class="ok">저장</button></div></div></div><div class="tabs t4"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>여비입력</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div><div class="col"><div class="cap">3. 저장한 뒤<small>고친 현장은 노란 테두리 · 누가 언제 · 되돌리기</small></div><div class="phone"><div class="sb"><span>14:20</span><span>5G</span></div><div class="scroll"><div class="top"><span class="date"></span><div class="seg"><b>간단히</b><b class="on">자세히</b></div></div><div class="dz"><h2>11/12 목요일 · 오늘 · 2현장 13대</h2></div><div class="crewb"><div class="me"><span>주검</span><b>김민준</b></div><div><span>보조</span><b>윤서준</b></div></div><div class="enote"><b>고친 일정이에요</b><span>11/12 14:20 · 김민준 님이 시간을 고침</span><button>고치기 전으로 되돌리기</button></div><div class="site2 chg"><div class="r1"><b>10:30</b><span class="kb km">정밀</span><span class="badge">5대</span><button class="ed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>수정</button></div><div class="nm">한빛마을7단지</div><div class="ad">경기 고양시 덕양구 한빛로 00</div></div><div class="site2"><div class="r1"><b>13:00</b><span class="kb kj">정기</span><span class="badge">8대</span><button class="ed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>수정</button></div><div class="nm">유승아파트</div><div class="ad">경기 고양시 덕양구 통일로 00</div></div><div class="dayact"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>현장 추가</button></div><div class="toast3">✓ 고양파주지사 일정표에 저장했어요</div></div><div class="tabs t4"><div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>오늘</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>이번 주</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>여비입력</div><div class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/></svg>내 정보</div></div></div></div></div></body></html>
