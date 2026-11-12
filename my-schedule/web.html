@@ -1205,12 +1205,9 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .ez-card .sx2{margin-top:14px}.ez-card .sx2 .tg{font-size:15.5px}
 .tl-card .sx2,.wd .sx2{margin-top:6px}
 /* 일정 고치기 */
-.ed-btn{margin-left:8px;display:inline-flex;align-items:center;gap:4px;height:34px;border:0;border-radius:10px;background:var(--bg);color:var(--muted);font:700 13.5px var(--font-body);padding:0 10px;cursor:pointer}
-.ed-btn svg,.edit-crew svg,.edit-add svg,.ed-more svg{width:15px;height:15px;flex:none}
-.tl-head .u+.ed-btn{margin-left:8px}
-.tl-card.chg{box-shadow:inset 0 0 0 2px #f5b400!important}
-.edit-crew,.edit-add,.ed-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;margin:10px 0 0;border:1.5px dashed var(--line);border-radius:14px;background:none;color:var(--muted);font:700 14.5px var(--font-body);cursor:pointer}
-.edit-add{margin:4px 0 6px}
+.ed-more svg{width:15px;height:15px;flex:none}
+.tl-head .u+.tl-card.chg{box-shadow:inset 0 0 0 2px #f5b400!important}
+.ed-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;margin:10px 0 0;border:1.5px dashed var(--line);border-radius:14px;background:none;color:var(--muted);font:700 14.5px var(--font-body);cursor:pointer}
 .enote{background:var(--amber-soft);color:var(--amber);border-radius:14px;padding:10px 12px;margin-top:10px}
 .enote b{display:block;font-size:14.5px;font-weight:800}.enote span{display:block;font-size:13px;font-weight:600;margin-top:2px}
 .enote button{margin-top:8px;min-height:36px;border:0;border-radius:9px;background:var(--bg);color:var(--amber);font:700 13.5px var(--font-body);padding:0 12px;cursor:pointer}
@@ -1233,14 +1230,26 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .ewk2 li{position:relative}
 .ewk2 li>.wk-ed{display:inline-flex;width:auto;grid-template-columns:none;align-items:center;gap:4px;height:34px;padding:0 11px;margin:-6px 0 12px 64px;background:var(--surface);border-radius:10px;color:var(--muted);font:700 13.5px var(--font-body)}
 .wd-crewrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ed-menu{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.ed-menu button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;min-height:52px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);font:700 16px var(--font-body);padding:0 14px;text-align:left;cursor:pointer}
-.ed-menu .t{font-size:15px;color:var(--muted);min-width:44px}.ed-menu .n{min-width:0;word-break:keep-all}.ed-menu .g svg{width:16px;height:16px;color:var(--muted)}
-.ed-menu button.sub{display:flex;justify-content:center;gap:6px;background:none;border:1.5px dashed var(--line);color:var(--muted);font-size:14.5px}
-.ed-menu button.sub svg{width:15px;height:15px}
-.ed-menu button.warn{border-style:solid;border-color:transparent;background:var(--amber-soft);color:var(--amber)}
-.ez-lab .ez-ed{margin-left:auto;background:var(--bg);height:32px}
 #panel > .enote{margin-top:12px}
+/* 고치기: 어디서나 같은 버튼 · 같은 창 */
+.ed-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ed-line>p{margin:0;min-width:0}
+.ed-line .wk-ed{flex:none}
+body.easy .ed-line{margin:2px 0 16px}body.easy .ed-line .ez-hisub{margin:0}
+.ed-h{font-size:13px;font-weight:800;color:var(--muted);margin:14px 0 6px}
+.ed-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;width:100%;min-height:56px;margin-top:6px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);font:700 16px var(--font-body);padding:8px 12px;text-align:left;cursor:pointer}
+.ed-row[data-m="crew"]{grid-template-columns:1fr auto}
+.ed-row .t{font-size:15px;color:var(--muted);min-width:44px}
+.ed-row .n{min-width:0;word-break:keep-all}.ed-row .n small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:1px}
+.ed-row .g{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--accent);white-space:nowrap}.ed-row .g svg{width:14px;height:14px}
+.ed-row .dcrew{padding:0}
+.ed-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:48px;margin-top:8px;border:1.5px dashed var(--line);border-radius:14px;background:none;color:var(--muted);font:700 14.5px var(--font-body);cursor:pointer}
+.ed-add svg{width:15px;height:15px}
+.ed-undo{width:100%;min-height:46px;margin-top:8px;border:0;border-radius:12px;background:var(--amber-soft);color:var(--amber);font:700 14.5px var(--font-body);cursor:pointer}
+.ed-sheet .enote{margin-top:0}
+.ed-sheet>.sh-x{width:100%;margin-top:10px}
+.ed-sheet .ed-row{background:var(--surface)!important;border:1.5px solid var(--line)!important;color:var(--ink)!important}
+.ed-sheet .ed-add{background:none!important}
 </style>
 </head>
 <body>
@@ -2013,11 +2022,13 @@ const PEN_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const PLUS_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 const canEdit = () => !!(API && LINK && LINK.b && !(MINE_META && MINE_META.offline));
 const KCODE = { 정기: '정', 정밀: '밀', 수시: '수', 설치: '설' };
+// 어디서나 같은 「✎ 고치기」 버튼 하나 → 같은 창 (조원 · 현장 · 현장 추가 · 되돌리기)
+const editBtn = d => (d.t && canEdit() ? `<button type="button" class="wk-ed" data-dayedit="${d.iso}">${PEN_IC}고치기</button>` : '');
 function editNote(d) {
   const e = d.t && d.t.edit;
   if (!e) return '';
   const t = new Date(e.at);
-  return `<div class="enote"><b>사이트에서 고친 일정이에요</b><span>${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · ${esc(e.by)} 님이 ${esc(e.what)}을 고침</span>${canEdit() ? '<button type="button" data-undoedit="1">고치기 전으로 되돌리기</button>' : ''}</div>`;
+  return `<div class="enote"><b>사이트에서 고친 일정이에요</b><span>${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · ${esc(e.by)} 님이 ${esc(e.what)}을 고침${canEdit() ? ' · 「고치기」에서 되돌릴 수 있어요' : ''}</span></div>`;
 }
 // 아래에서 올라오는 창 (확인·취소)
 function editSheet(title, sub, body, onSave, extra) {
@@ -2123,16 +2134,19 @@ function editDayMenu(iso) {
   const d = days.find(x => x.iso === iso);
   if (!d || !d.t) return;
   const { md, dow } = mdow(d);
+  const crew = d.t.members.map(bare).map((x, i) => `<span class="${x === curName() ? 'me' : ''}"><i>${i ? '보조' : '주검'}</i>${esc(x)}</span>`).join('');
   const el = document.createElement('div');
   el.className = 'sheet-bg';
-  el.innerHTML = `<div class="sheet ed-sheet" role="dialog" aria-modal="true" aria-labelledby="edH"><h2 id="edH">${md} (${dow}) 고치기</h2>
-    <p class="ed-sub">${esc(d.t.team)} · ${crewTxt(d.t.members, true)}<br><b>${esc(LINK.b)} 모두에게 바뀌어요</b></p>
-    <div class="ed-menu">${d.t.stops
-      .map((s, i) => `<button type="button" data-m="s${i}"><span class="t">${esc(s.time || '')}</span><span class="n">${esc(placeName(s.name))}${kb(s.kind)}</span><span class="g">${PEN_IC}</span></button>`)
+  el.innerHTML = `<div class="sheet ed-sheet" role="dialog" aria-modal="true" aria-labelledby="edH"><h2 id="edH">${md} (${dow}) ${esc(d.t.team)} 고치기</h2>
+    <p class="ed-sub">고치면 <b>${esc(LINK.b)} 모두에게</b> 바뀌어요</p>
+    <div class="ed-h">조원</div>
+    <button type="button" class="ed-row" data-m="crew"><span class="dcrew">${crew}</span><span class="g">${PEN_IC}바꾸기</span></button>
+    <div class="ed-h">현장</div>
+    ${d.t.stops
+      .map((s, i) => `<button type="button" class="ed-row" data-m="s${i}"><span class="t">${esc(s.time || '')}</span><span class="n">${esc(placeName(s.name))}${kb(s.kind)}<small>${esc([s.area, s.units != null ? s.units + '대' : ''].filter(Boolean).join(' · '))}</small></span><span class="g">${PEN_IC}고치기</span></button>`)
       .join('')}
-      <button type="button" data-m="add" class="sub">${PLUS_IC}현장 추가</button>
-      <button type="button" data-m="crew" class="sub">${PEN_IC}조원 고치기 (주검·보조)</button>
-      ${d.t.edit ? '<button type="button" data-m="undo" class="sub warn">고치기 전으로 되돌리기</button>' : ''}</div>
+    <button type="button" class="ed-add" data-m="add">${PLUS_IC}현장 추가</button>
+    ${d.t.edit ? `<div class="ed-h">고친 기록</div>${editNote(d).replace(' · 「고치기」에서 되돌릴 수 있어요', '')}<button type="button" class="ed-undo" data-m="undo">고치기 전으로 되돌리기</button>` : ''}
     <button type="button" class="sh-x" data-m="x">닫기</button></div>`;
   document.body.appendChild(el);
   el.onclick = e => {
@@ -2251,7 +2265,7 @@ function drawWeek() {
     const info = d.t
       ? `${esc(d.t.team)} · ${places(d.t.stops).length}현장 ${sumUnits(d.t.stops)}대${km && km.tot ? ' · ' + km.tot.toFixed(1) + 'km' : ''}`
       : d.off ? '휴가' : '배정 없음';
-    h += `<section class="wd${d.t ? '' : d.off ? ' off' : ' none'}${d.iso === todayIso ? ' today' : ''}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${md.split('/')[1]} ${dow}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>${d.t ? `<div class="wd-crewrow"><p class="wd-crew">${crewTxt(d.t.members, true)}</p>${canEdit() ? `<button type="button" class="wk-ed" data-dayedit="${d.iso}">${PEN_IC}고치기</button>` : ''}</div>` : ''}`;
+    h += `<section class="wd${d.t ? '' : d.off ? ' off' : ' none'}${d.iso === todayIso ? ' today' : ''}"><button class="wd-h" type="button" data-go="${d.iso}"><b>${md.split('/')[1]} ${dow}${d.iso === todayIso ? ' · 오늘' : ''}</b><span>${info}</span></button>${d.t ? `<div class="wd-crewrow"><p class="wd-crew">${crewTxt(d.t.members, true)}</p>${editBtn(d)}</div>` : ''}`;
     if (d.t)
       h += `<table>${d.t.stops
         .map(
@@ -2309,16 +2323,15 @@ function drawPanel(dx) {
     const m = daySum(d);
     h += `<section class="dz-h"><h2>${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''} · ${m.sites}현장 ${sumUnits(d.t.stops)}대</h2>
       ${crewBox(d.t.members, name)}
-      <p>${esc(d.t.team)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
+      <div class="ed-line"><p>${esc(d.t.team)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p>${editBtn(d)}</div></section>
       ${editNote(d)}
-      ${canEdit() ? `<button type="button" class="edit-crew" data-edcrew="1">${PEN_IC}이날 우리 조 조원 고치기 (주검·보조)</button>` : ''}
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
       <ol class="tl">${d.t.stops
         .map(
           (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
         <div class="tl-card${s.ed ? ' chg' : ''}">
-          <div class="tl-head"><span class="t">${esc(s.time)}</span>${kb(s.kind)}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span>${canEdit() ? `<button type="button" class="ed-btn" data-edit="${i}" aria-label="${esc(placeName(s.name))} 고치기">${PEN_IC}수정</button>` : ''}</div>
+          <div class="tl-head"><span class="t">${esc(s.time)}</span>${kb(s.kind)}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           <div class="elv" id="elv-${i}"></div>
@@ -2326,8 +2339,7 @@ function drawPanel(dx) {
           <div class="maps" id="maps-${i}"><a class="bk" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오</a><a class="bn" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버</a></div>
         </div></li>`
         )
-        .join('')}</ol>
-      ${canEdit() ? `<button type="button" class="edit-add" data-edit="new">${PLUS_IC}현장 추가</button>` : ''}`;
+        .join('')}</ol>`;
   } else if (d.off)
     h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요${offWhy(d, name)}.</p></div>`;
   else
@@ -2335,13 +2347,6 @@ function drawPanel(dx) {
   if (d.sup.length)
     h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
   p.innerHTML = h;
-  if (d.t && canEdit()) {
-    p.querySelectorAll('[data-edit]').forEach(b => (b.onclick = () => editStop(d, b.dataset.edit === 'new' ? -1 : +b.dataset.edit)));
-    const c = p.querySelector('[data-edcrew]');
-    if (c) c.onclick = () => editCrew(d);
-    const u = p.querySelector('[data-undoedit]');
-    if (u) u.onclick = () => undoEdit(d);
-  }
   if (SERVER && d.t) dayExtras(d);
 }
 // 같은 현장 안내를 덩어리로: 줄이 길면 이름 덩어리가 통째로 다음 줄로 (단어 중간에서 안 끊김)
@@ -2393,7 +2398,7 @@ function drawEasyWeek() {
       <span class="ct"><b>${first ? esc(placeName(first.name)) + (pl.length > 1 ? ' 외 ' + (pl.length - 1) : '') + kinds.map(kb).join('') : '휴가'}</b>
       <small>${d.t ? [esc(areas.join('·')), crewTxt(d.t.members)].filter(Boolean).join(' · ') : '쉬는 날이에요'}</small>
       ${d.t ? d.t.stops.filter(s => othersTxt(d, s)).map(s => othersHtml(d, s, pl.length > 1 ? placeName(s.name) : '')).join('') : ''}</span>
-      <span class="cnt">${d.t ? pl.length + '현장 ' + sumUnits(d.t.stops) + '대' : ''}</span></button>${d.t && canEdit() ? `<button type="button" class="wk-ed" data-dayedit="${d.iso}">${PEN_IC}고치기</button>` : ''}</li>`;
+      <span class="cnt">${d.t ? pl.length + '현장 ' + sumUnits(d.t.stops) + '대' : ''}</span></button>${editBtn(d)}</li>`;
   });
   h += `</ul>`;
   return h;
@@ -2567,7 +2572,7 @@ function drawEasy() {
     const tot = L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
     h += `<h2 class="ez-hi">${esc(name)} 님,<br>${when} <em>${places(st).length}현장 ${sumUnits(st)}대</em></h2>
       ${crewBox(d.t.members, name)}
-      <p class="ez-hisub">${[esc(d.t.team), tot ? '총 경로 ' + tot : '', monOf(d.iso) > curMon() ? '다음 주 일정표' : ''].filter(Boolean).join(' · ')}</p>`;
+      <div class="ed-line"><p class="ez-hisub">${[esc(d.t.team), tot ? '총 경로 ' + tot : '', monOf(d.iso) > curMon() ? '다음 주 일정표' : ''].filter(Boolean).join(' · ')}</p>${editBtn(d)}</div>${editNote(d)}`;
     // 오늘 시간이 지난 현장은 흐리게만 (고르는 건 사용자)
     const hm = nowHm();
     const past = i => isToday && st[i].time && st[i].time < hm && i < n - 1 && st[i + 1].time && st[i + 1].time <= hm;
@@ -2584,7 +2589,7 @@ function drawEasy() {
       const dl = !lg ? '' : lg.same ? '앞 현장과 같은 곳이에요' : `${esc(from)}에서 ${lg.km.toFixed(1)}km${lg.mn != null ? ' · ' + lg.mn + '분' : ''}`;
       const plan = [s.time ? `일정표 <b>${esc(s.time)}</b>` : '', esc(s.area || ''), s.units != null ? s.units + '대' : ''].filter(Boolean).join(' · ');
       h += `<section class="ez-card${past(pick) ? ' past' : ''}">
-        <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : isToday ? '오늘 현장' : '이날 현장'}${canEdit() ? `<button type="button" class="wk-ed ez-ed" data-ezedit="${pick}">${PEN_IC}수정</button>` : ''}</div>
+        <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : isToday ? '오늘 현장' : '이날 현장'}</div>
         <div class="ez-n">${esc(placeName(s.name))}${kb(s.kind)}</div>
         ${addrRow(cleanAddr((GEO[mapQuery(s)] || {}).addr))}
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
@@ -2614,9 +2619,6 @@ function drawEasy() {
     });
     if (home) h += `<li class="base${pick === n ? ' cur' : ''}"><button type="button" class="rr" data-pick="${n}"><span class="tt">복귀</span><i class="dot"></i><div><div class="nm">${esc(homeNm)}</div>${L.back ? `<div class="sm">${km(L.back)}</div>` : ''}</div></button></li>`;
     h += `</ul>`;
-    // 이날 고치기 (현장 추가 · 조원 · 되돌리기)
-    h += editNote(d).replace('data-undoedit="1"', 'data-dayedit="' + d.iso + '"').replace('고치기 전으로 되돌리기', '고친 내용 보기 · 되돌리기');
-    if (canEdit()) h += `<button type="button" class="edit-add" data-dayedit="${d.iso}">${PEN_IC}이날 일정 고치기 (현장 추가·조원)</button>`;
   } else {
     h += `<h2 class="ez-hi">${esc(name)} 님,<br>${d.off ? (isToday ? '오늘은' : '이날은') + ' 휴가예요' : when + '은 검사가 없어요'}</h2>`;
     const nx = days.find(x => x.t && x.iso > d.iso);
@@ -2633,7 +2635,6 @@ function drawEasy() {
         if (b.classList.contains('rr')) window.scrollTo({ top: 0, behavior: 'smooth' });
       })
   );
-  p.querySelectorAll('[data-ezedit]').forEach(b => (b.onclick = e => (e.stopPropagation(), editStop(d, +b.dataset.ezedit))));
   const on = p.querySelector('.ez-stops .on');
   if (on) on.parentNode.scrollLeft = Math.max(0, on.offsetLeft - 16 - (on.parentNode.clientWidth - on.offsetWidth) / 2);
   const inf = p.querySelector('[data-info]');
@@ -3095,7 +3096,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.30';
+const PAGE_VER = '3.31';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
