@@ -1198,6 +1198,30 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .sx2 .u{font-weight:800;white-space:nowrap}
 .ez-card .sx2{margin-top:14px}.ez-card .sx2 .tg{font-size:15.5px}
 .tl-card .sx2,.wd .sx2{margin-top:6px}
+/* 일정 고치기 */
+.ed-btn{margin-left:8px;display:inline-flex;align-items:center;gap:4px;height:34px;border:0;border-radius:10px;background:var(--bg);color:var(--muted);font:700 13.5px var(--font-body);padding:0 10px;cursor:pointer}
+.ed-btn svg,.edit-crew svg,.edit-add svg,.ed-more svg{width:15px;height:15px;flex:none}
+.tl-head .u+.ed-btn{margin-left:8px}
+.tl-card.chg{box-shadow:inset 0 0 0 2px #f5b400!important}
+.edit-crew,.edit-add,.ed-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;margin:10px 0 0;border:1.5px dashed var(--line);border-radius:14px;background:none;color:var(--muted);font:700 14.5px var(--font-body);cursor:pointer}
+.edit-add{margin:4px 0 6px}
+.enote{background:var(--amber-soft);color:var(--amber);border-radius:14px;padding:10px 12px;margin-top:10px}
+.enote b{display:block;font-size:14.5px;font-weight:800}.enote span{display:block;font-size:13px;font-weight:600;margin-top:2px}
+.enote button{margin-top:8px;min-height:36px;border:0;border-radius:9px;background:var(--bg);color:var(--amber);font:700 13.5px var(--font-body);padding:0 12px;cursor:pointer}
+.ed-sheet h2{margin:0;font-size:21px}
+.ed-sub{font-size:13.5px;color:var(--muted);margin:4px 0 6px;line-height:1.5}.ed-sub b{color:var(--ink)}
+.ed-f{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-top:8px}
+.ed-f input{display:block;width:100%;height:48px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;font:600 16px var(--font-body);color:var(--ink);background:var(--bg);margin-top:4px}
+.ed-two{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+.ed-l{font-size:13px;font-weight:700;color:var(--muted);margin-top:10px}
+.ed-kind{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.ed-kind button{height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);font:700 14.5px var(--font-body);color:var(--muted);cursor:pointer}
+.ed-kind button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.ed-btns{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;margin-top:14px}
+.ed-btns button{min-height:52px;border-radius:14px;font:800 16px var(--font-body);border:0;cursor:pointer}
+.ed-ok{background:var(--accent);color:var(--accent-ink)}.ed-del{background:var(--off-soft);color:var(--off)}
+.ed-btns .sh-x{background:var(--surface);color:var(--ink)}
+.ed-sheet{max-height:92vh;overflow:auto}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -1964,6 +1988,127 @@ function othersAt(d, s) {
   });
   return out;
 }
+// ════ 지사 일정표 고치기 (내 조만 · 지사 모두에게 바뀜) ════
+const PEN_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+const PLUS_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+const canEdit = () => !!(API && LINK && LINK.b && !(MINE_META && MINE_META.offline));
+const KCODE = { 정기: '정', 정밀: '밀', 수시: '수', 설치: '설' };
+function editNote(d) {
+  const e = d.t && d.t.edit;
+  if (!e) return '';
+  const t = new Date(e.at);
+  return `<div class="enote"><b>사이트에서 고친 일정이에요</b><span>${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · ${esc(e.by)} 님이 ${esc(e.what)}을 고침</span>${canEdit() ? '<button type="button" data-undoedit="1">고치기 전으로 되돌리기</button>' : ''}</div>`;
+}
+// 아래에서 올라오는 창 (확인·취소)
+function editSheet(title, sub, body, onSave, extra) {
+  const el = document.createElement('div');
+  el.className = 'sheet-bg';
+  el.innerHTML = `<div class="sheet ed-sheet" role="dialog" aria-modal="true" aria-labelledby="edH"><h2 id="edH">${title}</h2><p class="ed-sub">${sub}</p>${body}
+    <p class="msg err" id="edMsg" role="status"></p>
+    <div class="ed-btns">${extra || '<button type="button" class="sh-x" data-a="x">취소</button>'}<button type="button" class="ed-ok" data-a="ok">저장</button></div></div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.onclick = async e => {
+    if (e.target === el) return close();
+    const a = e.target.closest('[data-a]');
+    if (!a) return;
+    if (a.dataset.a === 'x') return close();
+    a.disabled = true;
+    const r = await onSave(a.dataset.a, el).catch(er => ({ ok: false, message: er.message }));
+    a.disabled = false;
+    if (r && r.ok) close();
+    else if (r && r.message) el.querySelector('#edMsg').textContent = r.message;
+  };
+  const f = el.querySelector('input');
+  if (f) f.focus();
+  return el;
+}
+// 서버에 저장 → 일정 다시 받기
+async function saveTeam(d, members, stops) {
+  const send = force => run('editTeam', LINK.b, curName(), d.iso, d.t.team, { members, stops }, !!force);
+  let r = await send(false);
+  if (r && !r.ok && r.unknown) {
+    if (!confirm(`「${r.unknown.join(', ')}」 님은 이번 주 일정표에 없는 이름이에요.\n이름이 맞으면 「확인」, 고치려면 「취소」를 눌러 주세요.`)) return { ok: false, message: '이름을 확인해 주세요.' };
+    r = await send(true);
+  }
+  if (!r || !r.ok) return r || { ok: false, message: '저장하지 못했어요.' };
+  await refreshMine(d.iso);
+  toast('✓ ' + LINK.b + ' 일정표에 저장했어요');
+  return r;
+}
+async function refreshMine(iso) {
+  const r = await loadMine(LINK.b, curName());
+  if (!r || !r.ok) return;
+  applyMine(r);
+  render();
+  if (iso && days.some(x => x.iso === iso)) go(iso);
+}
+const stopsNow = d => d.t.stops.map(x => ({ time: x.time || '', name: x.name, area: x.area || '', kind: x.kind || '', units: x.units, ed: x.ed }));
+// 현장 고치기 · 추가 (i = -1 이면 추가)
+function editStop(d, i) {
+  const s = i >= 0 ? d.t.stops[i] : { time: '', name: '', area: '', kind: '정', units: '' };
+  const kn = KIND[s.kind] || '정기';
+  const { md, dow } = mdow(d);
+  editSheet(
+    i >= 0 ? '현장 고치기' : '현장 추가',
+    `${md} (${dow}) · ${esc(d.t.team)} · <b>${esc(LINK.b)} 모두에게 바뀌어요</b>`,
+    `<label class="ed-f">시간<input id="edT" type="time" value="${esc(s.time)}"></label>
+     <label class="ed-f">현장 이름<input id="edN" value="${esc(s.name)}" placeholder="예: 한빛마을7단지"></label>
+     <div class="ed-two"><label class="ed-f">동<input id="edA" value="${esc(s.area || '')}" placeholder="예: 야당동"></label><label class="ed-f">대수<input id="edU" type="number" inputmode="numeric" min="0" max="99" value="${s.units == null ? '' : s.units}"></label></div>
+     <div class="ed-l">검사 종류</div><div class="ed-kind" role="group">${['정기', '정밀', '수시', '설치'].map(k => `<button type="button" data-k="${k}" aria-pressed="${k === kn}">${k}</button>`).join('')}</div>`,
+    async (a, el) => {
+      if (a === 'del') {
+        if (!confirm(`「${placeName(s.name)}」 현장을 이날 일정에서 뺄까요?\n${LINK.b} 분들 모두 빠진 일정으로 보게 돼요.`)) return { ok: false };
+        const st = stopsNow(d);
+        st.splice(i, 1);
+        return saveTeam(d, d.t.members.map(bare), st);
+      }
+      const v = id => el.querySelector('#' + id).value.trim();
+      if (!v('edN')) return { ok: false, message: '현장 이름을 넣어 주세요.' };
+      const k = (el.querySelector('.ed-kind [aria-pressed="true"]') || {}).dataset;
+      const ns = { time: v('edT'), name: v('edN'), area: v('edA'), kind: KCODE[k && k.k] || s.kind || '정', units: v('edU') === '' ? null : +v('edU'), ed: 1 };
+      const st = stopsNow(d);
+      if (i >= 0) st[i] = ns;
+      else st.push(ns);
+      st.sort((x, y) => String(x.time || '99').localeCompare(String(y.time || '99')));
+      return saveTeam(d, d.t.members.map(bare), st);
+    },
+    i >= 0 ? '<button type="button" class="ed-del" data-a="del">이 현장 빼기</button>' : ''
+  ).querySelectorAll('.ed-kind button').forEach(b => (b.onclick = e => { e.stopPropagation(); b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+}
+// 조원 고치기 (앞 = 주검, 뒤 = 보조)
+function editCrew(d) {
+  const n = d.t.members.map(bare);
+  const row = (v, i) => `<label class="ed-f">${i ? '보조' : '주검'}<input class="edM" value="${esc(v)}" placeholder="${i ? '보조 이름 (없으면 비움)' : '주검 이름'}"></label>`;
+  const { md, dow } = mdow(d);
+  editSheet(
+    '조원 고치기',
+    `${md} (${dow}) · ${esc(d.t.team)} · <b>${esc(LINK.b)} 모두에게 바뀌어요</b><br>새로 넣은 분은 자기 앱에 이날 일정이 생기고, 뺀 분은 없어져요.`,
+    `<div id="edMs">${[n[0] || '', n[1] || '', ...n.slice(2)].map(row).join('')}</div><button type="button" class="ed-more" data-more="1">${PLUS_IC}보조 한 명 더</button>`,
+    async (a, el) => {
+      const ms = [...el.querySelectorAll('.edM')].map(x => x.value.trim().replace(/\s+/g, '')).filter(Boolean);
+      if (!ms.length) return { ok: false, message: '주검 이름을 넣어 주세요.' };
+      if (!ms.includes(curName().replace(/\s+/g, '')) && !confirm('내 이름이 조원에서 빠져요. 저장하면 내 앱에서 이날 일정이 없어져요. 그래도 저장할까요?')) return { ok: false };
+      return saveTeam(d, ms, stopsNow(d));
+    }
+  ).querySelector('[data-more]').onclick = e => {
+    e.stopPropagation();
+    const box = document.getElementById('edMs');
+    box.insertAdjacentHTML('beforeend', row('', box.children.length || 1));
+    box.lastElementChild.querySelector('input').focus();
+  };
+}
+async function undoEdit(d) {
+  if (!confirm(`이날 ${d.t.team} 일정을 고치기 전(처음 올린 일정표)으로 되돌릴까요?\n${LINK.b} 분들 모두 되돌린 일정으로 보게 돼요.`)) return;
+  try {
+    const r = await run('undoTeamEdit', LINK.b, curName(), d.iso, d.t.team);
+    if (!r || !r.ok) return toast((r && r.message) || '되돌리지 못했어요.');
+    await refreshMine(d.iso);
+    toast('고치기 전으로 되돌렸어요');
+  } catch (e) {
+    toast('인터넷 연결을 확인하고 다시 눌러 주세요.');
+  }
+}
 // 일정표 조원 순서: 앞 사람이 주검, 뒤 사람이 보조 → "주검: 김민준 · 보조: 윤서준"
 function crewTxt(names, html) {
   const n = (names || []).map(bare).filter(Boolean);
@@ -2116,13 +2261,15 @@ function drawPanel(dx) {
     h += `<section class="dz-h"><h2>${md} ${dow}요일${d.iso === todayIso ? ' · 오늘' : ''} · ${m.sites}현장 ${sumUnits(d.t.stops)}대</h2>
       ${crewBox(d.t.members, name)}
       <p>${esc(d.t.team)} · ${m.kinds.map(([k, n]) => esc(k) + ' ' + n + '대').join(' · ')} · 환산 ${d.t.units}대</p></section>
+      ${editNote(d)}
+      ${canEdit() ? `<button type="button" class="edit-crew" data-edcrew="1">${PEN_IC}이날 우리 조 조원 고치기 (주검·보조)</button>` : ''}
       ${SERVER ? `<div class="kmap" id="dmap"><div class="kload"><span class="spin"></span>지도에서 현장 위치를 찾고 있어요<small>잠시만 기다려 주세요 · 보통 5~10초 걸려요</small></div></div>
       <div class="legs" id="dlegs"><h3>이동거리 (자동차 추천경로)</h3><div class="wait"><span class="spin"></span>구간별 거리를 계산하고 있어요. 잠시만 기다려 주세요.</div></div>` : ''}
       <ol class="tl">${d.t.stops
         .map(
           (s, i) => `<li class="tl-item"><span class="tl-no">${i + 1}</span>
-        <div class="tl-card">
-          <div class="tl-head"><span class="t">${esc(s.time)}</span>${kb(s.kind)}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span></div>
+        <div class="tl-card${s.ed ? ' chg' : ''}">
+          <div class="tl-head"><span class="t">${esc(s.time)}</span>${kb(s.kind)}<span class="u">${s.units != null ? s.units + '<small>대</small>' : ''}</span>${canEdit() ? `<button type="button" class="ed-btn" data-edit="${i}" aria-label="${esc(placeName(s.name))} 고치기">${PEN_IC}수정</button>` : ''}</div>
           <div class="nm">${esc(s.name)}${s.memo ? ` <span class="tag">${esc(s.memo)}</span>` : ''}</div>
           <div class="addr" id="addr-${i}">${s.area ? esc((REGION[s.area] || '') + ' ' + s.area) : '주소 미기재'}</div>
           <div class="elv" id="elv-${i}"></div>
@@ -2130,7 +2277,8 @@ function drawPanel(dx) {
           <div class="maps" id="maps-${i}"><a class="bk" href="${mapUrl(s)}" target="_blank" rel="noopener">카카오</a><a class="bn" href="${naverUrl(s)}" target="_blank" rel="noopener">네이버</a></div>
         </div></li>`
         )
-        .join('')}</ol>`;
+        .join('')}</ol>
+      ${canEdit() ? `<button type="button" class="edit-add" data-edit="new">${PLUS_IC}현장 추가</button>` : ''}`;
   } else if (d.off)
     h += `<div class="dayhead"><h2>${dayLabel}</h2><span class="pill off">휴가</span></div><div class="empty-day"><p class="note">이날은 휴가예요${offWhy(d, name)}.</p></div>`;
   else
@@ -2138,6 +2286,13 @@ function drawPanel(dx) {
   if (d.sup.length)
     h += `<p class="note">비고: ${esc(d.sup.join(' / '))}</p>`;
   p.innerHTML = h;
+  if (d.t && canEdit()) {
+    p.querySelectorAll('[data-edit]').forEach(b => (b.onclick = () => editStop(d, b.dataset.edit === 'new' ? -1 : +b.dataset.edit)));
+    const c = p.querySelector('[data-edcrew]');
+    if (c) c.onclick = () => editCrew(d);
+    const u = p.querySelector('[data-undoedit]');
+    if (u) u.onclick = () => undoEdit(d);
+  }
   if (SERVER && d.t) dayExtras(d);
 }
 // 같은 현장 안내를 덩어리로: 줄이 길면 이름 덩어리가 통째로 다음 줄로 (단어 중간에서 안 끊김)
@@ -2885,7 +3040,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.28';
+const PAGE_VER = '3.29';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3513,6 +3668,15 @@ function shareBox() {
     <p>지사 사람들은 앱이나 링크에서 이름만 고르면 이 일정을 봐요.</p>`;
 }
 async function doShare(force) {
+  // 그 주 일정표를 사이트에서 고친 적이 있으면 한 번 확인 (새 파일로 바꾸면 고친 내용은 없어짐)
+  try {
+    const mon = monOf(data.days.map(x => x.iso).sort()[0]);
+    const w = MINE_META && (MINE_META.weeks || []).find(x => x.mon === mon);
+    if (!force && w && w.rev && w.rev > (w.at || 0) && !confirm('이 주 일정표는 사이트에서 고친 내용이 있어요.\n새 파일로 바꾸면 고친 내용은 없어져요. 그래도 올릴까요?')) {
+      toast('올리지 않았어요');
+      return refreshMine();
+    }
+  } catch (e) {}
   const m = $('shareMsg');
   if (m) m.textContent = '공유하는 중…';
   const d = data, br = BRANCH[0], by = curName();

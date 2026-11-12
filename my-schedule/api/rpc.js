@@ -2,7 +2,7 @@
 const { RPC, setAppUrl } = require('../lib/core.js');
 const auth = require('../lib/auth.js');
 
-const CTX_AT = { shareWeek: 4, restoreWeek: 3, archiveUpload: 3 };
+const CTX_AT = { shareWeek: 4, restoreWeek: 3, archiveUpload: 3, editTeam: 6, undoTeamEdit: 4 };
 const ALL = Object.assign({}, RPC, { authStart: auth.authStart, authVerify: auth.authVerify, authCheck: () => null });
 
 module.exports = async (req, res) => {

@@ -15,8 +15,8 @@
 const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v2.9';
-const PAGE_VER = '3.28'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v3.0';
+const PAGE_VER = '3.29'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -980,6 +980,95 @@ async function shareWeek(branch, data, force, by, ctx) {
     return { ok: false, message: e.message };
   }
 }
+// ════════ 지사 일정표 고치기 (내 조만) ════════
+// patch = { members: [...], stops: [{ time, name, area, kind, units, ed }] } — 그날 우리 조를 통째로 바꿈
+// 처음 고칠 때 원래 내용(orig)을 남겨 두고 「고치기 전으로 되돌리기」로 돌아감
+async function weekKeyFor_(branch, iso) {
+  const idx = JSON.parse((await redis_([['GET', 'p:WEEKIDX:' + branch]]))[0] || '[]');
+  const m = monOf_(iso);
+  return idx.indexOf(m) >= 0 ? wkK_(branch, m) : 'p:WEEK:' + branch;
+}
+async function editTeam(branch, by, iso, team, patch, force, ctx) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) throw new Error('지사가 올바르지 않아요.');
+    const me = nmKey_(by);
+    if (!me) throw new Error('이름을 먼저 넣어 주세요.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) throw new Error('날짜가 올바르지 않아요.');
+    const k = await weekKeyFor_(branch, iso);
+    const [json, metaJ] = await redis_([['GET', k], ['GET', k + ':meta']]);
+    if (!json) throw new Error('그 주 일정표가 없어요.');
+    const w = JSON.parse(json);
+    const d = (w.days || []).find(x => x.iso === iso);
+    const t = d && (d.teams || []).find(x => x.team === team);
+    if (!t) throw new Error('그날 ' + team + ' 일정을 찾지 못했어요. 새로고침해 주세요.');
+    // 내 조만 (지금 조원이거나, 고치기 전 원래 조원)
+    const mine = x => (x || []).some(m => nmKey_(m) === me);
+    if (!mine(t.members) && !mine(t.orig && t.orig.members)) throw new Error('우리 조 일정만 고칠 수 있어요.');
+    const clean = v => String(v == null ? '' : v).replace(/[<>]/g, '').trim();
+    const members = (patch && Array.isArray(patch.members) ? patch.members : t.members).map(clean).filter(Boolean).slice(0, 6);
+    if (!members.length) throw new Error('조원을 한 명 이상 넣어 주세요.');
+    const stops = (patch && Array.isArray(patch.stops) ? patch.stops : t.stops).slice(0, 12).map(x => ({
+      time: clean(x.time).slice(0, 5), name: clean(x.name).slice(0, 40), area: clean(x.area).slice(0, 12),
+      kind: clean(x.kind).slice(0, 4), units: x.units === '' || x.units == null ? null : Math.max(0, Math.min(99, Number(x.units) || 0)),
+      ed: x.ed ? 1 : undefined,
+    })).filter(x => x.name);
+    // 처음 보는 이름: 이번 주 일정표 어디에도 없는 이름이면 한 번 확인
+    if (!force) {
+      const all = new Set();
+      (w.days || []).forEach(x => { (x.teams || []).forEach(tm => (tm.members || []).forEach(m => all.add(nmKey_(m)))); (x.vacation || []).forEach(v => all.add(nmKey_(v))); });
+      (t.orig ? t.orig.members : []).forEach(m => all.add(nmKey_(m)));
+      const unknown = members.filter(m => !all.has(nmKey_(m))).map(bare_);
+      if (unknown.length) return { ok: false, unknown, message: '이번 주 일정표에 없는 이름이에요: ' + unknown.join(', ') };
+    }
+    if (!t.orig) t.orig = { members: t.members, stops: t.stops };
+    const what = [];
+    if (JSON.stringify(members.map(nmKey_)) !== JSON.stringify((t.members || []).map(nmKey_))) what.push('조원');
+    if (JSON.stringify(stops.map(x => [x.time, x.name, x.area, x.kind, x.units])) !== JSON.stringify((t.stops || []).map(x => [x.time, x.name, x.area, x.kind, x.units]))) what.push('현장');
+    t.members = members;
+    t.stops = stops;
+    t.sites = new Set(stops.map(x => x.name)).size;
+    t.edit = { at: Date.now(), by: bare_(by).slice(0, 20), what: what.join('·') || '내용' };
+    const meta = JSON.parse(metaJ || '{}');
+    meta.rev = Date.now();
+    await redis_([['SET', k, JSON.stringify(w)], ['SET', k + ':meta', JSON.stringify(meta)],
+      ['SET', k + ':editlog', JSON.stringify([{ iso, team, at: t.edit.at, by: t.edit.by, email: (ctx && ctx.email) || '', what: t.edit.what }].concat(JSON.parse((await redis_([['GET', k + ':editlog']]))[0] || '[]')).slice(0, 200))]]);
+    await archiveWeek_(branch, w);
+    return { ok: true, edit: t.edit };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+// 고치기 전으로 되돌리기 (처음 올린 일정표 내용으로)
+async function undoTeamEdit(branch, by, iso, team, ctx) {
+  try {
+    branch = String(branch || '').trim();
+    if (!BRANCH_RE.test(branch)) throw new Error('지사가 올바르지 않아요.');
+    const me = nmKey_(by);
+    const k = await weekKeyFor_(branch, iso);
+    const [json, metaJ] = await redis_([['GET', k], ['GET', k + ':meta']]);
+    if (!json) throw new Error('그 주 일정표가 없어요.');
+    const w = JSON.parse(json);
+    const d = (w.days || []).find(x => x.iso === iso);
+    const t = d && (d.teams || []).find(x => x.team === team);
+    if (!t || !t.orig) return { ok: false, message: '되돌릴 고친 내용이 없어요.' };
+    const mine = x => (x || []).some(m => nmKey_(m) === me);
+    if (!mine(t.members) && !mine(t.orig.members)) throw new Error('우리 조 일정만 되돌릴 수 있어요.');
+    t.members = t.orig.members;
+    t.stops = t.orig.stops;
+    t.sites = new Set(t.stops.map(x => x.name)).size;
+    delete t.orig;
+    delete t.edit;
+    const meta = JSON.parse(metaJ || '{}');
+    meta.rev = Date.now();
+    await redis_([['SET', k, JSON.stringify(w)], ['SET', k + ':meta', JSON.stringify(meta)]]);
+    await archiveWeek_(branch, w);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e.message };
+  }
+}
+
 // 지사에 올라온 주들 중 화면에 보일 것: 이번 주(없으면 가장 가까운 지난 주) + 다음 주
 async function weekSlots_(branch) {
   const thisMon = monOf_(kstToday_()), nextMon = addDays_(thisMon, 7);
@@ -1126,7 +1215,7 @@ async function getWeek(branch) {
     const byIso = {};
     slots.forEach(x => (x.d.days || []).forEach(d => { if (d.iso) byIso[d.iso] = d; }));
     const days = Object.keys(byIso).sort().map(k => byIso[k]);
-    const weeks = slots.map(x => ({ mon: x.mon, next: x.mon > thisMon, source: x.d.source || '', at: x.m.at, by: x.m.by || '', hasPrev: !!x.p, prevSource: x.p ? x.p.source || '' : '' }));
+    const weeks = slots.map(x => ({ mon: x.mon, next: x.mon > thisMon, source: x.d.source || '', at: x.m.at, rev: x.m.rev || 0, by: x.m.by || '', hasPrev: !!x.p, prevSource: x.p ? x.p.source || '' : '' }));
     const c = weeks[0];
     return { ok: true, branch, source: c.source, days, at: Math.max(...weeks.map(w => w.at || 0)), last: days[days.length - 1].iso, by: c.by, hasPrev: c.hasPrev, prevSource: c.prevSource, weeks };
   } catch (e) {
@@ -1155,7 +1244,8 @@ async function myWeek(branch, name) {
     const others = me ? teams.filter(t => t !== me)
       .map(t => Object.assign({}, t, { stops: (t.stops || []).filter(s => mine.has(site(s))) }))
       .filter(t => t.stops.length) : [];
-    return { label: d.label, iso: d.iso, teams: me ? [me].concat(others) : [], vacation, support };
+    const strip = t => { const o = Object.assign({}, t); delete o.orig; return o; };
+    return { label: d.label, iso: d.iso, teams: me ? [strip(me)].concat(others.map(strip)) : [], vacation, support };
   });
   if (!me0) return { ok: false, notFound: true, message: '이번 주 ' + wk.branch + ' 일정표에 \'' + bare_(name) + '\' 님이 없어요. 이름을 확인해 주세요.' };
   return { ok: true, branch: wk.branch, name: me0, source: wk.source, days, at: wk.at, by: wk.by || '', hasPrev: !!wk.hasPrev, prevSource: wk.prevSource || '', weeks: wk.weeks || [] };
@@ -1336,7 +1426,7 @@ async function widgetByName(branch, name, fmt) {
   const key = nameKey_(branch, name);
   const raw = await props.get('W_' + key);
   const old = raw ? JSON.parse(raw) : null;
-  const src = 'w2:' + (wk.weeks ? wk.weeks.map(w => w.mon + '.' + (w.at || '')).join('|') : wk.at || '');
+  const src = 'w2:' + (wk.weeks ? wk.weeks.map(w => w.mon + '.' + (w.at || '') + '.' + (w.rev || '')).join('|') : wk.at || '');
   if (!old || old.src !== src) {
     const data = personWeek_(wk, branch, name);
     data.src = src; // 같은 일정표면 다음에 다시 만들지 않게
@@ -1364,7 +1454,7 @@ async function widget(key, fmt) {
 }
 
 // 화면이 부를 수 있는 함수 (google.script.run 대신 /api/rpc)
-const RPC = { travelMonth, archiveUpload, listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
+const RPC = { editTeam, undoTeamEdit, travelMonth, archiveUpload, listWeeks, getConfig, latestVer, getOrigin, guessBranch, geocodeSites, setSiteAddr, clearSiteAddr, dayBundle, routeLegs,
   recptnList, siteElevators, shareWeek, restoreWeek, myWeek };
 
 // 웹앱 주소: 미리보기 주소로 열어도 위젯·공유 링크는 정식 주소로 (Vercel이 넣어 주는 VERCEL_PROJECT_PRODUCTION_URL)
