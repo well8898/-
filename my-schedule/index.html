@@ -1176,6 +1176,11 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .dz-h p b,.wd-crew b{color:var(--ink);font-weight:800}
 .wd-crew{margin:2px 0 0;font-size:13px;color:var(--muted)}
 .ez-same b,.ez-oth b,.ewk-o b,.wd-o b,.others b{font-weight:800}
+.dcrew{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 0 2px}
+.dcrew span{display:inline-flex;align-items:center;gap:6px;font-size:15px;font-weight:700}
+.dcrew i{font-style:normal;font-size:12px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:6px;padding:1px 6px}
+.dcrew .me i{color:#fff;background:var(--accent)}
+.dcrew small{font-size:12px;font-weight:700;color:var(--accent)}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -2532,10 +2537,19 @@ function trvDayText(x, withAddr) {
   const tot = L.tot ? ' ' + L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : '';
   if (!withAddr) return head + ' ' + names.join(' → ') + tot;
   const ad = s => cleanAddr((GEO[mapQuery(s)] || {}).addr);
-  const lines = [head + tot, home + (BRANCH && BRANCH[1] ? ' (' + BRANCH[1] + ')' : '')];
+  const lines = [head + tot + (x.members && x.members.length ? ' · ' + crewTxt(x.members) : ''), home + (BRANCH && BRANCH[1] ? ' (' + BRANCH[1] + ')' : '')];
   x.stops.forEach((s, i) => lines.push('→ ' + placeName(s.name) + (ad(s) ? ' (' + ad(s) + ')' : '') + (L.out[i] && L.out[i].km != null ? ' ' + L.out[i].km.toFixed(1) + 'km' : '')));
   lines.push('→ ' + home + (L.back ? ' ' + L.back.km.toFixed(1) + 'km' : ''));
   return lines.join('\n');
+}
+// 여비입력 날짜 카드: 「주검 김민준 나 · 보조 윤서준」 (앞 사람 주검, 뒤 사람 보조)
+function trvCrew(members) {
+  const n = (members || []).map(bare).filter(Boolean);
+  if (!n.length) return '';
+  const me = curName();
+  return `<div class="dcrew">${n
+    .map((x, i) => `<span class="${x === me ? 'me' : ''}"><i>${i ? '보조' : '주검'}</i>${esc(x)}${x === me ? '<small>나</small>' : ''}</span>`)
+    .join('')}</div>`;
 }
 function drawTrv() {
   const el = $('trvBox');
@@ -2583,7 +2597,7 @@ function drawTrv() {
     const L = trvLegs(x);
     const km = v => (!v ? '–' : v.same ? '같은 곳' : v.km.toFixed(1) + 'km');
     const mn = v => (v && !v.same && v.mn != null ? v.mn + '분' : '');
-    h += `<section class="dy"><div class="dh"><b>${dd}<span>(${dow})</span></b><em>${places(x.stops).length}현장 ${sumUnits(x.stops)}대</em><strong>${L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : T.ready ? '–' : '…'}</strong><button type="button" class="cpt" data-cday="${k}" aria-label="${dd}일 경로 복사">${COPY_IC}복사</button></div><ul>`;
+    h += `<section class="dy"><div class="dh"><b>${dd}<span>(${dow})</span></b><em>${places(x.stops).length}현장 ${sumUnits(x.stops)}대</em><strong>${L.tot ? L.tot.toFixed(1) + 'km' + (L.unk ? '+' : '') : T.ready ? '–' : '…'}</strong><button type="button" class="cpt" data-cday="${k}" aria-label="${dd}일 경로 복사">${COPY_IC}복사</button></div>${trvCrew(x.members)}<ul>`;
     x.stops.forEach((s, i) => {
       const a = cleanAddr((GEO[mapQuery(s)] || {}).addr);
       h += `<li><i class="pin">${i + 1}</i><div class="sn">${esc(placeName(s.name))}${kb(s.kind)}</div><span class="lk">${km(L.out[i])}<small>${mn(L.out[i])}</small></span>
@@ -2857,7 +2871,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.25';
+const PAGE_VER = '3.26';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
