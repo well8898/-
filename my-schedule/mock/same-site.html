@@ -1,0 +1,71 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>이번 주·다음 주 시안</title><link rel="stylesheet" href="redesign.css"><style>
+.top .date:empty{display:none}.top{justify-content:flex-end}
+/* A: 요일 5칸 고정 */
+.dp{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 14px}
+.dp button{border:0;background:var(--well);border-radius:14px;padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font-family:P;color:var(--ink)}
+.dp span{font:600 13px P;color:var(--sub)}.dp b{font:800 19px P}.dp em{font:600 11.5px P;font-style:normal;color:var(--sub)}
+.dp .on{background:var(--accent)}.dp .on span,.dp .on b,.dp .on em{color:#fff}
+.dp .off b,.dp .off em{color:#c4373b}
+/* B: 큰 요일 + 밑줄 탭 */
+.dl{display:flex;align-items:baseline;gap:8px;margin-top:2px}.dl b{font:800 20px P}.dl span{font:600 15px P;color:var(--sub)}.dl i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}
+.dw2{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line);margin:8px 0 12px}
+.dw2 span{text-align:center;font:700 17px P;color:var(--mute);padding:10px 0 11px}
+.dw2 .on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}.dw2 .x{color:#c4373b}
+/* C: 날짜 눌러 고르기 */
+.dd{display:flex;align-items:center;gap:6px;border:0;background:var(--well);border-radius:12px;height:44px;padding:0 12px 0 14px;font:700 16px P;color:var(--ink);margin-top:2px}
+.dd i{font:800 12.5px P;font-style:normal;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:1px 7px}.dd svg{width:18px;height:18px;color:var(--sub)}
+.sheetbg{position:absolute;inset:0;background:rgba(25,31,40,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 24px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}.st{font:800 20px P;display:block;margin-bottom:6px}
+.sheet ul{list-style:none;margin:0;padding:0}.sheet li{display:flex;flex-direction:column;padding:12px 12px;border-radius:14px}
+.sheet li span{font:800 17px P}.sheet li em{font:500 14px P;font-style:normal;color:var(--sub);margin-top:2px}
+.sheet li.on{background:var(--accent-soft)}.sheet li.on span{color:var(--accent)}.sheet li.off span{color:#c4373b}
+.tabs.t4{grid-template-columns:repeat(4,1fr)}</style><style>
+.v{width:340px;background:var(--bg);color:var(--ink);border-radius:24px;padding:18px;box-shadow:0 6px 18px rgba(25,31,40,.18)}
+.v h4{font:800 17px P;margin:0 0 2px}.v p.d{font:500 13.5px P;color:var(--sub);margin:0 0 14px}
+.row{display:grid;grid-template-columns:62px 1fr auto auto;gap:6px;align-items:baseline}
+.row .t{font:800 18px P}.row .n{font:800 18px P}.row .u{font:800 18px P;margin-left:8px}
+.ar{font:500 14px P;color:var(--sub);margin:2px 0 8px 62px}
+.box{margin-left:62px}
+/* A: 조마다 줄 나눔 */
+.A .box{background:var(--amber-soft);border-radius:12px;padding:8px 12px}
+.A .hd{font:700 13px P;color:var(--amber);opacity:.85;margin-bottom:4px}
+.A .tg{padding:6px 0;border-top:1px solid rgba(122,83,0,.18)}
+.A .tg:first-of-type{border-top:0}
+.A .tg b{display:flex;justify-content:space-between;font:800 15px P;color:var(--amber)}
+.A .tg span{display:block;font:600 14px P;color:var(--amber);opacity:.9;margin-top:1px}
+/* B: 한 줄씩 짧게 */
+.B .box{border-left:3px solid #f5b400;padding:2px 0 2px 10px}
+.B .hd{font:700 13px P;color:var(--sub);margin-bottom:4px}
+.B .tg{display:grid;grid-template-columns:34px 1fr auto;gap:6px;font:600 14.5px P;padding:3px 0}
+.B .tg i{font-style:normal;font-weight:800;color:var(--amber)}
+.B .tg em{font-style:normal;font-weight:800}
+.B .tg small{font:500 12px P;color:var(--sub);margin:0 3px 0 0}
+/* C: 접어 두기 */
+.C .pill{display:inline-flex;align-items:center;gap:6px;background:var(--amber-soft);color:var(--amber);border-radius:10px;padding:7px 11px;font:700 14px P}
+.C .pill svg{width:14px;height:14px}
+.C .open{margin-top:8px}
+.dark .A .tg{border-top-color:rgba(255,210,122,.18)}
+</style><style>
+.role{font:600 16px P;color:var(--sub);margin:4px 0 2px}.role b{color:var(--ink);font-weight:800;margin-right:3px}
+.crew{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.crew div{background:var(--well);border-radius:14px;padding:9px 12px;display:flex;align-items:center;gap:8px;position:relative}
+.crew span{font:800 13px P;color:var(--sub);background:var(--bg);border-radius:7px;padding:2px 7px}
+.crew .me span{color:#fff;background:var(--accent)}
+.crew b{font:800 17px P}
+.crew i{font:700 12px P;font-style:normal;color:var(--accent);margin-left:auto}
+.dz h2{font:800 22px/1.3 P;margin:6px 0 4px;letter-spacing:-.5px}.dz p{font:500 14.5px P;color:var(--sub);margin:0}.dz p b{color:var(--ink);font-weight:800}
+.mini{margin-top:10px;padding:14px;border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.home .wg{margin-top:30px}
+</style><style>
+.wsel{display:grid;grid-template-columns:1fr 1fr;background:var(--well);border-radius:12px;padding:3px;margin:4px 0 8px}
+.wsel button{border:0;background:none;font:700 14.5px P;color:var(--mute);padding:8px 0;border-radius:9px;position:relative}
+.wsel button small{font:600 12.5px P;color:inherit;opacity:.85;margin-left:2px}
+.wsel button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.wsel button i{position:absolute;top:7px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.dp .past:not(.on){opacity:.55}
+.addr2{font:500 14px P;color:var(--sub);margin-top:4px}
+.hi .rng{font:600 15px P;color:var(--sub);margin-left:6px}
+.toast2{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;font:700 14px P;padding:11px 16px;border-radius:12px;white-space:nowrap}
+.dp{margin-top:0}
+</style></head><body><div class="board" style="display:grid;grid-template-columns:repeat(3,376px);gap:24px;width:auto"><div class="v A dark"><h4>A. 조마다 칸 나눔</h4><p class="d">조 이름·대수를 굵게, 이름은 아래 줄</p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="hd">같은 현장 · 2개 조</div><div class="tg"><b><span style="display:inline;margin:0;opacity:1">3조</span><span style="display:inline;margin:0;opacity:1">4대</span></b><span>주검 박지호 · 보조 이도윤</span></div><div class="tg"><b><span style="display:inline;margin:0;opacity:1">4조</span><span style="display:inline;margin:0;opacity:1">5대</span></b><span>주검 정하윤 · 보조 장지민</span></div></div></div><div class="v B dark"><h4>B. 한 줄씩 짧게</h4><p class="d">노란 상자 없이 왼쪽 노란 선 · 조마다 한 줄</p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="hd">같은 현장</div><div class="tg"><i>3조</i><span><small>주검</small><em>박지호</em> <small>보조</small><em>이도윤</em></span><span>4대</span></div><div class="tg"><i>4조</i><span><small>주검</small><em>정하윤</em> <small>보조</small><em>장지민</em></span><span>5대</span></div></div></div><div class="v C dark"><h4>C. 접어 두기</h4><p class="d">평소엔 한 줄 · 누르면 펼침</p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="pill">같은 현장 · 3조·4조 · 9대<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div><div class="open" style="font:600 13px P;color:var(--sub)">누르면 B처럼 조마다 펼쳐짐</div></div></div><div class="v A"><h4>A (밝게)</h4><p class="d"></p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="hd">같은 현장 · 2개 조</div><div class="tg"><b><span style="display:inline;margin:0;opacity:1">3조</span><span style="display:inline;margin:0;opacity:1">4대</span></b><span>주검 박지호 · 보조 이도윤</span></div><div class="tg"><b><span style="display:inline;margin:0;opacity:1">4조</span><span style="display:inline;margin:0;opacity:1">5대</span></b><span>주검 정하윤 · 보조 장지민</span></div></div></div><div class="v B"><h4>B (밝게)</h4><p class="d"></p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="hd">같은 현장</div><div class="tg"><i>3조</i><span><small>주검</small><em>박지호</em> <small>보조</small><em>이도윤</em></span><span>4대</span></div><div class="tg"><i>4조</i><span><small>주검</small><em>정하윤</em> <small>보조</small><em>장지민</em></span><span>5대</span></div></div></div><div class="v C"><h4>C (밝게)</h4><p class="d"></p><div class="row"><span class="t">07:00</span><span class="n">○○백화점</span><span class="kb km">정밀</span><span class="u">5</span></div><div class="ar">상남동</div><div class="box"><div class="pill">같은 현장 · 3조·4조 · 9대<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div><div class="open" style="font:600 13px P;color:var(--sub)">누르면 B처럼 조마다 펼쳐짐</div></div></div></div></body></html>
