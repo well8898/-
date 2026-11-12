@@ -1187,6 +1187,11 @@ body.tab-trv main{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .dcrew i{font-style:normal;font-size:12px;font-weight:800;color:var(--muted);background:var(--bg);border-radius:6px;padding:1px 6px}
 .dcrew .me i{color:#fff;background:var(--accent)}
 .dcrew small{font-size:12px;font-weight:700;color:var(--accent)}
+/* 내 칸: 파란 테두리 · 연한 파랑 바탕 (「나」 글자 대신) */
+.crew div{border:2px solid transparent}
+.crew .me{border-color:var(--accent);background:var(--accent-soft)}
+.crew .me b{color:var(--accent)}
+.dcrew .me{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -2328,7 +2333,7 @@ function crewBox(members, me) {
   const n = (members || []).map(bare).filter(Boolean);
   if (!n.length) return '';
   return `<div class="crew${n.length > 2 ? ' c3' : ''}">${n
-    .map((x, i) => `<div class="${x === me ? 'me' : ''}"><span>${i ? '보조' : '주검'}</span><b>${esc(x)}</b>${x === me ? '<i>나</i>' : ''}</div>`)
+    .map((x, i) => `<div class="${x === me ? 'me' : ''}"${x === me ? ' aria-label="' + (i ? '보조' : '주검') + ' ' + esc(x) + ' (나)"' : ''}><span>${i ? '보조' : '주검'}</span><b>${esc(x)}</b></div>`)
     .join('')}</div>`;
 }
 function drawEasy() {
@@ -2555,7 +2560,7 @@ function trvCrew(members) {
   if (!n.length) return '';
   const me = curName();
   return `<div class="dcrew">${n
-    .map((x, i) => `<span class="${x === me ? 'me' : ''}"><i>${i ? '보조' : '주검'}</i>${esc(x)}${x === me ? '<small>나</small>' : ''}</span>`)
+    .map((x, i) => `<span class="${x === me ? 'me' : ''}"><i>${i ? '보조' : '주검'}</i>${esc(x)}</span>`)
     .join('')}</div>`;
 }
 function drawTrv() {
@@ -2878,7 +2883,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.26';
+const PAGE_VER = '3.27';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
