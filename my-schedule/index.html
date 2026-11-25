@@ -1248,6 +1248,8 @@ body.easy .ed-line{margin:2px 0 16px}body.easy .ed-line .ez-hisub{margin:0}
 .alt-btn::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:#f5b400}
 .alt-row{grid-template-columns:1fr auto!important}
 .alt-row .n small{font-weight:700!important}
+.real.guess{color:var(--amber)!important;background:var(--amber-soft)!important}
+.alt-btn{word-break:keep-all;line-height:1.35;padding:8px 12px}
 </style>
 
 <input type="file" id="file" accept=".pdf,.xlsx,.xls,.xlsm,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="vh" tabindex="-1">
@@ -3137,7 +3139,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.33';
+const PAGE_VER = '3.34';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3382,7 +3384,7 @@ async function dayExtras(d) {
         return;
       }
       if (el)
-        el.innerHTML = (g.addr ? esc(cleanAddr(g.addr)) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>') +
+        el.innerHTML = (g.addr ? esc(cleanAddr(g.addr)) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : g.alts ? ' <span class="real guess">확실하지 않음</span>' : ' <span class="real">실주소</span>') +
             `<button type="button" class="cp cp-in" data-addr="${esc(cleanAddr(g.addr))}" aria-label="주소 복사">${COPY_IC}</button>`
           : esc(el.textContent.replace(/위치 고치기|위치 못 찾음|주소 직접 넣기/g, '').trim())) +
           '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>' + altBtn(s);
