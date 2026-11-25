@@ -11,6 +11,10 @@
       "destination": "/api/w"
     },
     {
+      "source": "/test",
+      "destination": "/test.html"
+    },
+    {
       "source": "/app",
       "destination": "/app.html"
     },

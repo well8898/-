@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>현장 위치 시험</title>
+<style>
+:root{--bg:#fff;--surface:#f2f4f6;--ink:#191f28;--muted:#4e5968;--line:#e5e8eb;--accent:#1b64da;--accent-soft:#e8f0fd;--amber:#7a5300;--amber-soft:#fff4d6;--off:#c4373b}
+@media (prefers-color-scheme:dark){:root{--bg:#17171c;--surface:#24252b;--ink:#f2f4f6;--muted:#b0b8c1;--line:#2e3038;--accent:#6aa0ff;--accent-soft:#1d2a44;--amber:#ffd27a;--amber-soft:#3a2d10;--off:#ff8a8a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+main{max-width:520px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;letter-spacing:-.5px;margin:8px 0 4px}
+.sub{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+label{display:block;font-size:13.5px;font-weight:700;color:var(--muted);margin-top:12px}
+input,select{display:block;width:100%;height:50px;margin-top:5px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;font:600 16px inherit;font-family:inherit;color:var(--ink);background:var(--bg)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+button{width:100%;height:54px;margin-top:18px;border:0;border-radius:14px;background:var(--accent);color:#fff;font:800 17px inherit;font-family:inherit;cursor:pointer}
+button:disabled{opacity:.5}
+.res{margin-top:22px}
+.card{background:var(--surface);border-radius:18px;padding:16px}
+.tag{display:inline-block;font-size:13px;font-weight:800;border-radius:8px;padding:2px 9px;margin-bottom:8px}
+.ok{background:var(--accent-soft);color:var(--accent)}.warn{background:var(--amber-soft);color:var(--amber)}.bad{background:#fdecec;color:var(--off)}
+.addr{font-size:18px;font-weight:800;word-break:keep-all}
+.why{font-size:14px;color:var(--muted);margin-top:6px}
+.alt{margin-top:8px;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px}
+.alt b{display:block;font-size:15.5px;word-break:keep-all}.alt span{font-size:13px;color:var(--muted)}
+.alt.pick{border-color:var(--accent)}
+.note{font-size:13px;color:var(--muted);margin-top:18px;line-height:1.6}
+.err{color:var(--off);font-weight:700;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>현장 위치 시험</h1>
+<p class="sub">일정표에 적힌 대로 넣으면, 앱이 어떤 주소를 고르는지 보여 줘요. 아무것도 저장하지 않아요.</p>
+<label>지사<select id="b"><option>서울남서지사</option><option>서울동부지사</option><option>서울서부지사</option><option>서울북부지사</option><option>서울강남지사</option><option>서울강동지사</option><option>서울서초지사</option><option>서울강서지사</option><option>부산서부지사</option><option>부산동부지사</option><option>부산북부지사</option><option>울산지사</option><option selected>경남동부지사</option><option>경남서부지사</option><option>진주출장소</option><option>대구서부지사</option><option>대구동부지사</option><option>경북동부지사</option><option>경북서부지사</option><option>인천남부지사</option><option>경기북부지사</option><option>양주출장소</option><option>고양파주지사</option><option>인천동부지사</option><option>안산지사</option><option>인천서부지사</option><option>수원지사</option><option>성남지사</option><option>안양지사</option><option>용인지사</option><option>평택안성지사</option><option>화성오산지사</option><option>강원지사</option><option>강릉출장소</option><option>춘천출장소</option><option>대전지사</option><option>세종지사</option><option>충북지사</option><option>충남지사</option><option>천안지사</option><option>광주지사</option><option>전북동부지사</option><option>전북서부지사</option><option>전남동부지사</option><option>전남서부지사</option><option>제주지사</option></select></label>
+<label>현장 이름 (일정표 그대로)<input id="n" value="오주하이츠" placeholder="예: 오주하이츠"></label>
+<div class="two"><label>동·읍·면<input id="a" value="창녕읍" placeholder="예: 창녕읍"></label><label>대수<input id="u" type="number" inputmode="numeric" value="2" min="0" max="99"></label></div>
+<button id="go" type="button">앱이 고르는 주소 보기</button>
+<p class="err" id="err" hidden></p>
+<div class="res" id="res"></div>
+<p class="note">· 「확실함」이면 앱이 그 주소를 바로 써요.<br>· 「확실하지 않음」이면 앱 화면에 「주소가 여러 곳이에요 · 맞는 곳 고르기」가 나와요.<br>· 공단 검사접수 자료와 맞춰진 현장이나, 누가 「위치 고치기」로 고친 현장은 실제 앱에서 그 주소가 먼저 나와요.<br>· 회사 메일 인증을 켜 두었다면, 이 휴대폰의 앱(같은 주소)에서 한 번 인증한 뒤에 열어 주세요.</p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let tok = '';
+try { tok = localStorage.getItem('sched.tok') || ''; } catch (e) {}
+async function run(fn, ...args) {
+  const r = await fetch('/api/rpc', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-auth': tok }, body: JSON.stringify({ fn, args }) });
+  const j = await r.json().catch(() => null);
+  if (r.status === 401) throw new Error('회사 메일 인증이 필요해요. 이 주소의 앱 화면에서 먼저 인증해 주세요.');
+  if (!r.ok || !j) throw new Error((j && j.message) || '서버 오류(' + r.status + ')');
+  return j;
+}
+$('go').onclick = async () => {
+  const b = $('b').value, n = $('n').value.trim(), a = $('a').value.trim(), u = $('u').value === '' ? null : +$('u').value;
+  $('err').hidden = true; $('res').innerHTML = '';
+  if (!n) { $('err').hidden = false; $('err').textContent = '현장 이름을 넣어 주세요.'; return; }
+  $('go').disabled = true; $('go').textContent = '찾는 중…';
+  try {
+    const q = n + '|' + a;
+    const r = await run('geocodeSites', [{ q, name: n, area: a, units: u }], null, b);
+    const p = r && r.places && r.places[q];
+    if (!p) {
+      $('res').innerHTML = '<div class="card"><span class="tag bad">못 찾음</span><div class="why">이 이름과 동으로는 위치를 찾지 못했어요. 앱에서는 「위치 못 찾음 · 주소 직접 넣기」가 나와요.</div></div>';
+    } else {
+      const alts = (p.alts || []).map(x => (typeof x === 'string' ? { a: x, n: 0 } : x));
+      $('res').innerHTML = `<div class="card">${alts.length ? '<span class="tag warn">확실하지 않음</span>' : p.fixed ? '<span class="tag ok">직접 고친 주소</span>' : '<span class="tag ok">확실함</span>'}
+        <div class="addr">${esc(p.addr || '(주소 없이 위치만 찾음)')}</div>
+        <div class="why">${alts.length ? '같은 동에 같은 이름 건물이 여러 곳이고 승강기 수로도 못 가려요. 앱에 「맞는 곳 고르기」가 나와요.' : p.fixed ? '누군가 「위치 고치기」로 넣어 둔 주소예요.' : '앱이 이 주소를 바로 써요.'}</div>
+        ${alts.map(x => `<div class="alt${x.a === p.addr ? ' pick' : ''}"><b>${esc(x.a)}</b><span>${[x.n ? '승강기 ' + x.n + '대' : '', x.a === p.addr ? '앱이 먼저 보여 주는 주소' : ''].filter(Boolean).join(' · ')}</span></div>`).join('')}</div>`;
+    }
+  } catch (e) {
+    $('err').hidden = false; $('err').textContent = e.message || '실패했어요.';
+  }
+  $('go').disabled = false; $('go').textContent = '앱이 고르는 주소 보기';
+};
+</script>
+</body>
+</html>
