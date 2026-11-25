@@ -3089,7 +3089,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.31';
+const PAGE_VER = '3.32';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3249,7 +3249,8 @@ function needFor(d) {
         addr: realAddr(d, s),
         area: s.area,
         region: BRANCH && BRANCH[0] !== '고양파주지사' ? province() : REGION[s.area] || '',
-        name: placeName(s.name)
+        name: placeName(s.name),
+        units: s.units // 같은 이름 건물이 여럿일 때 승강기 수로 가려냄
       });
   });
   return need;

@@ -15,8 +15,8 @@
 const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v3.0';
-const PAGE_VER = '3.31'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v3.1';
+const PAGE_VER = '3.32'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -543,7 +543,7 @@ async function geocodeSites(sites, origin, branch) {
     const o = origin && origin.lat ? origin : null;
     const J = juris_(branch || (o && o.name));
     const list = (Array.isArray(sites) ? sites : []).slice(0, 60);
-    const ckOf = s => 'site5:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+    const ckOf = s => 'site6:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '|' + (s.units || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
     const fixes = await siteFixes_(list.map(s => [s.name || s.q, s.area]));
     const todo = [];
     list.forEach((s, i) => {
@@ -586,7 +586,7 @@ async function findSite_(s, o, J, book) {
   };
   if (!s.addr) {
     const all = await bookCandidates_(name, area, book);
-    const cands = J ? all.filter(a => inJuris_(a, J)) : all;
+    const cands = await rankCands_(name, s.units, J ? all.filter(a => inJuris_(a, J)) : all);
     for (let i = 0; i < Math.min(cands.length, 5); i++) {
       const p = await addrPoint_(cands[i], o, J);
       if (p) return { lat: p.lat, lng: p.lng, name: name, addr: cands[i] };
@@ -615,6 +615,23 @@ async function findSite_(s, o, J, book) {
   return null;
 }
 
+// 이름이 같은 건물이 여럿일 때 (예: 오주하이츠 · 오주하이츠A동 · 오주하이츠B동 → 같은 이름으로 묶임)
+// 일정표 대수와 그 주소의 승강기 수가 맞는 곳, 주소 괄호 속 건물명이 다르지 않은 곳을 먼저
+async function rankCands_(name, units, cands) {
+  if (cands.length < 2) return cands;
+  let counts = {};
+  try { counts = ((await shard_('elv', bookFile_(bookKey_(name)))) || {})[bookKey_(name)] || {}; } catch (e) {}
+  const nk = bookKey_(name), u = Number(units) || 0;
+  const score = a => {
+    let sc = 0;
+    const n = (counts[a] || []).length;
+    if (u && n) sc += n === u ? 3 : n > u ? 1 : -1; // 정기검사면 대수 = 승강기 수, 일부만 보면 승강기가 더 많음
+    const bn = (String(a).match(/\(([^)]*)\)\s*$/) || [])[1];
+    if (bn && !/[A-Z0-9]동$/.test(name)) sc += bookKey_(bn.split(',').pop()) === nk ? 1 : -2; // 괄호 속 건물명이 다른 건물이면 뒤로
+    return sc;
+  };
+  return cands.map((a, i) => ({ a, i, sc: score(a) })).sort((x, y) => y.sc - x.sc || x.i - y.i).map(x => x.a);
+}
 async function addrPoint_(addr, o, J) {
   const ad = await kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=3&query=' + encodeURIComponent(cleanAddr_(addr)));
   const d = (ad.documents || []).find(x => inArea_(x, o, J));
