@@ -15,8 +15,8 @@
 const CACHE_SEC = 21600; // 6시간
 const LONG_SEC = 100 * 86400; // 구간 거리·현장 위치: 여비입력(지난달)에서 다시 쓰도록 오래 보관
 const REGION_KM = 50; // 지사에서 이 거리(km) 밖의 검색 결과는 버림
-const SERVER_VER = 'v3.1';
-const PAGE_VER = '3.32'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
+const SERVER_VER = 'v3.2';
+const PAGE_VER = '3.33'; // index.html 의 PAGE_VER 와 같게 — 다르면 화면에 「새로고침」 안내 // 화면 아래에 표시 — 배포가 최신인지 확인용
 const RAW = 'https://raw.githubusercontent.com/well8898/-/my-schedule/my-schedule/data/';
 const ELV_URL = RAW + 'elv/'; // 건물별 승강기 고유번호
 const BOOK_URL = RAW + 'bld/'; // 건물 주소록
@@ -543,7 +543,7 @@ async function geocodeSites(sites, origin, branch) {
     const o = origin && origin.lat ? origin : null;
     const J = juris_(branch || (o && o.name));
     const list = (Array.isArray(sites) ? sites : []).slice(0, 60);
-    const ckOf = s => 'site6:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '|' + (s.units || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
+    const ckOf = s => 'site7:' + String((s && s.q) || '').trim() + '|' + (s.addr || '') + '|' + (s.units || '') + '@' + (J ? JSON.stringify(J) : o ? o.lat.toFixed(3) + ',' + o.lng.toFixed(3) : '');
     const fixes = await siteFixes_(list.map(s => [s.name || s.q, s.area]));
     const todo = [];
     list.forEach((s, i) => {
@@ -587,9 +587,11 @@ async function findSite_(s, o, J, book) {
   if (!s.addr) {
     const all = await bookCandidates_(name, area, book);
     const cands = await rankCands_(name, s.units, J ? all.filter(a => inJuris_(a, J)) : all);
+    // 같은 동·읍·면에 같은 이름 주소가 여럿이고 승강기 수로도 못 가리면 후보를 함께 보냄 (「맞는 곳 고르기」)
+    const alts = cands.tie && cands.tie.length > 1 ? cands.tie.slice(0, 5).map(a => ({ a, n: cands.cnt[cands.indexOf(a)] || 0 })) : null;
     for (let i = 0; i < Math.min(cands.length, 5); i++) {
       const p = await addrPoint_(cands[i], o, J);
-      if (p) return { lat: p.lat, lng: p.lng, name: name, addr: cands[i] };
+      if (p) return Object.assign({ lat: p.lat, lng: p.lng, name: name, addr: cands[i] }, alts ? { alts } : {});
     }
   }
   if (s.addr) {
@@ -630,7 +632,16 @@ async function rankCands_(name, units, cands) {
     if (bn && !/[A-Z0-9]동$/.test(name)) sc += bookKey_(bn.split(',').pop()) === nk ? 1 : -2; // 괄호 속 건물명이 다른 건물이면 뒤로
     return sc;
   };
-  return cands.map((a, i) => ({ a, i, sc: score(a) })).sort((x, y) => y.sc - x.sc || x.i - y.i).map(x => x.a);
+  const r = cands.map((a, i) => ({ a, i, sc: score(a) })).sort((x, y) => y.sc - x.sc || x.i - y.i);
+  const out = r.map(x => x.a);
+  // 확실한 경우만 그대로: 승강기 수가 대수와 딱 맞는 주소가 하나뿐이고, 그보다 승강기가 많은 주소(일부만 검사할 수 있음)도 없을 때
+  // 그 밖에는 후보를 함께 보내 화면에서 「맞는 곳 고르기」
+  const n = a => (counts[a] || []).length;
+  const exact = cands.filter(a => u && n(a) === u).length;
+  const more = cands.filter(a => u && n(a) > u).length;
+  out.tie = exact === 1 && !more ? [] : out.slice(0, 5);
+  out.cnt = out.map(n);
+  return out;
 }
 async function addrPoint_(addr, o, J) {
   const ad = await kakaoGet_('https://dapi.kakao.com/v2/local/search/address.json?size=3&query=' + encodeURIComponent(cleanAddr_(addr)));

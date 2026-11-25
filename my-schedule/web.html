@@ -1250,6 +1250,10 @@ body.easy .ed-line{margin:2px 0 16px}body.easy .ed-line .ez-hisub{margin:0}
 .ed-sheet>.sh-x{width:100%;margin-top:10px}
 .ed-sheet .ed-row{background:var(--surface)!important;border:1.5px solid var(--line)!important;color:var(--ink)!important}
 .ed-sheet .ed-add{background:none!important}
+.alt-btn{display:flex;align-items:center;gap:6px;margin-top:8px;min-height:38px;border:0;border-radius:10px;background:var(--amber-soft);color:var(--amber);font:700 13.5px var(--font-body);padding:0 12px;cursor:pointer;text-align:left}
+.alt-btn::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:#f5b400}
+.alt-row{grid-template-columns:1fr auto!important}
+.alt-row .n small{font-weight:700!important}
 </style>
 </head>
 <body>
@@ -2591,7 +2595,7 @@ function drawEasy() {
       h += `<section class="ez-card${past(pick) ? ' past' : ''}">
         <div class="ez-lab"><i></i>${n > 1 ? `${pick + 1}번째 현장 · ${n}현장 중` : isToday ? '오늘 현장' : '이날 현장'}</div>
         <div class="ez-n">${esc(placeName(s.name))}${kb(s.kind)}</div>
-        ${addrRow(cleanAddr((GEO[mapQuery(s)] || {}).addr))}
+        ${addrRow(cleanAddr((GEO[mapQuery(s)] || {}).addr))}${altBtn(s)}
         ${plan ? `<div class="ez-plan">${plan}</div>` : ''}
         ${s.memo ? `<div class="ez-plan">${esc(s.memo)}</div>` : ''}
         ${dl ? `<div class="ez-d">${ARROW}${dl}</div>` : ''}
@@ -2714,6 +2718,48 @@ async function copyText(t, msg) {
   toast(msg);
 }
 const trvOn = () => !!(API && LINK && LINK.b);
+// 같은 이름 주소가 여러 곳이라 확신 못 할 때: 후보 중 한 번 눌러 고르기 (지사 모두에게 저장)
+const altBtn = s => {
+  const g = GEO[mapQuery(s)];
+  return g && g.alts && !g.fixed ? `<button type="button" class="alt-btn" data-alt="${esc(mapQuery(s))}">주소가 여러 곳이에요 · 맞는 곳 고르기</button>` : '';
+};
+function pickAlt(q) {
+  const g = GEO[q];
+  if (!g || !g.alts) return;
+  const st = days.flatMap(d => (d.t ? d.t.stops : [])).find(x => mapQuery(x) === q) || { name: g.name, area: '' };
+  const el = document.createElement('div');
+  el.className = 'sheet-bg';
+  el.innerHTML = `<div class="sheet ed-sheet" role="dialog" aria-modal="true" aria-labelledby="alH"><h2 id="alH">${esc(placeName(st.name))}<br>어느 주소인가요?</h2>
+    <p class="ed-sub">같은 이름의 건물이 여러 곳이에요. 실제 현장 주소를 눌러 주세요.<br><b>${esc(LINK ? LINK.b : '')} 모두에게</b> 저장돼요.</p>
+    ${g.alts.map(x => (typeof x === 'string' ? { a: x, n: 0 } : x)).map(x => `<button type="button" class="ed-row alt-row" data-a="${esc(x.a)}"><span class="n">${esc(x.a)}<small>${[x.n ? '승강기 ' + x.n + '대' : '', x.a === g.addr ? '지금 보이는 주소' : ''].filter(Boolean).join(' · ')}</small></span><span class="g">고르기</span></button>`).join('')}
+    <p class="msg err" id="alMsg"></p>
+    <p class="ed-sub">목록에 없으면 자세히 화면의 「위치 고치기」에 주소를 직접 넣어 주세요.</p>
+    <button type="button" class="sh-x" data-x="1">닫기</button></div>`;
+  document.body.appendChild(el);
+  el.onclick = async e => {
+    if (e.target === el || e.target.closest('[data-x]')) return el.remove();
+    const b = e.target.closest('[data-a]');
+    if (!b) return;
+    b.disabled = true;
+    el.querySelector('#alMsg').textContent = '저장하는 중…';
+    try {
+      const r = await run('setSiteAddr', placeName(st.name), st.area || '', b.dataset.a, ORIGIN, BRANCH ? BRANCH[0] : '');
+      if (!r || !r.ok) {
+        b.disabled = false;
+        return (el.querySelector('#alMsg').textContent = (r && r.message) || '저장하지 못했어요.');
+      }
+      GEO[q] = r.place;
+      Object.keys(LEGS).forEach(k => delete LEGS[k]);
+      Object.keys(EZ_LOADED).forEach(k => delete EZ_LOADED[k]);
+      el.remove();
+      toast('✓ 주소를 저장했어요');
+      drawPanel();
+    } catch (er) {
+      b.disabled = false;
+      el.querySelector('#alMsg').textContent = '인터넷 연결을 확인하고 다시 눌러 주세요.';
+    }
+  };
+}
 // 현장명 밑 실제 주소 + 복사 버튼 (간단히·자세히 공용, 누르면 원주소만 복사)
 const addrRow = a => (a ? `<div class="ad ez-ad"><span>${esc(a)}</span><button type="button" class="cp" data-addr="${esc(a)}" aria-label="주소 복사">${COPY_IC}</button></div>` : '');
 // 지난 일정표 올리기: 파일마다 읽어서 내 지사 기록에만 넣음 (지금 보는 일정표는 그대로)
@@ -2977,6 +3023,8 @@ $('tabs').addEventListener('click', e => {
   if (t) go(t.dataset.go);
 });
 $('panel').addEventListener('click', e => {
+  const al = e.target.closest('[data-alt]');
+  if (al) return pickAlt(al.dataset.alt);
   const de = e.target.closest('[data-dayedit]');
   if (de) return editDayMenu(de.dataset.dayedit);
   const w = e.target.closest('[data-wk]');
@@ -3096,7 +3144,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.32';
+const PAGE_VER = '3.33';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -3344,7 +3392,7 @@ async function dayExtras(d) {
         el.innerHTML = (g.addr ? esc(cleanAddr(g.addr)) + (g.fixed ? ' <span class="real">직접 넣은 주소</span>' : ' <span class="real">실주소</span>') +
             `<button type="button" class="cp cp-in" data-addr="${esc(cleanAddr(g.addr))}" aria-label="주소 복사">${COPY_IC}</button>`
           : esc(el.textContent.replace(/위치 고치기|위치 못 찾음|주소 직접 넣기/g, '').trim())) +
-          '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>';
+          '<button type="button" class="fixaddr soft" data-fix="' + i + '">위치 고치기</button>' + altBtn(s);
       if (mp) {
         const q = g.addr
           ? encodeURIComponent(g.addr.replace(/\([^)]*\)/g, ' ').trim())
