@@ -3146,7 +3146,7 @@ function themeIcon() {
 })();
 // ════════ 최신 버전 확인 ════════
 // 화면(PAGE_VER)은 lib/core.js 의 PAGE_VER 와 같게 올림 → 서버가 더 높으면 「새로고침」
-const PAGE_VER = '3.34';
+const PAGE_VER = '3.35';
 const verNum = v => String(v || '').replace(/[^\d.]/g, '').split('.').map(Number);
 const verNewer = (a, b) => { // a 가 b 보다 새 버전인가
   const x = verNum(a), y = verNum(b);
@@ -4403,6 +4403,7 @@ async function pdfRects(pg, vp, off, out) {
 }
 function sheetItems(buf) {
   const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+  const out = [];
   for (const sn of wb.SheetNames) {
     const ws = wb.Sheets[sn];
     if (!ws['!ref']) continue;
@@ -4442,9 +4443,10 @@ function sheetItems(buf) {
             items.push({ x: c * 100, y: r * 50 + i * 4, w, s: ln.trim() });
         });
       }
-    if (items.some(i => /^\s*\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s)))
-      return { items, sheet: sn };
+    if (items.some(i => /^\s*0?\d{1,2}\/\d{1,2}\s*(\(.\))?\s*$/.test(i.s))) out.push({ items, sheet: sn });
   }
+  // 조가 여러 시트로 나뉜 일정표: 날짜 머리글이 있는 시트를 모두 돌려줌 (parseFile 이 날짜별로 합침)
+  if (out.length) return out;
   throw new Error(
     '엑셀에서 날짜 머리글(예: 10/12 (월))이 있는 시트를 찾지 못했어요.'
   );
@@ -4486,34 +4488,81 @@ async function parseFile(file) {
   const buf = await file.arrayBuffer();
   const yr = (file.name.match(/20\d\d/) || [])[0];
   const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
-  const items = isPdf ? await pdfItems(buf) : sheetItems(buf).items;
-  const t = items.find(i => /일정표/.test(i.s));
-  const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
-  // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
-  const gsw = isPdf && isGsWeek(items);
-  const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
-  const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : undefined;
-  let ds;
-  try {
-    ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
-  } catch (e1) {
-    // 양식 구분이 애매하면 다른 방식으로도 한 번 더
+  // 한 장(PDF·시트 하나)을 읽음
+  const one = (items, yHint) => {
+    const t = items.find(i => /일정표/.test(i.s));
+    const yy = t && (t.s.match(/(\d{2})년/) || [])[1];
+    // 구글 시트형 주간 검사 일정표(경남서부 등)는 따로 읽음
+    const gsw = isPdf && isGsWeek(items);
+    const y4 = (((items.title || '') + ' ' + items.map(i => i.s).join(' ')).match(/(20\d\d)[.년]/) || [])[1];
+    const year = yr ? +yr : y4 && gsw ? +y4 : yy ? 2000 + +yy : yHint;
+    let ds;
     try {
-      ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
-    } catch (e2) {
-      throw e1;
+      ds = gsw ? parseGsWeek(items, items.rects || [], year) : parseItems(items, year);
+    } catch (e1) {
+      // 양식 구분이 애매하면 다른 방식으로도 한 번 더
+      try {
+        ds = gsw ? parseItems(items, year) : parseGsWeek(items, items.rects || [], year);
+      } catch (e2) {
+        throw e1;
+      }
     }
+    const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
+    return { ds, t, gsw, range, items, year };
+  };
+  let parts;
+  if (isPdf) parts = [one(await pdfItems(buf))];
+  else {
+    // 엑셀: 날짜 머리글이 있는 시트를 모두 읽음 (조가 시트 여러 개로 나뉜 일정표)
+    parts = [];
+    let errFirst = null;
+    for (const sh of sheetItems(buf)) {
+      try {
+        const p = one(sh.items, parts[0] && parts[0].year);
+        if (p.ds.some(d => d.teams.length)) parts.push(Object.assign(p, { sheet: sh.sheet }));
+      } catch (e) {
+        errFirst = errFirst || e;
+      }
+    }
+    if (!parts.length) throw errFirst || new Error('조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.');
   }
+  const ds = mergeDays(parts.map(p => p.ds));
   if (!ds.some(d => d.teams.length))
     throw new Error(
       '조별 일정([n현장 n대] 줄)을 찾지 못했어요. 지사 검사 일정표 양식이 맞는지 확인해 주세요.'
     );
-  const range = gsw && ((items.map(i => i.s).join('').match(/\(\s*20\d\d\.[\d.]+~[\d.]+\s*\)/) || [])[0] || '');
-  // 제목 글자(지사 찾기용)는 숨은 값으로 — 서버에 보내는 일정표에는 안 들어감
-  return Object.defineProperty({
-    source: gsw ? (items.title || '주간 검사 일정표') + (range ? ' ' + range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
+  const p0 = parts[0], t = parts.map(p => p.t).find(Boolean);
+  // 제목 글자(지사 찾기용)·읽은 시트는 숨은 값으로 — 서버에 보내는 일정표에는 안 들어감
+  const out = {
+    source: p0.gsw ? (p0.items.title || '주간 검사 일정표') + (p0.range ? ' ' + p0.range : '') : t ? t.s.replace(/^[\s-]+/, '').trim() : file.name,
     days: ds
-  }, 'title', { value: (t ? t.s : '') + ' ' + (items.title || '') });
+  };
+  Object.defineProperty(out, 'title', { value: (t ? t.s : '') + ' ' + (p0.items.title || '') });
+  Object.defineProperty(out, 'sheets', { value: parts.length });
+  return out;
+}
+// 여러 시트에서 읽은 날들을 날짜별로 합침: 같은 날의 조·휴가·지원을 모음 (같은 조가 두 번 나오면 한 번만)
+// 올리기 확인 창에: 무엇을 읽었는지 (시트 여러 개면 합친 결과)
+function readInfo(d) {
+  const work = d.days.filter(x => x.teams.length);
+  const teams = new Set(work.flatMap(x => x.teams.map(t => t.team))).size;
+  return ` · ${d.sheets > 1 ? '시트 ' + d.sheets + '개를 합쳐 ' : ''}${work.length}일 · ${teams}개 조`;
+}
+function mergeDays(list) {
+  if (list.length === 1) return list[0];
+  const by = {};
+  list.forEach(ds =>
+    ds.forEach(d => {
+      const m = by[d.iso];
+      if (!m) return (by[d.iso] = Object.assign({}, d, { teams: [...d.teams], vacation: [...(d.vacation || [])], support: [...(d.support || [])] }));
+      const sig = t => t.team + '|' + (t.members || []).map(bare).join(',');
+      d.teams.forEach(t => { if (!m.teams.some(x => sig(x) === sig(t))) m.teams.push(t); });
+      (d.vacation || []).forEach(v => { if (!m.vacation.includes(v)) m.vacation.push(v); });
+      (d.support || []).forEach(v => { if (!m.support.includes(v)) m.support.push(v); });
+    })
+  );
+  const num = t => parseInt(String(t.team).replace(/\D/g, ''), 10) || 999;
+  return Object.keys(by).sort().map(k => Object.assign(by[k], { teams: by[k].teams.sort((a, b) => num(a) - num(b)) }));
 }
 async function load(file) {
   const prev = data;
@@ -4543,7 +4592,7 @@ async function load(file) {
       const own = branchByName(lockedBranch());
       const other = own && BRANCH && BRANCH[0] !== own[0] ? BRANCH[0] : '';
       if (own) setBranch(own, 'link');
-      const b = await askBranch(BRANCH, data.source, own ? '' : why, own ? { locked: true, other } : {});
+      const b = await askBranch(BRANCH, data.source + readInfo(data), own ? '' : why, own ? { locked: true, other } : {});
       if (!b) {
         // 취소: 올리지 않고 보던 화면 그대로
         data = prev;
